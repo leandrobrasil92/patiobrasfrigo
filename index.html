@@ -107,37 +107,19 @@
             margin: 0;
         }
 
-        .login-debug {
-            margin-top: 15px;
-            padding: 10px;
-            background: #f8f9fa;
-            border-radius: 6px;
-            font-size: 12px;
-            text-align: left;
-            color: #495057;
-            border: 1px solid #dee2e6;
-        }
-
-        .recovery-buttons {
-            margin-top: 15px;
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .recovery-btn {
-            padding: 8px 12px;
+        .sync-indicator {
+            position: fixed;
+            top: 70px;
+            right: 20px;
             background: #17a2b8;
             color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
+            padding: 8px 15px;
+            border-radius: 6px;
             font-size: 12px;
-        }
-
-        .recovery-btn:hover {
-            background: #138496;
+            font-weight: 600;
+            display: none;
+            z-index: 1001;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
 
         /* PAINEL DE CONTROLE DE USUÁRIOS */
@@ -236,6 +218,36 @@
 
         .btn-reset:hover {
             background: #e67e22;
+        }
+
+        .recovery-buttons {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .recovery-btn {
+            padding: 8px 12px;
+            background: #17a2b8;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .recovery-btn:hover {
+            background: #138496;
+        }
+
+        .sync-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
         }
 
         .header {
@@ -755,6 +767,11 @@
     </style>
 </head>
 <body>
+    <!-- INDICADOR DE SINCRONIZAÇÃO -->
+    <div class="sync-indicator" id="syncIndicator">
+        🔄 Sincronizando usuários...
+    </div>
+
     <!-- TELA DE LOGIN SIMPLIFICADA -->
     <div class="login-overlay" id="loginOverlay">
         <div class="login-modal">
@@ -793,6 +810,17 @@
             <h4 style="margin-bottom: 15px; color: #2c3e50;">📋 Usuários Cadastrados</h4>
             <div class="user-list" id="userList">
                 <!-- Lista de usuários será carregada aqui -->
+            </div>
+
+            <div class="sync-section">
+                <h4 style="margin-bottom: 15px; color: #2c3e50;">🌐 Sincronização Global</h4>
+                <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 15px;">
+                    <button onclick="exportarUsuarios()" class="recovery-btn">📤 Exportar Usuários</button>
+                    <button onclick="importarUsuarios()" class="recovery-btn">📥 Importar Usuários</button>
+                    <button onclick="sincronizarUsuarios()" class="recovery-btn">🔄 Sincronizar</button>
+                </div>
+                <input type="file" id="fileInputUsuarios" accept=".json" style="display: none;" onchange="carregarArquivoUsuarios(event)">
+                <p style="font-size: 12px; color: #6c757d; text-align: center;">Use estes botões para compartilhar usuários entre diferentes máquinas</p>
             </div>
 
             <h4 style="margin: 20px 0 15px 0; color: #2c3e50; border-top: 1px solid #dee2e6; padding-top: 20px;">🔧 Ferramentas do Sistema</h4>
@@ -1003,44 +1031,81 @@
             }
         ];
 
+        // USUÁRIOS GLOBAIS COMPARTILHADOS (baseados na imagem do painel)
+        const USUARIOS_GLOBAIS = [
+            {
+                id: 1,
+                nome: "Leandro Brasil dos Santos",
+                login: "leandro.brasil",
+                senha: "master123",
+                nivel: "master",
+                email: "leandro.brasil@minervafoods.com"
+            },
+            {
+                id: 2,
+                nome: "diego cordeiro",
+                login: "diego.cordeiro",
+                senha: "diego123",
+                nivel: "user",
+                email: "diego.cordeiro@minervafoods.com",
+                global: true
+            },
+            {
+                id: 3,
+                nome: "teste brasil",
+                login: "teste.brasil",
+                senha: "teste123",
+                nivel: "user",
+                email: "teste.brasil@minervafoods.com",
+                global: true
+            },
+            {
+                id: 4,
+                nome: "rhemerson rezende",
+                login: "rhemerson.rezende",
+                senha: "teste123",
+                nivel: "administrador",
+                email: "rhemerson.rezende@minervafoods.com",
+                global: true
+            }
+        ];
+
         // Carregar sistema ao iniciar
         document.addEventListener('DOMContentLoaded', function() {
             inicializarSistema();
         });
 
         function inicializarSistema() {
-            console.log('🔄 INICIALIZANDO SISTEMA...');
+            console.log('🔄 INICIALIZANDO SISTEMA COM USUÁRIOS GLOBAIS...');
             
-            // VERIFICAR SE HÁ USUÁRIOS EXISTENTES PRIMEIRO
-            const usuariosExistentes = localStorage.getItem('usuariosSistema');
+            // CARREGAR USUÁRIOS GLOBAIS SEMPRE
+            let usuarios = [...USUARIOS_GLOBAIS];
             
-            if (!usuariosExistentes) {
-                console.log('🆕 Nenhum usuário encontrado, criando usuários padrão');
-                localStorage.setItem('usuariosSistema', JSON.stringify(USUARIOS_PADRAO));
-            } else {
-                console.log('✅ Usuários já existem no localStorage');
+            // Verificar se há usuários locais adicionais
+            const usuariosLocais = localStorage.getItem('usuariosSistema');
+            if (usuariosLocais) {
                 try {
-                    const usuarios = JSON.parse(usuariosExistentes);
-                    console.log('👥 USUÁRIOS ENCONTRADOS:', usuarios.length);
+                    const usuariosLocaisParsed = JSON.parse(usuariosLocais);
                     
-                    // Verificar se usuário master existe, se não, adicionar
-                    const masterExiste = usuarios.find(u => u.nivel === 'master');
-                    if (!masterExiste) {
-                        console.log('⚠️ Master não encontrado, adicionando...');
-                        usuarios.push(USUARIOS_PADRAO[0]);
-                        localStorage.setItem('usuariosSistema', JSON.stringify(usuarios));
-                    }
+                    // Adicionar usuários locais que não conflitam com globais
+                    usuariosLocaisParsed.forEach(usuarioLocal => {
+                        const jaExiste = usuarios.find(u => u.login === usuarioLocal.login);
+                        if (!jaExiste && !usuarioLocal.global) {
+                            usuarios.push(usuarioLocal);
+                        }
+                    });
+                    
+                    console.log('📋 Usuários locais mesclados:', usuariosLocaisParsed.length);
                 } catch (error) {
-                    console.error('❌ Erro ao parsear usuários existentes:', error);
-                    // Em caso de corrupção, manter backup e recriar
-                    localStorage.setItem('usuariosSistema_backup', usuariosExistentes);
-                    localStorage.setItem('usuariosSistema', JSON.stringify(USUARIOS_PADRAO));
+                    console.error('❌ Erro ao carregar usuários locais:', error);
                 }
             }
-
-            // Verificar e mostrar todos os usuários no console
-            const todosUsuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
-            console.log('👥 TODOS OS USUÁRIOS CADASTRADOS:', todosUsuarios);
+            
+            // Salvar usuários mesclados
+            localStorage.setItem('usuariosSistema', JSON.stringify(usuarios));
+            
+            console.log('👥 USUÁRIOS DISPONÍVEIS:', usuarios.length);
+            console.log('✅ Usuários globais carregados:', USUARIOS_GLOBAIS.length);
 
             // Verificar credenciais salvas (lembrar-me)
             const credenciaisSalvas = localStorage.getItem('credenciaisLembradas');
@@ -1070,6 +1135,126 @@
             }
         }
 
+        // FUNÇÃO PARA EXPORTAR USUÁRIOS PARA ARQUIVO
+        function exportarUsuarios() {
+            const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
+            
+            const dadosExportacao = {
+                versao: "1.0",
+                dataExportacao: new Date().toISOString(),
+                exportadoPor: usuarioLogado.nome,
+                totalUsuarios: usuarios.length,
+                usuarios: usuarios
+            };
+            
+            const blob = new Blob([JSON.stringify(dadosExportacao, null, 2)], { 
+                type: 'application/json;charset=utf-8;' 
+            });
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `usuarios_patio_brasfrigo_${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            
+            mostrarAlerta('success', `✅ Usuários exportados com sucesso!\n📁 Arquivo: usuarios_patio_brasfrigo_${new Date().toISOString().split('T')[0]}.json\n👥 Total: ${usuarios.length} usuários`);
+            
+            console.log('📤 Usuários exportados:', usuarios.length);
+        }
+
+        // FUNÇÃO PARA IMPORTAR USUÁRIOS DE ARQUIVO
+        function importarUsuarios() {
+            document.getElementById('fileInputUsuarios').click();
+        }
+
+        function carregarArquivoUsuarios(event) {
+            const file = event.target.files[0];
+            
+            if (!file) return;
+
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    const dadosImportados = JSON.parse(e.target.result);
+                    
+                    if (!dadosImportados.usuarios || !Array.isArray(dadosImportados.usuarios)) {
+                        throw new Error('Formato de arquivo inválido');
+                    }
+                    
+                    // Mesclar usuários importados com globais
+                    let usuariosMesclados = [...USUARIOS_GLOBAIS];
+                    
+                    dadosImportados.usuarios.forEach(usuarioImportado => {
+                        const jaExiste = usuariosMesclados.find(u => u.login === usuarioImportado.login);
+                        if (!jaExiste) {
+                            usuariosMesclados.push({
+                                ...usuarioImportado,
+                                importado: true,
+                                importadoEm: new Date().toISOString()
+                            });
+                        }
+                    });
+                    
+                    // Salvar usuários mesclados
+                    localStorage.setItem('usuariosSistema', JSON.stringify(usuariosMesclados));
+                    
+                    carregarListaUsuarios();
+                    
+                    mostrarAlerta('success', `✅ Usuários importados com sucesso!\n📥 Total importado: ${dadosImportados.usuarios.length}\n👥 Total no sistema: ${usuariosMesclados.length}`);
+                    
+                    console.log('📥 Usuários importados:', dadosImportados.usuarios.length);
+                    
+                } catch (error) {
+                    console.error('❌ Erro ao importar usuários:', error);
+                    mostrarAlerta('error', `❌ Erro ao importar arquivo: ${error.message}`);
+                }
+            };
+            
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        // FUNÇÃO PARA SINCRONIZAR USUÁRIOS (simulada)
+        function sincronizarUsuarios() {
+            mostrarSyncIndicator('🔄 Sincronizando usuários...');
+            
+            // Simular sincronização - na prática conectaria com servidor/API
+            setTimeout(() => {
+                const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
+                
+                // Adicionar usuários globais se não existirem
+                let usuariosAtualizados = [...usuarios];
+                
+                USUARIOS_GLOBAIS.forEach(usuarioGlobal => {
+                    const jaExiste = usuariosAtualizados.find(u => u.login === usuarioGlobal.login);
+                    if (!jaExiste) {
+                        usuariosAtualizados.push({
+                            ...usuarioGlobal,
+                            sincronizado: true,
+                            sincronizadoEm: new Date().toISOString()
+                        });
+                    }
+                });
+                
+                localStorage.setItem('usuariosSistema', JSON.stringify(usuariosAtualizados));
+                carregarListaUsuarios();
+                
+                mostrarSyncIndicator('✅ Sincronização concluída!');
+                mostrarAlerta('success', '✅ Usuários sincronizados com sucesso!\n🌐 Sistema atualizado com usuários globais.');
+                
+                setTimeout(() => {
+                    document.getElementById('syncIndicator').style.display = 'none';
+                }, 2000);
+                
+            }, 2000);
+        }
+
+        function mostrarSyncIndicator(mensagem) {
+            const indicator = document.getElementById('syncIndicator');
+            indicator.textContent = mensagem;
+            indicator.style.display = 'block';
+        }
+
         // FUNÇÃO PARA INVESTIGAR PROBLEMAS DOS USUÁRIOS
         function investigarUsuarios(mostrarAlert = true) {
             console.log('🕵️ INVESTIGAÇÃO COMPLETA DO SISTEMA DE USUÁRIOS');
@@ -1093,28 +1278,14 @@
                     console.log(`   Login: "${user.login}" (type: ${typeof user.login}, length: ${user.login ? user.login.length : 'N/A'})`);
                     console.log(`   Senha: "${user.senha}" (type: ${typeof user.senha}, length: ${user.senha ? user.senha.length : 'N/A'})`);
                     console.log(`   Nível: "${user.nivel}"`);
-                    console.log(`   ID: ${user.id} (type: ${typeof user.id})`);
-                    console.log(`   Email: "${user.email}"`);
-                    console.log(`   Criado em: ${user.criadoEm || 'N/A'}`);
-                    
-                    // Verificar problemas comuns
-                    const problemas = [];
-                    if (!user.login) problemas.push('Login vazio');
-                    if (!user.senha) problemas.push('Senha vazia');
-                    if (typeof user.login !== 'string') problemas.push(`Login não é string (${typeof user.login})`);
-                    if (typeof user.senha !== 'string') problemas.push(`Senha não é string (${typeof user.senha})`);
-                    
-                    if (problemas.length > 0) {
-                        console.log(`   ⚠️ PROBLEMAS: ${problemas.join(', ')}`);
-                    } else {
-                        console.log(`   ✅ Dados parecem válidos`);
-                    }
+                    console.log(`   Tipo: ${user.global ? 'Global' : user.importado ? 'Importado' : user.sincronizado ? 'Sincronizado' : 'Local'}`);
                 });
                 
                 if (mostrarAlert) {
                     let mensagem = `Sistema tem ${usuarios.length} usuários cadastrados.\n\n`;
                     usuarios.forEach((u, i) => {
-                        mensagem += `${i + 1}. ${u.nome}\n   Login: "${u.login}"\n   Senha: "${u.senha}"\n\n`;
+                        const tipo = u.global ? '[Global]' : u.importado ? '[Importado]' : u.sincronizado ? '[Sync]' : '[Local]';
+                        mensagem += `${i + 1}. ${u.nome} ${tipo}\n   Login: "${u.login}"\n   Senha: "${u.senha}"\n\n`;
                     });
                     alert(mensagem);
                 }
@@ -1129,56 +1300,32 @@
         function recuperarUsuarios() {
             console.log('🔧 INICIANDO RECUPERAÇÃO DE USUÁRIOS...');
             
+            // Recriar com usuários globais + backup se existir
+            let usuariosRecuperados = [...USUARIOS_GLOBAIS];
+            
             const backup = localStorage.getItem('usuariosSistema_backup');
             if (backup) {
                 try {
                     const usuariosBackup = JSON.parse(backup);
-                    localStorage.setItem('usuariosSistema', backup);
-                    console.log('✅ Usuários recuperados do backup:', usuariosBackup.length);
-                    alert('✅ Usuários recuperados do backup! Tente fazer login novamente.');
-                    location.reload();
+                    usuariosBackup.forEach(usuarioBackup => {
+                        const jaExiste = usuariosRecuperados.find(u => u.login === usuarioBackup.login);
+                        if (!jaExiste) {
+                            usuariosRecuperados.push({
+                                ...usuarioBackup,
+                                recuperado: true
+                            });
+                        }
+                    });
                 } catch (error) {
-                    console.error('❌ Erro ao recuperar backup:', error);
-                    alert('❌ Backup corrompido, não foi possível recuperar.');
+                    console.error('❌ Erro no backup:', error);
                 }
-            } else {
-                // Recriar usuários da imagem manualmente
-                const usuariosRecuperados = [
-                    ...USUARIOS_PADRAO,
-                    {
-                        id: Date.now() + 1,
-                        nome: "teste dois",
-                        login: "teste.dois",
-                        senha: "brasil123",
-                        nivel: "user",
-                        email: "teste.dois@minervafoods.com",
-                        recuperado: true
-                    },
-                    {
-                        id: Date.now() + 2,
-                        nome: "diego cordeiro",
-                        login: "diego.cordeiro", 
-                        senha: "diego123",
-                        nivel: "user",
-                        email: "diego.cordeiro@minervafoods.com",
-                        recuperado: true
-                    },
-                    {
-                        id: Date.now() + 3,
-                        nome: "teste brasil",
-                        login: "teste.brasil",
-                        senha: "teste123", 
-                        nivel: "user",
-                        email: "teste.brasil@minervafoods.com",
-                        recuperado: true
-                    }
-                ];
-                
-                localStorage.setItem('usuariosSistema', JSON.stringify(usuariosRecuperados));
-                console.log('🔧 Usuários recriados manualmente');
-                alert('🔧 Usuários recriados! Credenciais:\n\n1. teste.dois / brasil123\n2. diego.cordeiro / diego123\n3. teste.brasil / teste123');
-                carregarListaUsuarios();
             }
+            
+            localStorage.setItem('usuariosSistema', JSON.stringify(usuariosRecuperados));
+            carregarListaUsuarios();
+            
+            console.log('🔧 Usuários recuperados:', usuariosRecuperados.length);
+            alert(`🔧 Sistema recuperado!\n👥 ${usuariosRecuperados.length} usuários disponíveis\n\nCredenciais globais:\n• diego.cordeiro / diego123\n• teste.brasil / teste123\n• rhemerson.rezende / teste123`);
         }
 
         // FUNÇÃO PARA TESTAR TODOS OS USUÁRIOS
@@ -1198,6 +1345,7 @@
                     nome: user.nome,
                     login: user.login,
                     senha: user.senha,
+                    nivel: user.nivel,
                     funcionaria: !!encontrado
                 };
             });
@@ -1242,69 +1390,29 @@
         }
 
         function autenticarUsuario(login, senha, lembrarMe = false) {
-            console.log('🔐 INICIANDO AUTENTICAÇÃO DETALHADA...');
+            console.log('🔐 INICIANDO AUTENTICAÇÃO...');
             
-            // STEP 1: Verificar se localStorage existe
-            const rawData = localStorage.getItem('usuariosSistema');
-            if (!rawData) {
-                console.log('❌ FALHA: localStorage vazio');
-                alert('❌ Usuário ou senha incorretos!');
-                return;
-            }
+            // Carregar usuários (sempre incluindo globais)
+            let usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
             
-            // STEP 2: Parse dos dados
-            let usuarios;
-            try {
-                usuarios = JSON.parse(rawData);
-                console.log('✅ Parse JSON bem-sucedido. Usuários encontrados:', usuarios.length);
-            } catch (error) {
-                console.error('❌ FALHA no parse JSON:', error);
-                alert('❌ Usuário ou senha incorretos!');
-                return;
-            }
-            
-            // STEP 3: Investigar cada usuário detalhadamente
-            console.log('👥 INVESTIGANDO CADA USUÁRIO:');
-            let usuarioEncontrado = null;
-            
-            for (let i = 0; i < usuarios.length; i++) {
-                const u = usuarios[i];
-                
-                console.log(`\n🔍 USUÁRIO ${i + 1}: ${u.nome}`);
-                console.log(`   Login armazenado: "${u.login}"`);
-                console.log(`   Login digitado: "${login}"`);
-                console.log(`   Senha armazenada: "${u.senha}"`);
-                console.log(`   Senha digitada: "${senha}"`);
-                
-                // COMPARAÇÃO EXATA - SEM QUALQUER PROCESSAMENTO
-                const loginExato = (u.login === login);
-                const senhaExata = (u.senha === senha);
-                
-                console.log(`   ✓ Login match: ${loginExato}`);
-                console.log(`   ✓ Senha match: ${senhaExata}`);
-                console.log(`   ✓ Ambos match: ${loginExato && senhaExata}`);
-                
-                if (loginExato && senhaExata) {
-                    console.log(`✅ USUÁRIO AUTENTICADO: ${u.nome}`);
-                    usuarioEncontrado = u;
-                    break;
-                } else {
-                    // Debug detalhado da falha
-                    if (!loginExato) {
-                        console.log(`   ❌ Login não confere:`);
-                        console.log(`      Armazenado: [${Array.from(u.login).map(c => c.charCodeAt(0)).join(',')}]`);
-                        console.log(`      Digitado: [${Array.from(login).map(c => c.charCodeAt(0)).join(',')}]`);
-                    }
-                    if (!senhaExata) {
-                        console.log(`   ❌ Senha não confere:`);
-                        console.log(`      Armazenada: [${Array.from(u.senha).map(c => c.charCodeAt(0)).join(',')}]`);
-                        console.log(`      Digitada: [${Array.from(senha).map(c => c.charCodeAt(0)).join(',')}]`);
-                    }
+            // Garantir que usuários globais estejam sempre presentes
+            USUARIOS_GLOBAIS.forEach(usuarioGlobal => {
+                const jaExiste = usuarios.find(u => u.login === usuarioGlobal.login);
+                if (!jaExiste) {
+                    usuarios.push(usuarioGlobal);
                 }
-            }
+            });
+            
+            // Salvar lista atualizada
+            localStorage.setItem('usuariosSistema', JSON.stringify(usuarios));
+            
+            console.log('👥 Total de usuários disponíveis:', usuarios.length);
+            
+            // BUSCAR USUÁRIO COM COMPARAÇÃO EXATA
+            const usuarioEncontrado = usuarios.find(u => u.login === login && u.senha === senha);
             
             if (usuarioEncontrado) {
-                console.log('✅ AUTENTICAÇÃO BEM-SUCEDIDA!');
+                console.log('✅ AUTENTICAÇÃO BEM-SUCEDIDA:', usuarioEncontrado.nome);
                 usuarioLogado = usuarioEncontrado;
                 
                 try {
@@ -1336,9 +1444,13 @@
                     mostrarAlerta('success', `✓ Bem-vindo, ${usuarioEncontrado.nome}! (${usuarioEncontrado.nivel.toUpperCase()})`);
                 }
             } else {
-                console.log('❌ AUTENTICAÇÃO FALHOU - USUÁRIO NÃO ENCONTRADO');
+                console.log('❌ AUTENTICAÇÃO FALHOU');
+                console.log('👥 Usuários disponíveis:');
+                usuarios.forEach((u, index) => {
+                    console.log(`${index + 1}. ${u.nome} | Login: "${u.login}" | Senha: "${u.senha}"`);
+                });
                 
-                // MENSAGEM SIMPLES E PROFISSIONAL
+                // MENSAGEM SIMPLES
                 alert('❌ Usuário ou senha incorretos!');
                 
                 // Limpar credenciais salvas se existirem
@@ -1450,35 +1562,17 @@
                 return;
             }
 
-            // Carregar usuários existentes COM PROTEÇÃO EXTRA
-            let usuarios;
-            try {
-                const rawUsuarios = localStorage.getItem('usuariosSistema');
-                if (!rawUsuarios) {
-                    console.log('⚠️ localStorage vazio, inicializando com usuários padrão');
-                    usuarios = [...USUARIOS_PADRAO];
-                } else {
-                    usuarios = JSON.parse(rawUsuarios);
-                    console.log('👥 Usuários existentes carregados:', usuarios.length);
-                    
-                    // Backup preventivo antes de alterar
-                    localStorage.setItem('usuariosSistema_backup', rawUsuarios);
-                }
-            } catch (error) {
-                console.error('❌ Erro ao carregar usuários:', error);
-                alert('❌ Erro interno do sistema. Tente recarregar a página.');
-                return;
-            }
+            // Carregar usuários existentes
+            let usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
             
-            // Verificar se login já existe (COMPARAÇÃO EXATA)
+            // Verificar se login já existe
             const loginExistente = usuarios.find(u => u.login === login);
             if (loginExistente) {
                 alert(`❌ Login "${login}" já existe! Escolha outro.`);
-                console.log('❌ Login duplicado detectado:', login);
                 return;
             }
 
-            // Criar novo usuário COM DADOS LIMPOS
+            // Criar novo usuário
             const novoUsuario = {
                 id: Date.now(),
                 nome: nome,
@@ -1487,49 +1581,17 @@
                 nivel: nivel,
                 email: `${login}@minervafoods.com`,
                 criadoEm: new Date().toISOString(),
-                criadoPor: usuarioLogado.nome
+                criadoPor: usuarioLogado.nome,
+                local: true // Marcado como usuário local (criado no painel)
             };
 
             console.log('➕ Novo usuário criado:', novoUsuario);
 
             usuarios.push(novoUsuario);
             
-            // SALVAR COM PROTEÇÃO MÁXIMA
-            try {
-                const novosDados = JSON.stringify(usuarios);
-                localStorage.setItem('usuariosSistema', novosDados);
-                console.log('💾 Dados salvos com sucesso');
-                
-                // VERIFICAÇÃO TRIPLA E TESTE DE AUTENTICAÇÃO
-                const verificacao = localStorage.getItem('usuariosSistema');
-                const usuariosVerificados = JSON.parse(verificacao);
-                const usuarioSalvo = usuariosVerificados.find(u => u.login === login && u.senha === senha);
-                
-                if (!usuarioSalvo) {
-                    throw new Error('Usuário não foi encontrado após salvamento');
-                }
-                
-                // TESTE DE AUTENTICAÇÃO IMEDIATO
-                const testeAuth = usuariosVerificados.find(u => u.login === login && u.senha === senha);
-                if (!testeAuth) {
-                    throw new Error('Usuário não passa no teste de autenticação');
-                }
-                
-                console.log('✅ Usuário criado, salvo e testado com sucesso!');
-                
-            } catch (error) {
-                console.error('❌ ERRO CRÍTICO:', error);
-                
-                // Restaurar backup
-                const backup = localStorage.getItem('usuariosSistema_backup');
-                if (backup) {
-                    localStorage.setItem('usuariosSistema', backup);
-                    console.log('🔄 Backup restaurado');
-                }
-                
-                alert(`❌ Erro crítico: ${error.message}\nBackup restaurado.`);
-                return;
-            }
+            // Backup antes de salvar
+            localStorage.setItem('usuariosSistema_backup', localStorage.getItem('usuariosSistema'));
+            localStorage.setItem('usuariosSistema', JSON.stringify(usuarios));
 
             // Simular envio de email de boas-vindas
             enviarEmailBoasVindas(novoUsuario);
@@ -1541,7 +1603,7 @@
             document.getElementById('novoNivel').value = '';
 
             carregarListaUsuarios();
-            mostrarAlerta('success', `✅ Usuário ${nome} criado e TESTADO com sucesso!\n🔑 Login: "${login}"\n🔒 Senha: "${senha}"\n📧 Email enviado.`);
+            mostrarAlerta('success', `✅ Usuário ${nome} criado com sucesso!\n🔑 Login: "${login}"\n🔒 Senha: "${senha}"\n\n💡 Para compartilhar com outras máquinas:\n📤 Use "Exportar Usuários" e envie o arquivo\n📥 Outras máquinas usam "Importar Usuários"`);
         }
 
         function resetarSenhaUsuario(id) {
@@ -1590,7 +1652,7 @@
             enviarEmailResetSenha(usuario, novaSenha);
 
             carregarListaUsuarios();
-            mostrarAlerta('success', `✓ Senha de ${usuario.nome} resetada com sucesso!\nNova senha: "${novaSenha}"\nEmail enviado.`);
+            mostrarAlerta('success', `✓ Senha de ${usuario.nome} resetada com sucesso!\nNova senha: "${novaSenha}"\nEmail enviado.\n\n💡 Exporte os usuários para compartilhar a mudança!`);
         }
 
         function enviarEmailBoasVindas(usuario) {
@@ -1628,24 +1690,31 @@
             
             console.log('📋 Carregando lista de usuários:', usuarios.length);
             
-            lista.innerHTML = usuarios.map(user => `
-                <div class="user-item">
-                    <div>
-                        <strong>${user.nome}</strong><br>
-                        <small style="color: #6c757d;">Login: "${user.login}" | Senha: "${user.senha}"</small><br>
-                        <small style="color: #6c757d;">Email: ${user.email}</small>
-                        ${user.criadoEm ? `<br><small style="color: #95a5a6;">Criado em: ${new Date(user.criadoEm).toLocaleDateString('pt-BR')}</small>` : ''}
-                        ${user.recuperado ? `<br><small style="color: #17a2b8;">👥 Usuário recuperado</small>` : ''}
+            lista.innerHTML = usuarios.map(user => {
+                const tipoUsuario = user.global ? '🌐 Global' : 
+                                  user.importado ? '📥 Importado' : 
+                                  user.sincronizado ? '🔄 Sincronizado' : 
+                                  user.local ? '💻 Local' : 
+                                  user.recuperado ? '🔧 Recuperado' : '';
+                
+                return `
+                    <div class="user-item">
+                        <div>
+                            <strong>${user.nome}</strong> ${tipoUsuario}<br>
+                            <small style="color: #6c757d;">Login: "${user.login}" | Senha: "${user.senha}"</small><br>
+                            <small style="color: #6c757d;">Email: ${user.email}</small>
+                            ${user.criadoEm ? `<br><small style="color: #95a5a6;">Criado em: ${new Date(user.criadoEm).toLocaleDateString('pt-BR')}</small>` : ''}
+                        </div>
+                        <div class="user-actions">
+                            <span class="user-level level-${user.nivel}">${user.nivel}</span>
+                            ${user.nivel !== 'master' ? `
+                                <button class="btn-reset" onclick="resetarSenhaUsuario(${user.id})" title="Reset Senha">🔄</button>
+                                <button class="btn-delete" onclick="excluirUsuario(${user.id})" title="Excluir">🗑️</button>
+                            ` : ''}
+                        </div>
                     </div>
-                    <div class="user-actions">
-                        <span class="user-level level-${user.nivel}">${user.nivel}</span>
-                        ${user.nivel !== 'master' ? `
-                            <button class="btn-reset" onclick="resetarSenhaUsuario(${user.id})" title="Reset Senha">🔄</button>
-                            <button class="btn-delete" onclick="excluirUsuario(${user.id})" title="Excluir">🗑️</button>
-                        ` : ''}
-                    </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         function excluirUsuario(id) {
@@ -1656,6 +1725,12 @@
 
             const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
             const usuario = usuarios.find(u => u.id === id);
+
+            // Não permitir exclusão de usuários globais
+            if (usuario.global) {
+                alert('⚠️ Usuários globais não podem ser excluídos.\nEles são necessários para o funcionamento do sistema.');
+                return;
+            }
 
             if (confirm(`Tem certeza que deseja excluir o usuário ${usuario.nome}?`)) {
                 // Backup antes de excluir
@@ -2460,7 +2535,6 @@
                 
                 if (registroComDiaria) {
                     const valorDiariaPorPlaca = converterValorMonetario(registroComDiaria.valorDiaria);
-                    console.log(`Card Gerando Diária - Placa ${grupoPorPlaca.placa}: R$ ${valorDiariaPorPlaca} (uma vez só)`);
                     return total + valorDiariaPorPlaca;
                 }
                 return total;
