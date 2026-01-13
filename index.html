@@ -245,9 +245,17 @@
         .sync-section {
             margin-top: 20px;
             padding: 15px;
-            background: #f8f9fa;
+            background: #e8f5e9;
             border-radius: 6px;
-            border: 1px solid #dee2e6;
+            border: 1px solid #c8e6c9;
+        }
+
+        .instructions {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
         }
 
         .header {
@@ -769,7 +777,7 @@
 <body>
     <!-- INDICADOR DE SINCRONIZAÇÃO -->
     <div class="sync-indicator" id="syncIndicator">
-        🔄 Sincronizando usuários...
+        🔄 Carregando usuários do servidor...
     </div>
 
     <!-- TELA DE LOGIN SIMPLIFICADA -->
@@ -813,14 +821,20 @@
             </div>
 
             <div class="sync-section">
-                <h4 style="margin-bottom: 15px; color: #2c3e50;">🌐 Sincronização Global</h4>
+                <h4 style="margin-bottom: 15px; color: #2c3e50;">🌐 Sincronização Global para GitHub Pages</h4>
                 <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 15px;">
-                    <button onclick="exportarUsuarios()" class="recovery-btn">📤 Exportar Usuários</button>
-                    <button onclick="importarUsuarios()" class="recovery-btn">📥 Importar Usuários</button>
-                    <button onclick="sincronizarUsuarios()" class="recovery-btn">🔄 Sincronizar</button>
+                    <button onclick="gerarArquivoUsuarios()" class="recovery-btn">📁 Gerar users.json</button>
+                    <button onclick="carregarUsuariosDoServidor()" class="recovery-btn">🔄 Recarregar do Servidor</button>
                 </div>
-                <input type="file" id="fileInputUsuarios" accept=".json" style="display: none;" onchange="carregarArquivoUsuarios(event)">
-                <p style="font-size: 12px; color: #6c757d; text-align: center;">Use estes botões para compartilhar usuários entre diferentes máquinas</p>
+                
+                <div class="instructions">
+                    <strong>📋 INSTRUÇÕES para GitHub Pages:</strong><br><br>
+                    <strong>1.</strong> Após criar usuários, clique em <strong>"📁 Gerar users.json"</strong><br>
+                    <strong>2.</strong> Substitua o arquivo <code>users.json</code> no seu repositório GitHub<br>
+                    <strong>3.</strong> Aguarde alguns minutos para o GitHub Pages atualizar<br>
+                    <strong>4.</strong> Todas as máquinas terão acesso aos novos usuários!<br><br>
+                    <small>💡 O arquivo users.json deve ficar na raiz do repositório junto com o HTML</small>
+                </div>
             </div>
 
             <h4 style="margin: 20px 0 15px 0; color: #2c3e50; border-top: 1px solid #dee2e6; padding-top: 20px;">🔧 Ferramentas do Sistema</h4>
@@ -1015,24 +1029,13 @@
     </div>
 
     <script>
-        // SISTEMA DE AUTENTICAÇÃO
+        // SISTEMA DE AUTENTICAÇÃO COM CARREGAMENTO EXTERNO
         let usuarioLogado = null;
         let dadosPatio = [];
+        let usuariosGlobais = [];
 
-        // USUÁRIOS PADRÃO DO SISTEMA
+        // USUÁRIOS PADRÃO (FALLBACK)
         const USUARIOS_PADRAO = [
-            {
-                id: 1,
-                nome: "Leandro Brasil dos Santos",
-                login: "leandro.brasil",
-                senha: "master123",
-                nivel: "master",
-                email: "leandro.brasil@minervafoods.com"
-            }
-        ];
-
-        // USUÁRIOS GLOBAIS COMPARTILHADOS (baseados na imagem do painel)
-        const USUARIOS_GLOBAIS = [
             {
                 id: 1,
                 nome: "Leandro Brasil dos Santos",
@@ -1047,8 +1050,7 @@
                 login: "diego.cordeiro",
                 senha: "diego123",
                 nivel: "user",
-                email: "diego.cordeiro@minervafoods.com",
-                global: true
+                email: "diego.cordeiro@minervafoods.com"
             },
             {
                 id: 3,
@@ -1056,8 +1058,7 @@
                 login: "teste.brasil",
                 senha: "teste123",
                 nivel: "user",
-                email: "teste.brasil@minervafoods.com",
-                global: true
+                email: "teste.brasil@minervafoods.com"
             },
             {
                 id: 4,
@@ -1065,8 +1066,7 @@
                 login: "rhemerson.rezende",
                 senha: "teste123",
                 nivel: "administrador",
-                email: "rhemerson.rezende@minervafoods.com",
-                global: true
+                email: "rhemerson.rezende@minervafoods.com"
             }
         ];
 
@@ -1076,37 +1076,54 @@
         });
 
         function inicializarSistema() {
-            console.log('🔄 INICIALIZANDO SISTEMA COM USUÁRIOS GLOBAIS...');
+            console.log('🔄 INICIALIZANDO SISTEMA COM CARREGAMENTO EXTERNO...');
             
-            // CARREGAR USUÁRIOS GLOBAIS SEMPRE
-            let usuarios = [...USUARIOS_GLOBAIS];
+            // Tentar carregar usuários do arquivo externo users.json
+            carregarUsuariosDoServidor();
+        }
+
+        // FUNÇÃO PARA CARREGAR USUÁRIOS DO ARQUIVO EXTERNO
+        async function carregarUsuariosDoServidor() {
+            mostrarSyncIndicator('🔄 Carregando usuários do servidor...');
             
-            // Verificar se há usuários locais adicionais
-            const usuariosLocais = localStorage.getItem('usuariosSistema');
-            if (usuariosLocais) {
-                try {
-                    const usuariosLocaisParsed = JSON.parse(usuariosLocais);
+            try {
+                // Tentar carregar do arquivo users.json no mesmo diretório
+                const response = await fetch('./users.json');
+                
+                if (response.ok) {
+                    const usuariosData = await response.json();
+                    console.log('✅ Usuários carregados do arquivo externo:', usuariosData.usuarios.length);
                     
-                    // Adicionar usuários locais que não conflitam com globais
-                    usuariosLocaisParsed.forEach(usuarioLocal => {
-                        const jaExiste = usuarios.find(u => u.login === usuarioLocal.login);
-                        if (!jaExiste && !usuarioLocal.global) {
-                            usuarios.push(usuarioLocal);
-                        }
-                    });
+                    usuariosGlobais = usuariosData.usuarios;
+                    localStorage.setItem('usuariosSistema', JSON.stringify(usuariosGlobais));
                     
-                    console.log('📋 Usuários locais mesclados:', usuariosLocaisParsed.length);
-                } catch (error) {
-                    console.error('❌ Erro ao carregar usuários locais:', error);
+                    mostrarSyncIndicator('✅ Usuários sincronizados!');
+                    console.log('🌐 Usuários globais atualizados:', usuariosGlobais.length);
+                    
+                } else {
+                    throw new Error('Arquivo users.json não encontrado');
                 }
+                
+            } catch (error) {
+                console.log('⚠️ Erro ao carregar usuários do servidor:', error.message);
+                console.log('🔄 Usando usuários padrão como fallback');
+                
+                usuariosGlobais = USUARIOS_PADRAO;
+                localStorage.setItem('usuariosSistema', JSON.stringify(usuariosGlobais));
+                
+                mostrarSyncIndicator('⚠️ Usando usuários padrão');
             }
             
-            // Salvar usuários mesclados
-            localStorage.setItem('usuariosSistema', JSON.stringify(usuarios));
+            // Esconder indicador após 2 segundos
+            setTimeout(() => {
+                document.getElementById('syncIndicator').style.display = 'none';
+            }, 2000);
             
-            console.log('👥 USUÁRIOS DISPONÍVEIS:', usuarios.length);
-            console.log('✅ Usuários globais carregados:', USUARIOS_GLOBAIS.length);
+            // Continuar inicialização
+            continuarInicializacao();
+        }
 
+        function continuarInicializacao() {
             // Verificar credenciais salvas (lembrar-me)
             const credenciaisSalvas = localStorage.getItem('credenciaisLembradas');
             if (credenciaisSalvas) {
@@ -1135,118 +1152,30 @@
             }
         }
 
-        // FUNÇÃO PARA EXPORTAR USUÁRIOS PARA ARQUIVO
-        function exportarUsuarios() {
+        // FUNÇÃO PARA GERAR ARQUIVO users.json ATUALIZADO
+        function gerarArquivoUsuarios() {
             const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
             
-            const dadosExportacao = {
+            const dadosParaGitHub = {
                 versao: "1.0",
-                dataExportacao: new Date().toISOString(),
-                exportadoPor: usuarioLogado.nome,
+                ultimaAtualizacao: new Date().toISOString(),
+                atualizadoPor: usuarioLogado.nome,
                 totalUsuarios: usuarios.length,
                 usuarios: usuarios
             };
             
-            const blob = new Blob([JSON.stringify(dadosExportacao, null, 2)], { 
+            const blob = new Blob([JSON.stringify(dadosParaGitHub, null, 2)], { 
                 type: 'application/json;charset=utf-8;' 
             });
             
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = `usuarios_patio_brasfrigo_${new Date().toISOString().split('T')[0]}.json`;
+            link.download = 'users.json';
             link.click();
             
-            mostrarAlerta('success', `✅ Usuários exportados com sucesso!\n📁 Arquivo: usuarios_patio_brasfrigo_${new Date().toISOString().split('T')[0]}.json\n👥 Total: ${usuarios.length} usuários`);
+            console.log('📁 Arquivo users.json gerado com', usuarios.length, 'usuários');
             
-            console.log('📤 Usuários exportados:', usuarios.length);
-        }
-
-        // FUNÇÃO PARA IMPORTAR USUÁRIOS DE ARQUIVO
-        function importarUsuarios() {
-            document.getElementById('fileInputUsuarios').click();
-        }
-
-        function carregarArquivoUsuarios(event) {
-            const file = event.target.files[0];
-            
-            if (!file) return;
-
-            const reader = new FileReader();
-            
-            reader.onload = function(e) {
-                try {
-                    const dadosImportados = JSON.parse(e.target.result);
-                    
-                    if (!dadosImportados.usuarios || !Array.isArray(dadosImportados.usuarios)) {
-                        throw new Error('Formato de arquivo inválido');
-                    }
-                    
-                    // Mesclar usuários importados com globais
-                    let usuariosMesclados = [...USUARIOS_GLOBAIS];
-                    
-                    dadosImportados.usuarios.forEach(usuarioImportado => {
-                        const jaExiste = usuariosMesclados.find(u => u.login === usuarioImportado.login);
-                        if (!jaExiste) {
-                            usuariosMesclados.push({
-                                ...usuarioImportado,
-                                importado: true,
-                                importadoEm: new Date().toISOString()
-                            });
-                        }
-                    });
-                    
-                    // Salvar usuários mesclados
-                    localStorage.setItem('usuariosSistema', JSON.stringify(usuariosMesclados));
-                    
-                    carregarListaUsuarios();
-                    
-                    mostrarAlerta('success', `✅ Usuários importados com sucesso!\n📥 Total importado: ${dadosImportados.usuarios.length}\n👥 Total no sistema: ${usuariosMesclados.length}`);
-                    
-                    console.log('📥 Usuários importados:', dadosImportados.usuarios.length);
-                    
-                } catch (error) {
-                    console.error('❌ Erro ao importar usuários:', error);
-                    mostrarAlerta('error', `❌ Erro ao importar arquivo: ${error.message}`);
-                }
-            };
-            
-            reader.readAsText(file);
-            event.target.value = '';
-        }
-
-        // FUNÇÃO PARA SINCRONIZAR USUÁRIOS (simulada)
-        function sincronizarUsuarios() {
-            mostrarSyncIndicator('🔄 Sincronizando usuários...');
-            
-            // Simular sincronização - na prática conectaria com servidor/API
-            setTimeout(() => {
-                const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
-                
-                // Adicionar usuários globais se não existirem
-                let usuariosAtualizados = [...usuarios];
-                
-                USUARIOS_GLOBAIS.forEach(usuarioGlobal => {
-                    const jaExiste = usuariosAtualizados.find(u => u.login === usuarioGlobal.login);
-                    if (!jaExiste) {
-                        usuariosAtualizados.push({
-                            ...usuarioGlobal,
-                            sincronizado: true,
-                            sincronizadoEm: new Date().toISOString()
-                        });
-                    }
-                });
-                
-                localStorage.setItem('usuariosSistema', JSON.stringify(usuariosAtualizados));
-                carregarListaUsuarios();
-                
-                mostrarSyncIndicator('✅ Sincronização concluída!');
-                mostrarAlerta('success', '✅ Usuários sincronizados com sucesso!\n🌐 Sistema atualizado com usuários globais.');
-                
-                setTimeout(() => {
-                    document.getElementById('syncIndicator').style.display = 'none';
-                }, 2000);
-                
-            }, 2000);
+            mostrarAlerta('success', `📁 Arquivo users.json gerado com sucesso!\n\n🚀 PRÓXIMOS PASSOS:\n\n1️⃣ Vá ao seu repositório GitHub\n2️⃣ Substitua o arquivo "users.json" pelo que acabou de baixar\n3️⃣ Faça commit das alterações\n4️⃣ Aguarde ~2 minutos para o GitHub Pages atualizar\n\n👥 Total de usuários: ${usuarios.length}\n🌐 Todas as máquinas terão acesso após a atualização!`);
         }
 
         function mostrarSyncIndicator(mensagem) {
@@ -1259,40 +1188,25 @@
         function investigarUsuarios(mostrarAlert = true) {
             console.log('🕵️ INVESTIGAÇÃO COMPLETA DO SISTEMA DE USUÁRIOS');
             
-            const rawData = localStorage.getItem('usuariosSistema');
-            console.log('📂 Raw localStorage data (length):', rawData ? rawData.length : 'null');
+            const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
+            console.log('👥 Total de usuários no sistema:', usuarios.length);
             
-            if (!rawData) {
-                console.log('❌ Nenhum dado encontrado no localStorage');
-                if (mostrarAlert) alert('❌ Nenhum usuário cadastrado encontrado!');
-                return;
-            }
-            
-            try {
-                const usuarios = JSON.parse(rawData);
-                console.log('👥 Total de usuários encontrados:', usuarios.length);
+            usuarios.forEach((user, index) => {
+                console.log(`\n👤 USUÁRIO ${index + 1}:`);
+                console.log(`   Nome: "${user.nome}"`);
+                console.log(`   Login: "${user.login}"`);
+                console.log(`   Senha: "${user.senha}"`);
+                console.log(`   Nível: "${user.nivel}"`);
+                console.log(`   Fonte: ${user.global ? 'Arquivo externo' : 'Local'}`);
+            });
                 
-                usuarios.forEach((user, index) => {
-                    console.log(`\n👤 USUÁRIO ${index + 1}:`);
-                    console.log(`   Nome: "${user.nome}"`);
-                    console.log(`   Login: "${user.login}" (type: ${typeof user.login}, length: ${user.login ? user.login.length : 'N/A'})`);
-                    console.log(`   Senha: "${user.senha}" (type: ${typeof user.senha}, length: ${user.senha ? user.senha.length : 'N/A'})`);
-                    console.log(`   Nível: "${user.nivel}"`);
-                    console.log(`   Tipo: ${user.global ? 'Global' : user.importado ? 'Importado' : user.sincronizado ? 'Sincronizado' : 'Local'}`);
+            if (mostrarAlert) {
+                let mensagem = `Sistema tem ${usuarios.length} usuários:\n\n`;
+                usuarios.forEach((u, i) => {
+                    const fonte = u.global ? '[Servidor]' : '[Local]';
+                    mensagem += `${i + 1}. ${u.nome} ${fonte}\n   Login: "${u.login}"\n   Senha: "${u.senha}"\n\n`;
                 });
-                
-                if (mostrarAlert) {
-                    let mensagem = `Sistema tem ${usuarios.length} usuários cadastrados.\n\n`;
-                    usuarios.forEach((u, i) => {
-                        const tipo = u.global ? '[Global]' : u.importado ? '[Importado]' : u.sincronizado ? '[Sync]' : '[Local]';
-                        mensagem += `${i + 1}. ${u.nome} ${tipo}\n   Login: "${u.login}"\n   Senha: "${u.senha}"\n\n`;
-                    });
-                    alert(mensagem);
-                }
-                
-            } catch (error) {
-                console.error('❌ Erro ao fazer parse dos usuários:', error);
-                if (mostrarAlert) alert('❌ Dados de usuários corrompidos!');
+                alert(mensagem);
             }
         }
 
@@ -1300,32 +1214,12 @@
         function recuperarUsuarios() {
             console.log('🔧 INICIANDO RECUPERAÇÃO DE USUÁRIOS...');
             
-            // Recriar com usuários globais + backup se existir
-            let usuariosRecuperados = [...USUARIOS_GLOBAIS];
-            
-            const backup = localStorage.getItem('usuariosSistema_backup');
-            if (backup) {
-                try {
-                    const usuariosBackup = JSON.parse(backup);
-                    usuariosBackup.forEach(usuarioBackup => {
-                        const jaExiste = usuariosRecuperados.find(u => u.login === usuarioBackup.login);
-                        if (!jaExiste) {
-                            usuariosRecuperados.push({
-                                ...usuarioBackup,
-                                recuperado: true
-                            });
-                        }
-                    });
-                } catch (error) {
-                    console.error('❌ Erro no backup:', error);
-                }
-            }
-            
-            localStorage.setItem('usuariosSistema', JSON.stringify(usuariosRecuperados));
+            // Usar usuários padrão como base
+            localStorage.setItem('usuariosSistema', JSON.stringify(USUARIOS_PADRAO));
             carregarListaUsuarios();
             
-            console.log('🔧 Usuários recuperados:', usuariosRecuperados.length);
-            alert(`🔧 Sistema recuperado!\n👥 ${usuariosRecuperados.length} usuários disponíveis\n\nCredenciais globais:\n• diego.cordeiro / diego123\n• teste.brasil / teste123\n• rhemerson.rezende / teste123`);
+            console.log('🔧 Usuários padrão restaurados');
+            alert('🔧 Usuários padrão restaurados!\n\n👥 Usuários disponíveis:\n• leandro.brasil / master123\n• diego.cordeiro / diego123\n• teste.brasil / teste123\n• rhemerson.rezende / teste123\n\n💡 Para sincronizar com todas as máquinas, gere um novo users.json');
         }
 
         // FUNÇÃO PARA TESTAR TODOS OS USUÁRIOS
@@ -1335,7 +1229,6 @@
             const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
             
             const resultados = usuarios.map(user => {
-                // Testar se a autenticação funcionaria
                 const loginTest = user.login;
                 const senhaTest = user.senha;
                 
@@ -1379,7 +1272,6 @@
             console.log('🔍 TENTATIVA DE LOGIN:');
             console.log('- Login digitado:', `"${login}"`);
             console.log('- Senha digitada:', `"${senha}"`);
-            console.log('- Lembrar-me:', lembrarMe);
             
             if (!login || !senha) {
                 alert('Por favor, preencha usuário e senha!');
@@ -1392,20 +1284,8 @@
         function autenticarUsuario(login, senha, lembrarMe = false) {
             console.log('🔐 INICIANDO AUTENTICAÇÃO...');
             
-            // Carregar usuários (sempre incluindo globais)
-            let usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
-            
-            // Garantir que usuários globais estejam sempre presentes
-            USUARIOS_GLOBAIS.forEach(usuarioGlobal => {
-                const jaExiste = usuarios.find(u => u.login === usuarioGlobal.login);
-                if (!jaExiste) {
-                    usuarios.push(usuarioGlobal);
-                }
-            });
-            
-            // Salvar lista atualizada
-            localStorage.setItem('usuariosSistema', JSON.stringify(usuarios));
-            
+            // Carregar usuários atuais
+            const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
             console.log('👥 Total de usuários disponíveis:', usuarios.length);
             
             // BUSCAR USUÁRIO COM COMPARAÇÃO EXATA
@@ -1546,7 +1426,7 @@
             const senha = document.getElementById('novaSenha').value.trim();
             const nivel = document.getElementById('novoNivel').value;
 
-            console.log('📝 CRIANDO USUÁRIO:');
+            console.log('📝 CRIANDO USUÁRIO PARA GITHUB PAGES:');
             console.log('- Nome:', `"${nome}"`);
             console.log('- Login:', `"${login}"`);
             console.log('- Senha:', `"${senha}"`);
@@ -1582,15 +1462,14 @@
                 email: `${login}@minervafoods.com`,
                 criadoEm: new Date().toISOString(),
                 criadoPor: usuarioLogado.nome,
-                local: true // Marcado como usuário local (criado no painel)
+                global: true // Marcado como global para sincronização
             };
 
-            console.log('➕ Novo usuário criado:', novoUsuario);
+            console.log('➕ Novo usuário criado para GitHub Pages:', novoUsuario);
 
             usuarios.push(novoUsuario);
             
-            // Backup antes de salvar
-            localStorage.setItem('usuariosSistema_backup', localStorage.getItem('usuariosSistema'));
+            // Salvar localmente
             localStorage.setItem('usuariosSistema', JSON.stringify(usuarios));
 
             // Simular envio de email de boas-vindas
@@ -1603,7 +1482,13 @@
             document.getElementById('novoNivel').value = '';
 
             carregarListaUsuarios();
-            mostrarAlerta('success', `✅ Usuário ${nome} criado com sucesso!\n🔑 Login: "${login}"\n🔒 Senha: "${senha}"\n\n💡 Para compartilhar com outras máquinas:\n📤 Use "Exportar Usuários" e envie o arquivo\n📥 Outras máquinas usam "Importar Usuários"`);
+            
+            // GERAR AUTOMATICAMENTE O ARQUIVO ATUALIZADO
+            setTimeout(() => {
+                gerarArquivoUsuarios();
+            }, 500);
+            
+            mostrarAlerta('success', `✅ Usuário ${nome} criado com sucesso!\n\n🔑 Credenciais:\n• Login: "${login}"\n• Senha: "${senha}"\n\n🌐 PRÓXIMO PASSO IMPORTANTE:\nO arquivo users.json foi gerado automaticamente!\nSubstitua-o no GitHub para sincronizar com todas as máquinas.`);
         }
 
         function resetarSenhaUsuario(id) {
@@ -1624,7 +1509,7 @@
             const novaSenha = prompt(`Digite a nova senha para ${usuario.nome}:`);
             
             if (!novaSenha || novaSenha.trim() === '') {
-                return; // Cancelou ou não digitou
+                return;
             }
 
             if (novaSenha.length < 6) {
@@ -1642,46 +1527,30 @@
             usuario.senhaAlteradaEm = new Date().toISOString();
             usuario.senhaAlteradaPor = usuarioLogado.nome;
             
-            // Backup antes de salvar
-            localStorage.setItem('usuariosSistema_backup', localStorage.getItem('usuariosSistema'));
             localStorage.setItem('usuariosSistema', JSON.stringify(usuarios));
 
-            console.log('🔄 Senha resetada para:', usuario.nome, 'Nova senha:', novaSenha);
+            console.log('🔄 Senha resetada para:', usuario.nome);
 
             // Simular envio de email
             enviarEmailResetSenha(usuario, novaSenha);
 
             carregarListaUsuarios();
-            mostrarAlerta('success', `✓ Senha de ${usuario.nome} resetada com sucesso!\nNova senha: "${novaSenha}"\nEmail enviado.\n\n💡 Exporte os usuários para compartilhar a mudança!`);
+            
+            mostrarAlerta('success', `✓ Senha de ${usuario.nome} resetada!\nNova senha: "${novaSenha}"\n\n🌐 Para sincronizar com outras máquinas:\n📁 Gere um novo users.json e atualize no GitHub`);
         }
 
         function enviarEmailBoasVindas(usuario) {
-            // SIMULAÇÃO DE ENVIO DE EMAIL
             console.log('📧 EMAIL ENVIADO - BOAS-VINDAS');
             console.log('Para:', usuario.email);
-            console.log('Assunto: Bem-vindo ao Sistema Pátio Brasfrigo');
-            console.log('Conteúdo:');
-            console.log(`Olá ${usuario.nome},`);
-            console.log(`Seu acesso ao Sistema Pátio Brasfrigo foi criado com sucesso!`);
-            console.log(`Login: "${usuario.login}"`);
-            console.log(`Senha: "${usuario.senha}"`);
-            console.log(`Nível: ${usuario.nivel.toUpperCase()}`);
-            console.log(`Acesse: ${window.location.href}`);
-            console.log('==========================================');
+            console.log('Login:', `"${usuario.login}"`);
+            console.log('Senha:', `"${usuario.senha}"`);
         }
 
         function enviarEmailResetSenha(usuario, novaSenha) {
-            // SIMULAÇÃO DE ENVIO DE EMAIL
             console.log('📧 EMAIL ENVIADO - RESET DE SENHA');
             console.log('Para:', usuario.email);
-            console.log('Assunto: Sua senha foi alterada - Pátio Brasfrigo');
-            console.log('Conteúdo:');
-            console.log(`Olá ${usuario.nome},`);
-            console.log(`Sua senha no Sistema Pátio Brasfrigo foi alterada pelo administrador.`);
-            console.log(`Nova senha: "${novaSenha}"`);
-            console.log(`Login: "${usuario.login}"`);
-            console.log(`Acesse: ${window.location.href}`);
-            console.log('==========================================');
+            console.log('Nova senha:', `"${novaSenha}"`);
+            console.log('Login:', `"${usuario.login}"`);
         }
 
         function carregarListaUsuarios() {
@@ -1691,11 +1560,7 @@
             console.log('📋 Carregando lista de usuários:', usuarios.length);
             
             lista.innerHTML = usuarios.map(user => {
-                const tipoUsuario = user.global ? '🌐 Global' : 
-                                  user.importado ? '📥 Importado' : 
-                                  user.sincronizado ? '🔄 Sincronizado' : 
-                                  user.local ? '💻 Local' : 
-                                  user.recuperado ? '🔧 Recuperado' : '';
+                const tipoUsuario = user.global ? '🌐 Global' : '💻 Local';
                 
                 return `
                     <div class="user-item">
@@ -1726,21 +1591,12 @@
             const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
             const usuario = usuarios.find(u => u.id === id);
 
-            // Não permitir exclusão de usuários globais
-            if (usuario.global) {
-                alert('⚠️ Usuários globais não podem ser excluídos.\nEles são necessários para o funcionamento do sistema.');
-                return;
-            }
-
             if (confirm(`Tem certeza que deseja excluir o usuário ${usuario.nome}?`)) {
-                // Backup antes de excluir
-                localStorage.setItem('usuariosSistema_backup', localStorage.getItem('usuariosSistema'));
-                
                 const usuariosAtualizados = usuarios.filter(u => u.id !== id);
                 localStorage.setItem('usuariosSistema', JSON.stringify(usuariosAtualizados));
                 console.log('🗑️ Usuário excluído:', usuario.nome);
                 carregarListaUsuarios();
-                mostrarAlerta('info', '✓ Usuário excluído com sucesso!');
+                mostrarAlerta('info', `✓ Usuário excluído!\n\n🌐 Para sincronizar:\n📁 Gere um novo users.json e atualize no GitHub`);
             }
         }
 
@@ -1749,7 +1605,6 @@
             if (!dataBr) return null;
             
             try {
-                // Formato brasileiro: DD/MM/YYYY
                 const partes = dataBr.split('/');
                 if (partes.length !== 3) return null;
                 
@@ -1757,7 +1612,6 @@
                 const mes = partes[1].padStart(2, '0');
                 const ano = partes[2];
                 
-                // Formato ISO: YYYY-MM-DD
                 return `${ano}-${mes}-${dia}`;
             } catch (error) {
                 console.error('Erro ao converter data:', error, dataBr);
@@ -1770,7 +1624,6 @@
             if (!dataISO) return null;
             
             try {
-                // Formato ISO: YYYY-MM-DD
                 const partes = dataISO.split('-');
                 if (partes.length !== 3) return null;
                 
@@ -1778,7 +1631,6 @@
                 const mes = partes[1];
                 const dia = partes[2];
                 
-                // Formato brasileiro: DD/MM/YYYY
                 return `${dia}/${mes}/${ano}`;
             } catch (error) {
                 console.error('Erro ao converter data ISO:', error, dataISO);
@@ -1791,13 +1643,9 @@
             if (!mesAnoFiltro) return true;
             
             try {
-                // mesAnoFiltro vem no formato YYYY-MM
                 const [anoFiltro, mesFiltro] = mesAnoFiltro.split('-');
-                
-                // Verificar se tem diária gerada
                 const temDiaria = parseInt(item.diaria) > 0;
                 
-                // Se não tem diária, aplicar filtro normal por data de chegada
                 if (!temDiaria) {
                     if (item.dataChegada) {
                         const [dia, mes, ano] = item.dataChegada.split('/');
@@ -1806,7 +1654,6 @@
                     return false;
                 }
                 
-                // Se tem diária, incluir se data de chegada OU descarga estão no período
                 let matchChegada = false;
                 let matchDescarga = false;
                 
@@ -1823,28 +1670,24 @@
                 return matchChegada || matchDescarga;
                 
             } catch (error) {
-                console.error('Erro ao verificar mês/ano com diárias:', error, item, mesAnoFiltro);
+                console.error('Erro ao verificar mês/ano com diárias:', error);
                 return false;
             }
         }
 
-        // FUNÇÃO TOTALMENTE CORRIGIDA - UMA DIÁRIA E UM VALOR POR PLACA
         function atualizarContadorDiarias(dadosFiltrados) {
             const totalDiariasInfo = document.getElementById('totalDiariasInfo');
             const totalDiariasTexto = document.getElementById('totalDiariasTexto');
             
-            // AGRUPAR POR PLACA APENAS (ignorar data e status para evitar duplicação)
             const gruposPorPlaca = {};
             
             dadosFiltrados.forEach(item => {
-                const chave = item.placa; // Apenas placa como chave
+                const chave = item.placa;
                 
                 if (!gruposPorPlaca[chave]) {
                     gruposPorPlaca[chave] = {
                         placa: item.placa,
-                        registros: [],
-                        diariaPorPlaca: 0,
-                        valorDiariaPorPlaca: 0
+                        registros: []
                     };
                 }
                 
@@ -1854,27 +1697,17 @@
             let totalDiarias = 0;
             let valorTotalDiarias = 0;
             
-            // PROCESSAR CADA PLACA APENAS UMA VEZ
             Object.values(gruposPorPlaca).forEach(grupoPorPlaca => {
-                // Encontrar o primeiro registro com diária > 0
                 const registroComDiaria = grupoPorPlaca.registros.find(r => parseInt(r.diaria) > 0);
                 
                 if (registroComDiaria) {
-                    // Somar apenas 1 diária e 1 valor por placa (não por grupo de status)
                     const diariaPorPlaca = parseInt(registroComDiaria.diaria) || 0;
                     const valorDiariaPorPlaca = converterValorMonetario(registroComDiaria.valorDiaria);
                     
                     totalDiarias += diariaPorPlaca;
                     valorTotalDiarias += valorDiariaPorPlaca;
-                    
-                    console.log(`Placa ${grupoPorPlaca.placa}: ${diariaPorPlaca} diária x R$ ${valorDiariaPorPlaca} = R$ ${valorDiariaPorPlaca} (contada uma vez)`);
                 }
             });
-            
-            console.log('📊 CONTADOR FINAL CORRIGIDO (UMA VEZ POR PLACA):');
-            console.log('- Placas únicas processadas:', Object.keys(gruposPorPlaca).length);
-            console.log('- Total diárias (sem duplicação por placa):', totalDiarias);
-            console.log('- Valor total (sem duplicação por placa):', valorTotalDiarias);
             
             if (totalDiarias > 0) {
                 totalDiariasTexto.textContent = `Total de diárias geradas: ${totalDiarias} | Valor total: ${formatarValor(valorTotalDiarias)}`;
@@ -1971,7 +1804,6 @@
 
         function salvarAutomaticamente() {
             if (!usuarioLogado || usuarioLogado.nivel !== 'master') {
-                console.log('Usuário sem permissão para salvar');
                 return;
             }
             
@@ -1983,8 +1815,6 @@
                 setTimeout(function() {
                     indicator.style.display = 'none';
                 }, 2000);
-                
-                console.log('💾 Dados salvos automaticamente');
             } catch (error) {
                 console.error('Erro ao salvar automaticamente:', error);
             }
@@ -2039,7 +1869,6 @@
             }
         }
 
-        // FUNÇÃO AGRUPARDATA CORRIGIDA - CALCULAR VALOR TOTAL CORRETO
         function agruparDados(dados) {
             const grupos = {};
             
@@ -2059,25 +1888,17 @@
                 }
                 
                 grupos[chave].registros.push(item);
-                
-                // CALCULAR DIÁRIA TOTAL (soma de todas as diárias das notas)
                 grupos[chave].diariaTotalGrupo += parseInt(item.diaria) || 0;
             });
             
-            // APÓS AGRUPAR, CALCULAR VALORES CORRETOS
             Object.values(grupos).forEach(grupo => {
-                // Pegar o primeiro registro com diária > 0 para usar como base
                 const primeiroComDiaria = grupo.registros.find(r => parseInt(r.diaria) > 0);
                 
                 if (primeiroComDiaria && grupo.diariaTotalGrupo > 0) {
-                    // CALCULAR VALOR TOTAL: diária_total_grupo × valor_unitário_da_diária
                     const valorUnitarioDiaria = converterValorMonetario(primeiroComDiaria.valorDiaria);
                     grupo.valorTotalGrupo = grupo.diariaTotalGrupo * valorUnitarioDiaria;
-                    grupo.valorDiariaGrupo = valorUnitarioDiaria; // Para o card "Gerando Diária"
-                    
-                    console.log(`Grupo ${grupo.placa}: ${grupo.diariaTotalGrupo} diárias × R$ ${valorUnitarioDiaria} = R$ ${grupo.valorTotalGrupo}`);
+                    grupo.valorDiariaGrupo = valorUnitarioDiaria;
                 } else {
-                    // Se não há diárias, somar valores totais das notas
                     grupo.valorTotalGrupo = grupo.registros.reduce((total, reg) => {
                         return total + converterValorMonetario(reg.valorTotal);
                     }, 0);
@@ -2128,7 +1949,6 @@
             document.getElementById('filterDataDescarga').value = '';
             document.getElementById('filterMesAno').value = '';
             
-            // Esconder contador de diárias
             document.getElementById('totalDiariasInfo').classList.remove('show');
             
             renderizarTabela();
@@ -2157,7 +1977,6 @@
                 document.getElementById('filterDataDescarga').value = '';
                 document.getElementById('filterMesAno').value = '';
                 
-                // Esconder contador de diárias
                 document.getElementById('totalDiariasInfo').classList.remove('show');
                 
                 popularFiltros();
@@ -2177,10 +1996,7 @@
             
             const file = event.target.files[0];
             
-            if (!file) {
-                console.log('Nenhum arquivo selecionado');
-                return;
-            }
+            if (!file) return;
 
             const reader = new FileReader();
             
@@ -2254,7 +2070,7 @@
                     renderizarTabela();
                     atualizarEstatisticas();
                     
-                    mostrarAlerta('success', `✓ Arquivo importado com sucesso! ${dadosPatio.length} registros processados. (Master)`);
+                    mostrarAlerta('success', `✓ Arquivo importado com sucesso! ${dadosPatio.length} registros processados.`);
                     
                 } catch (error) {
                     console.error('Erro ao processar arquivo:', error);
@@ -2298,7 +2114,6 @@
             }
         }
 
-        // FUNÇÃO CORRIGIDA - SINTAXE DE ARROW FUNCTION ARRUMADA
         function mostrarAlerta(tipo, mensagem = null) {
             const alertSuccess = document.getElementById('alertSuccess');
             const alertError = document.getElementById('alertError');
@@ -2313,7 +2128,7 @@
                 alertSuccess.style.display = 'block';
                 setTimeout(function() {
                     alertSuccess.style.display = 'none';
-                }, 5000);
+                }, 8000);
             } else if (tipo === 'error') {
                 if (mensagem) alertError.innerHTML = mensagem;
                 alertError.style.display = 'block';
@@ -2330,7 +2145,6 @@
         }
 
         function popularFiltros() {
-            // Popular filtro de origem
             const origens = [...new Set(dadosPatio.map(d => d.origem))].filter(Boolean).sort();
             const selectOrigem = document.getElementById('filterOrigem');
             
@@ -2343,7 +2157,6 @@
                 selectOrigem.appendChild(option);
             });
 
-            // POPULAR FILTRO DE TIPO DE MERCADO
             const tiposMercado = [...new Set(dadosPatio.map(d => d.tipoMercado))].filter(Boolean).sort();
             const selectTipoMercado = document.getElementById('filterTipoMercado');
             
@@ -2464,7 +2277,6 @@
                 
                 let matchTipoDescarga = !filterTipoDescarga || item.tipoDescarga === filterTipoDescarga;
                 
-                // FILTROS DE DATA ESPECÍFICA
                 let matchDataChegada = true;
                 if (filterDataChegada) {
                     const dataSelecionada = converterDataParaBrasileiro(filterDataChegada);
@@ -2477,7 +2289,6 @@
                     matchDataDescarga = item.dataDescarga === dataSelecionada;
                 }
                 
-                // FILTRO DE MÊS/ANO CORRIGIDO - FOCO EM DIÁRIAS
                 let matchMesAno = true;
                 if (filterMesAno) {
                     matchMesAno = verificarMesAnoComDiarias(item, filterMesAno);
@@ -2486,14 +2297,11 @@
                 return matchPlaca && matchStatus && matchOrigem && matchTipoMercado && matchGerandoDiaria && matchTipoDescarga && matchDataChegada && matchDataDescarga && matchMesAno;
             });
 
-            // Atualizar contador de diárias totais (CORRIGIDO)
             atualizarContadorDiarias(dadosFiltrados);
-
             renderizarTabela(dadosFiltrados);
             atualizarEstatisticas(dadosFiltrados);
         }
 
-        // FUNÇÃO ATUALIZARESTATISTICAS CORRIGIDA - APLICAR MESMA LÓGICA DO CONTADOR
         function atualizarEstatisticas(dados = null) {
             const dadosCalculo = dados || dadosPatio;
             const grupos = agruparDados(dadosCalculo);
@@ -2509,13 +2317,11 @@
                 (g.status === 'AGUARDANDO' || g.status === 'DESOVANDO')
             ).length;
             
-            // CALCULAR VALOR TOTAL DAS DIÁRIAS SEM DUPLICAÇÃO POR PLACA
             const gruposPorPlacaDiaria = {};
             
-            // Agrupar dados por placa para calcular valor total correto
             dadosCalculo.forEach(item => {
                 if ((item.status === 'AGUARDANDO' || item.status === 'DESOVANDO') && parseInt(item.diaria) > 0) {
-                    const chave = item.placa; // Apenas placa
+                    const chave = item.placa;
                     
                     if (!gruposPorPlacaDiaria[chave]) {
                         gruposPorPlacaDiaria[chave] = {
@@ -2528,9 +2334,7 @@
                 }
             });
             
-            // Calcular valor total usando apenas uma diária por placa
             const valorTotalDiaria = Object.values(gruposPorPlacaDiaria).reduce((total, grupoPorPlaca) => {
-                // Pegar primeiro registro com diária > 0
                 const registroComDiaria = grupoPorPlaca.registros.find(r => parseInt(r.diaria) > 0);
                 
                 if (registroComDiaria) {
@@ -2567,7 +2371,7 @@
             link.download = `minerva_patio_atual_${new Date().toISOString().split('T')[0]}.csv`;
             link.click();
             
-            mostrarAlerta('success', '✓ Arquivo exportado com sucesso! (Todos os registros individuais)');
+            mostrarAlerta('success', '✓ Arquivo exportado com sucesso!');
         }
 
         // Eventos de busca em tempo real
