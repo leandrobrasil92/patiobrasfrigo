@@ -755,7 +755,7 @@
     </style>
 </head>
 <body>
-    <!-- TELA DE LOGIN -->
+    <!-- TELA DE LOGIN SIMPLIFICADA -->
     <div class="login-overlay" id="loginOverlay">
         <div class="login-modal">
             <h2>🔐 Login - Pátio Brasfrigo</h2>
@@ -769,23 +769,6 @@
                 </div>
                 <button type="submit" class="login-btn">Entrar</button>
             </form>
-            
-            <div class="recovery-buttons">
-                <button onclick="investigarUsuarios()" class="recovery-btn">🔍 Investigar Sistema</button>
-                <button onclick="recuperarUsuarios()" class="recovery-btn">🔧 Recuperar Usuários</button>
-                <button onclick="testarUsuarios()" class="recovery-btn">🧪 Testar Todos</button>
-            </div>
-            
-            <div class="login-debug" id="loginDebug" style="display: none;">
-                <strong>🔍 Debug - Usuários Cadastrados:</strong><br>
-                <div id="debugUsuariosList"></div>
-            </div>
-            
-            <p style="margin-top: 15px; font-size: 12px; color: #6c757d;">
-                <button onclick="toggleDebugUsuarios()" style="background: none; border: none; color: #3498db; cursor: pointer; text-decoration: underline;">
-                    🔍 Mostrar/Ocultar usuários cadastrados
-                </button>
-            </p>
         </div>
     </div>
 
@@ -812,8 +795,14 @@
                 <!-- Lista de usuários será carregada aqui -->
             </div>
 
+            <h4 style="margin: 20px 0 15px 0; color: #2c3e50; border-top: 1px solid #dee2e6; padding-top: 20px;">🔧 Ferramentas do Sistema</h4>
+            <div class="recovery-buttons">
+                <button onclick="investigarUsuarios()" class="recovery-btn">🔍 Investigar Sistema</button>
+                <button onclick="recuperarUsuarios()" class="recovery-btn">🔧 Recuperar Usuários</button>
+                <button onclick="testarUsuarios()" class="recovery-btn">🧪 Testar Todos</button>
+            </div>
+
             <div style="text-align: center; margin-top: 20px;">
-                <button onclick="investigarUsuarios()" class="btn-clear" style="margin-right: 10px;">🔍 Investigar Sistema</button>
                 <button onclick="fecharPainelUsuarios()" class="btn-clear">Fechar</button>
             </div>
         </div>
@@ -1188,6 +1177,7 @@
                 localStorage.setItem('usuariosSistema', JSON.stringify(usuariosRecuperados));
                 console.log('🔧 Usuários recriados manualmente');
                 alert('🔧 Usuários recriados! Credenciais:\n\n1. teste.dois / brasil123\n2. diego.cordeiro / diego123\n3. teste.brasil / teste123');
+                carregarListaUsuarios();
             }
         }
 
@@ -1226,51 +1216,9 @@
             }
         }
 
-        function toggleDebugUsuarios() {
-            const debugDiv = document.getElementById('loginDebug');
-            const listaDiv = document.getElementById('debugUsuariosList');
-            
-            if (debugDiv.style.display === 'none') {
-                const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
-                
-                let conteudo = '';
-                usuarios.forEach((user, index) => {
-                    conteudo += `${index + 1}. <strong>${user.nome}</strong><br>`;
-                    conteudo += `&nbsp;&nbsp;&nbsp;Login: "<strong>${user.login}</strong>" (${user.login.length} chars)<br>`;
-                    conteudo += `&nbsp;&nbsp;&nbsp;Senha: "<strong>${user.senha}</strong>" (${user.senha.length} chars)<br>`;
-                    conteudo += `&nbsp;&nbsp;&nbsp;Nível: ${user.nivel}<br>`;
-                    conteudo += `&nbsp;&nbsp;&nbsp;ID: ${user.id}<br><br>`;
-                });
-                
-                listaDiv.innerHTML = conteudo;
-                debugDiv.style.display = 'block';
-            } else {
-                debugDiv.style.display = 'none';
-            }
-        }
-
         function mostrarTelaLogin() {
             document.getElementById('loginOverlay').style.display = 'flex';
             document.getElementById('mainContainer').style.display = 'none';
-            
-            // Atualizar debug na tela de login
-            atualizarDebugLogin();
-        }
-
-        function atualizarDebugLogin() {
-            const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
-            const listaDiv = document.getElementById('debugUsuariosList');
-            
-            let conteudo = '';
-            usuarios.forEach((user, index) => {
-                conteudo += `${index + 1}. <strong>${user.nome}</strong><br>`;
-                conteudo += `&nbsp;&nbsp;&nbsp;Login: "<strong>${user.login}</strong>"<br>`;
-                conteudo += `&nbsp;&nbsp;&nbsp;Senha: "<strong>${user.senha}</strong>"<br>`;
-                conteudo += `&nbsp;&nbsp;&nbsp;Nível: ${user.nivel}<br>`;
-                conteudo += `&nbsp;&nbsp;&nbsp;ID: ${user.id}<br><br>`;
-            });
-            
-            listaDiv.innerHTML = conteudo;
         }
 
         function fazerLogin(event) {
@@ -1300,7 +1248,7 @@
             const rawData = localStorage.getItem('usuariosSistema');
             if (!rawData) {
                 console.log('❌ FALHA: localStorage vazio');
-                alert('❌ Sistema sem usuários cadastrados. Recarregue a página.');
+                alert('❌ Usuário ou senha incorretos!');
                 return;
             }
             
@@ -1311,7 +1259,7 @@
                 console.log('✅ Parse JSON bem-sucedido. Usuários encontrados:', usuarios.length);
             } catch (error) {
                 console.error('❌ FALHA no parse JSON:', error);
-                alert('❌ Dados corrompidos. Tente o botão "Recuperar Usuários".');
+                alert('❌ Usuário ou senha incorretos!');
                 return;
             }
             
@@ -1390,19 +1338,8 @@
             } else {
                 console.log('❌ AUTENTICAÇÃO FALHOU - USUÁRIO NÃO ENCONTRADO');
                 
-                // Criar mensagem detalhada com todos os usuários
-                let mensagemDetalhada = `❌ Falha na autenticação!\n\nCredenciais digitadas:\nLogin: "${login}"\nSenha: "${senha}"\n\n`;
-                mensagemDetalhada += `USUÁRIOS CADASTRADOS:\n`;
-                
-                usuarios.forEach((u, index) => {
-                    mensagemDetalhada += `${index + 1}. ${u.nome}\n`;
-                    mensagemDetalhada += `   Login: "${u.login}"\n`;
-                    mensagemDetalhada += `   Senha: "${u.senha}"\n\n`;
-                });
-                
-                mensagemDetalhada += `\nTente:\n1. Copiar/colar as credenciais exatas\n2. Usar botão "🔧 Recuperar Usuários"\n3. Verificar console (F12) para logs detalhados`;
-                
-                alert(mensagemDetalhada);
+                // MENSAGEM SIMPLES E PROFISSIONAL
+                alert('❌ Usuário ou senha incorretos!');
                 
                 // Limpar credenciais salvas se existirem
                 localStorage.removeItem('credenciaisLembradas');
@@ -1428,6 +1365,7 @@
             atualizarEstatisticas();
         }
 
+        // FUNÇÃO VERIFICARPERMISSOES CORRIGIDA - OCULTAR BOTÕES EM VEZ DE DESABILITAR
         function verificarPermissoes() {
             if (!usuarioLogado) return;
             
@@ -1442,40 +1380,30 @@
             tipoUsuario.textContent = usuarioLogado.nivel.toUpperCase();
             
             if (usuarioLogado.nivel === 'master') {
-                // MASTER - Acesso total
+                // MASTER - Acesso total - MOSTRAR TODOS OS BOTÕES
+                btnImportar.style.display = 'block';
                 btnImportar.disabled = false;
+                btnLimparArquivo.style.display = 'block';
                 btnLimparArquivo.disabled = false;
                 btnControlPanel.style.display = 'inline-block';
                 tipoUsuario.className = 'user-badge user-master';
-                console.log('🔴 Usuário Master logado - Acesso total');
+                console.log('🔴 Usuário Master logado - Todos os botões visíveis');
                 
             } else if (usuarioLogado.nivel === 'administrador') {
-                // ADMINISTRADOR - Acesso intermediário
-                btnImportar.disabled = true;
-                btnImportar.onclick = function() { 
-                    mostrarAlerta('error', '⚠️ Acesso negado! Apenas o Master pode importar arquivos.'); 
-                };
-                btnLimparArquivo.disabled = true;
-                btnLimparArquivo.onclick = function() { 
-                    mostrarAlerta('error', '⚠️ Acesso negado! Apenas o Master pode limpar arquivos.'); 
-                };
+                // ADMINISTRADOR - OCULTAR BOTÕES DE IMPORTAR E LIMPAR
+                btnImportar.style.display = 'none';
+                btnLimparArquivo.style.display = 'none';
                 btnControlPanel.style.display = 'none';
                 tipoUsuario.className = 'user-badge user-admin';
-                console.log('🟡 Usuário Administrador logado - Acesso intermediário');
+                console.log('🟡 Usuário Administrador logado - Botões administrativos ocultos');
                 
             } else {
-                // USER - Acesso básico
-                btnImportar.disabled = true;
-                btnImportar.onclick = function() { 
-                    mostrarAlerta('error', '⚠️ Acesso negado! Você não tem permissão para importar arquivos.'); 
-                };
-                btnLimparArquivo.disabled = true;
-                btnLimparArquivo.onclick = function() { 
-                    mostrarAlerta('error', '⚠️ Acesso negado! Você não tem permissão para limpar arquivos.'); 
-                };
+                // USER - OCULTAR BOTÕES DE IMPORTAR E LIMPAR
+                btnImportar.style.display = 'none';
+                btnLimparArquivo.style.display = 'none';
                 btnControlPanel.style.display = 'none';
                 tipoUsuario.className = 'user-badge user-normal';
-                console.log('🟢 Usuário básico logado - Acesso limitado');
+                console.log('🟢 Usuário básico logado - Botões administrativos ocultos');
             }
         }
 
