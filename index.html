@@ -5,11 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pátio Atual - Minerva Foods</title>
     
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
     
     <!-- Biblioteca SheetJS para ler arquivos Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -36,177 +33,10 @@
             overflow: hidden;
         }
 
-        /* INDICADOR DE STATUS FIREBASE MELHORADO */
-        .firebase-status-panel {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            padding: 15px;
-            min-width: 280px;
-            z-index: 1003;
-            border-left: 4px solid #6c757d;
-            transition: all 0.3s ease;
-        }
-
-        .firebase-status-panel.connected {
-            border-left-color: #28a745;
-        }
-
-        .firebase-status-panel.error {
-            border-left-color: #dc3545;
-        }
-
-        .firebase-status-panel.local {
-            border-left-color: #ffc107;
-        }
-
-        .status-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 12px;
-            cursor: pointer;
-        }
-
-        .status-icon {
-            font-size: 18px;
-            margin-right: 8px;
-        }
-
-        .status-title {
-            font-weight: 600;
-            font-size: 14px;
-            color: #2c3e50;
-        }
-
-        .collapse-btn {
-            background: none;
-            border: none;
-            font-size: 12px;
-            cursor: pointer;
-            color: #6c757d;
-            padding: 2px 6px;
-            border-radius: 3px;
-            transition: all 0.2s;
-        }
-
-        .collapse-btn:hover {
-            background: #f8f9fa;
-        }
-
-        .status-details {
-            transition: all 0.3s ease;
-            overflow: hidden;
-        }
-
-        .status-details.collapsed {
-            max-height: 0;
-            margin: 0;
-            padding: 0;
-        }
-
-        .status-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 6px 0;
-            border-bottom: 1px solid #f0f0f0;
-            font-size: 12px;
-        }
-
-        .status-item:last-child {
-            border-bottom: none;
-        }
-
-        .status-label {
-            color: #6c757d;
-            font-weight: 500;
-        }
-
-        .status-value {
-            font-weight: 600;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 10px;
-        }
-
-        .status-online {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .status-offline {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .status-local {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .status-unknown {
-            background: #e2e3e5;
-            color: #383d41;
-        }
-
-        .connection-test-btn {
-            width: 100%;
-            padding: 8px;
-            background: #007bff;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 10px;
-            transition: all 0.3s;
-        }
-
-        .connection-test-btn:hover {
-            background: #0056b3;
-        }
-
-        .connection-test-btn:disabled {
-            background: #6c757d;
-            cursor: not-allowed;
-        }
-
-        .last-update {
-            text-align: center;
-            font-size: 10px;
-            color: #999;
-            margin-top: 8px;
-            font-style: italic;
-        }
-
-        .debug-info {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            background: rgba(0,0,0,0.9);
-            color: white;
-            padding: 10px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-family: monospace;
-            max-width: 300px;
-            display: none;
-            z-index: 1003;
-        }
-
-        .debug-info.show {
-            display: block;
-        }
-
         /* INDICADOR DE SINCRONIZAÇÃO */
         .sync-indicator {
             position: fixed;
-            top: 70px;
+            top: 20px;
             right: 20px;
             background: #28a745;
             color: white;
@@ -326,7 +156,7 @@
             margin-left: 20px;
         }
 
-        /* PAINEL DE CONTROLE DE USUÁRIOS */
+        /* PAINEL DE GOVERNANÇA DE USUÁRIOS */
         .user-panel {
             position: fixed;
             top: 0;
@@ -422,6 +252,128 @@
 
         .btn-reset:hover {
             background: #e67e22;
+        }
+
+        /* STATUS SUPABASE INTEGRADO */
+        .supabase-status {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 6px;
+        }
+
+        .supabase-status.error {
+            background: #fef2f2;
+            border-color: #fecaca;
+        }
+
+        .supabase-status.local {
+            background: #fffbeb;
+            border-color: #fde68a;
+        }
+
+        .supabase-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .supabase-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-toggle {
+            background: none;
+            border: none;
+            font-size: 12px;
+            cursor: pointer;
+            color: #6c757d;
+            padding: 2px 6px;
+            border-radius: 3px;
+            transition: all 0.2s;
+        }
+
+        .status-toggle:hover {
+            background: #f8f9fa;
+        }
+
+        .supabase-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .supabase-details.collapsed {
+            display: none;
+        }
+
+        .status-item-inline {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+            font-size: 12px;
+        }
+
+        .status-label-inline {
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .status-value-inline {
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 10px;
+        }
+
+        .status-online-inline {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-offline-inline {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .status-local-inline {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .supabase-test-btn {
+            width: 100%;
+            padding: 10px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+        }
+
+        .supabase-test-btn:hover {
+            background: #059669;
+        }
+
+        .supabase-test-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
         }
 
         .system-status {
@@ -920,7 +872,7 @@
         .auto-save-indicator {
             position: fixed;
             top: 20px;
-            right: 20px;
+            right: 320px;
             background: #28a745;
             color: white;
             padding: 8px 15px;
@@ -950,68 +902,16 @@
                 justify-content: center;
                 flex-wrap: wrap;
             }
-            .firebase-status-panel {
+            .auto-save-indicator {
                 position: relative;
                 margin: 10px;
                 top: auto;
-                left: auto;
+                right: auto;
             }
         }
     </style>
 </head>
 <body>
-    <!-- PAINEL DE STATUS FIREBASE COMPLETO -->
-    <div class="firebase-status-panel" id="firebaseStatusPanel">
-        <div class="status-header" onclick="toggleFirebaseDetails()">
-            <div>
-                <span class="status-icon" id="firebaseStatusIcon">🔄</span>
-                <span class="status-title" id="firebaseStatusTitle">Verificando Firebase...</span>
-            </div>
-            <button class="collapse-btn" id="collapseBtn">▼</button>
-        </div>
-        
-        <div class="status-details" id="statusDetails">
-            <div class="status-item">
-                <span class="status-label">App Firebase:</span>
-                <span class="status-value status-unknown" id="firebaseAppStatus">Verificando...</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Authentication:</span>
-                <span class="status-value status-unknown" id="authStatus">Verificando...</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Firestore:</span>
-                <span class="status-value status-unknown" id="firestoreStatus">Verificando...</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Realtime DB:</span>
-                <span class="status-value status-unknown" id="realtimeStatus">Verificando...</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Conectividade:</span>
-                <span class="status-value status-unknown" id="networkStatus">Verificando...</span>
-            </div>
-            
-            <button class="connection-test-btn" id="testConnectionBtn" onclick="testarConexaoFirebase()">
-                🔍 Testar Conexão
-            </button>
-            
-            <div class="last-update" id="lastUpdate">
-                Última verificação: Nunca
-            </div>
-        </div>
-    </div>
-
-    <!-- DEBUG INFO (APENAS PARA DESENVOLVIMENTO) -->
-    <div class="debug-info" id="debugInfo">
-        <strong>🔍 DEBUG (DEV ONLY):</strong><br>
-        Usuários: <span id="debugUsers">0</span><br>
-        Usuário logado: <span id="debugCurrentUser">Nenhum</span><br>
-        Nível: <span id="debugUserLevel">-</span><br>
-        Firebase: <span id="debugFirebase">-</span><br>
-        <small>Ctrl+Shift+I para console</small>
-    </div>
-
     <!-- INDICADOR DE SINCRONIZAÇÃO -->
     <div class="sync-indicator" id="syncIndicator">
         🔄 Sincronizando...
@@ -1044,10 +944,10 @@
         </div>
     </div>
 
-    <!-- PAINEL DE CONTROLE DE USUÁRIOS -->
+    <!-- PAINEL DE GOVERNANÇA DE USUÁRIOS -->
     <div class="user-panel" id="userPanel">
         <div class="user-panel-modal">
-            <h3>👥 Painel de Controle - ACESSO SEGURO</h3>
+            <h3>👥 Painel de Governança - ACESSO SEGURO</h3>
             
             <h4 style="margin-bottom: 15px; color: #2c3e50;">➕ Criar Novo Usuário</h4>
             <form class="user-form" onsubmit="criarUsuario(event)">
@@ -1067,6 +967,44 @@
                 <!-- Lista de usuários será carregada aqui -->
             </div>
 
+            <!-- STATUS SUPABASE INTEGRADO -->
+            <div class="supabase-status" id="supabaseStatus">
+                <div class="supabase-header">
+                    <div class="supabase-title">
+                        <span id="supabaseIcon">🚀</span>
+                        <span id="supabaseTitle">Supabase: Verificando...</span>
+                    </div>
+                    <button class="status-toggle" id="statusToggle" onclick="toggleSupabaseDetails()">▼</button>
+                </div>
+                
+                <div class="supabase-details" id="supabaseDetails">
+                    <div class="status-item-inline">
+                        <span class="status-label-inline">Conexão:</span>
+                        <span class="status-value-inline status-offline-inline" id="supabaseConnectionStatus">Verificando...</span>
+                    </div>
+                    <div class="status-item-inline">
+                        <span class="status-label-inline">Auth:</span>
+                        <span class="status-value-inline status-offline-inline" id="supabaseAuthStatus">Verificando...</span>
+                    </div>
+                    <div class="status-item-inline">
+                        <span class="status-label-inline">Database:</span>
+                        <span class="status-value-inline status-offline-inline" id="supabaseDatabaseStatus">Verificando...</span>
+                    </div>
+                    <div class="status-item-inline">
+                        <span class="status-label-inline">Realtime:</span>
+                        <span class="status-value-inline status-offline-inline" id="supabaseRealtimeStatus">Verificando...</span>
+                    </div>
+                </div>
+                
+                <button class="supabase-test-btn" id="supabaseTestBtn" onclick="testarConexaoSupabase()">
+                    🔍 Testar Conexão Supabase
+                </button>
+                
+                <div style="text-align: center; font-size: 10px; color: #6b7280; margin-top: 8px;" id="supabaseLastUpdate">
+                    Última verificação: Nunca
+                </div>
+            </div>
+
             <div class="system-status" id="systemStatus">
                 <strong>📊 Status do Sistema:</strong>
                 <div style="margin-top: 10px; font-size: 12px;" id="systemStatusDetails">
@@ -1075,7 +1013,7 @@
             </div>
 
             <div style="text-align: center; margin-top: 20px;">
-                <button onclick="fecharPainelUsuarios()" class="btn-clear">Fechar</button>
+                <button onclick="fecharPainelGovernanca()" class="btn-clear">Fechar</button>
             </div>
         </div>
     </div>
@@ -1091,7 +1029,7 @@
                     <span id="nomeUsuario">-</span>
                     <span class="user-badge" id="tipoUsuario">-</span>
                 </div>
-                <button class="btn-control-panel" id="btnControlPanel" onclick="abrirPainelUsuarios()">⚙️ Painel de Controle</button>
+                <button class="btn-control-panel" id="btnControlPanel" onclick="abrirPainelGovernanca()">⚙️ Painel de Governança</button>
                 <button class="btn-logout" onclick="fazerLogout()">🚪 Logout</button>
             </div>
             <h1>Minerva Foods - Logística Internacional</h1>
@@ -1259,33 +1197,24 @@
     </div>
 
     <script>
-        // SISTEMA SEGURO - SEM EXPOSIÇÃO DE CREDENCIAIS
+        // SISTEMA SEGURO COM SUPABASE
         let usuarioLogado = null;
         let dadosPatio = [];
-        let auth = null;
-        let db = null;
-        let realtimeDb = null;
-        let firebaseDisponivel = false;
-        let statusPanelCollapsed = false;
-        let firebaseStatusInterval = null;
+        let supabase = null;
+        let supabaseDisponivel = false;
+        let supabaseStatusCollapsed = false;
+        let supabaseStatusInterval = null;
 
-        // 🔥 CONFIGURAÇÃO FIREBASE - COLOQUE SUAS CREDENCIAIS AQUI:
-        const firebaseConfig = {
-            // ⚠️  INSTRUÇÕES: 
-            // 1. Vá no console do Firebase (https://console.firebase.google.com)
-            // 2. Selecione seu projeto
-            // 3. Vá em ⚙️ Configurações > Configurações do projeto
-            // 4. Na aba "Geral", role até "Seus aplicativos" 
-            // 5. Clique no ícone </> (Web)
-            // 6. Copie as credenciais abaixo e substitua:
+        // 🚀 CONFIGURAÇÃO SUPABASE - COLOQUE SUAS CREDENCIAIS AQUI:
+        const supabaseConfig = {
+            // ⚠️ INSTRUÇÕES:
+            // 1. Vá para https://app.supabase.com
+            // 2. Crie um novo projeto ou selecione existente
+            // 3. Vá em Settings → API
+            // 4. Copie a URL e anon key:
             
-            apiKey: "AIzaSyCHkCQwAwDLJCiLESjj7VsvLdua6UoA1jc",
-            authDomain: "brasil-armazem.firebaseapp.com",
-            databaseURL: "https://brasil-armazem-default-rtdb.firebaseio.com/", 
-            projectId: "brasil-armazem",
-            storageBucket: "brasil-armazem.firebasestorage.app",
-            messagingSenderId: "21202753102",
-            appId: "1:21202753102:web:b4a2c829c5d4171e99551f"
+            url: 'https://zhxrxymeuzvnuafvkjjd.supabase.co',          // Ex: https://seu-projeto.supabase.co
+            anonKey: 'sb_publishable_GIl_nKo6EmiOzcr-io9JSA_pvQu2bOJ'  // Ex: eyJ0eXAiOiJKV1QiLCJhbGciOiJI...
         };
 
         // USUÁRIOS PADRÃO - PROTEGIDOS
@@ -1324,200 +1253,168 @@
             }
         ];
 
-        // ========== FUNÇÕES DE STATUS FIREBASE ==========
+        // ========== FUNÇÕES SUPABASE ==========
 
-        function verificarCredenciaisFirebase() {
-            const credenciaisVazias = Object.values(firebaseConfig).some(value => 
-                typeof value === 'string' && value.includes('COLE_')
-            );
-            
-            return !credenciaisVazias;
+        function verificarCredenciaisSupabase() {
+            return supabaseConfig.url && supabaseConfig.anonKey && 
+                   !supabaseConfig.url.includes('COLE_') && 
+                   !supabaseConfig.anonKey.includes('COLE_');
         }
 
-        function tentarInicializarFirebase() {
+        function tentarInicializarSupabase() {
             try {
-                if (!verificarCredenciaisFirebase()) {
-                    console.log('⚠️ Credenciais do Firebase não configuradas - usando modo local');
-                    firebaseDisponivel = false;
-                    atualizarStatusFirebase();
+                if (!verificarCredenciaisSupabase()) {
+                    console.log('⚠️ Credenciais do Supabase não configuradas - usando modo local');
+                    supabaseDisponivel = false;
+                    atualizarStatusSupabase();
                     return false;
                 }
 
-                firebase.initializeApp(firebaseConfig);
-                auth = firebase.auth();
-                db = firebase.firestore();
-                realtimeDb = firebase.database();
-                firebaseDisponivel = true;
+                // Inicializar Supabase
+                supabase = window.supabase.createClient(supabaseConfig.url, supabaseConfig.anonKey);
+                supabaseDisponivel = true;
                 
-                console.log('🔥 Firebase inicializado com sucesso');
-                atualizarStatusFirebase();
-                iniciarMonitoramentoFirebase();
+                console.log('🚀 Supabase inicializado com sucesso');
+                atualizarStatusSupabase();
+                iniciarMonitoramentoSupabase();
                 return true;
             } catch (error) {
-                console.log('⚠️ Erro ao inicializar Firebase, usando modo local:', error.message);
-                firebaseDisponivel = false;
-                atualizarStatusFirebase();
+                console.log('⚠️ Erro ao inicializar Supabase, usando modo local:', error.message);
+                supabaseDisponivel = false;
+                atualizarStatusSupabase();
                 return false;
             }
         }
 
-        function iniciarMonitoramentoFirebase() {
+        function iniciarMonitoramentoSupabase() {
             // Verificação periódica do status (a cada 30 segundos)
-            if (firebaseStatusInterval) {
-                clearInterval(firebaseStatusInterval);
+            if (supabaseStatusInterval) {
+                clearInterval(supabaseStatusInterval);
             }
             
-            firebaseStatusInterval = setInterval(() => {
-                verificarStatusFirebaseDetalhado();
+            supabaseStatusInterval = setInterval(() => {
+                verificarStatusSupabaseDetalhado();
             }, 30000);
 
             // Primeira verificação imediata
             setTimeout(() => {
-                verificarStatusFirebaseDetalhado();
+                verificarStatusSupabaseDetalhado();
             }, 2000);
         }
 
-        async function verificarStatusFirebaseDetalhado() {
+        async function verificarStatusSupabaseDetalhado() {
             const statusElements = {
-                app: document.getElementById('firebaseAppStatus'),
-                auth: document.getElementById('authStatus'),
-                firestore: document.getElementById('firestoreStatus'),
-                realtime: document.getElementById('realtimeStatus'),
-                network: document.getElementById('networkStatus')
+                connection: document.getElementById('supabaseConnectionStatus'),
+                auth: document.getElementById('supabaseAuthStatus'),
+                database: document.getElementById('supabaseDatabaseStatus'),
+                realtime: document.getElementById('supabaseRealtimeStatus')
             };
 
             try {
-                // Verificar App Firebase
-                if (firebase && firebase.apps && firebase.apps.length > 0) {
-                    statusElements.app.textContent = 'Online';
-                    statusElements.app.className = 'status-value status-online';
+                // Verificar conexão básica
+                if (supabase) {
+                    statusElements.connection.textContent = 'Online';
+                    statusElements.connection.className = 'status-value-inline status-online-inline';
                 } else {
-                    throw new Error('App não inicializado');
+                    throw new Error('Supabase não inicializado');
                 }
 
-                // Verificar Authentication
+                // Verificar Auth
                 try {
-                    if (auth) {
-                        // Teste simples de auth
-                        statusElements.auth.textContent = 'Online';
-                        statusElements.auth.className = 'status-value status-online';
-                    } else {
-                        throw new Error('Auth indisponível');
-                    }
+                    const { data: { session } } = await supabase.auth.getSession();
+                    statusElements.auth.textContent = 'Online';
+                    statusElements.auth.className = 'status-value-inline status-online-inline';
                 } catch (authError) {
-                    statusElements.auth.textContent = 'Erro';
-                    statusElements.auth.className = 'status-value status-offline';
+                    statusElements.auth.textContent = 'Local';
+                    statusElements.auth.className = 'status-value-inline status-local-inline';
                 }
 
-                // Verificar Firestore
+                // Verificar Database (teste simples)
                 try {
-                    if (db) {
-                        // Teste de conectividade do Firestore
-                        await db.enableNetwork();
-                        statusElements.firestore.textContent = 'Online';
-                        statusElements.firestore.className = 'status-value status-online';
-                    } else {
-                        throw new Error('Firestore indisponível');
+                    const { data, error } = await supabase.from('usuarios').select('count', { count: 'exact', head: true });
+                    if (error && error.code !== 'PGRST116') { // PGRST116 = tabela não existe (esperado)
+                        throw error;
                     }
-                } catch (firestoreError) {
-                    statusElements.firestore.textContent = 'Erro';
-                    statusElements.firestore.className = 'status-value status-offline';
+                    statusElements.database.textContent = 'Online';
+                    statusElements.database.className = 'status-value-inline status-online-inline';
+                } catch (dbError) {
+                    statusElements.database.textContent = 'Local';
+                    statusElements.database.className = 'status-value-inline status-local-inline';
                 }
 
-                // Verificar Realtime Database
+                // Verificar Realtime
                 try {
-                    if (realtimeDb) {
-                        // Teste simples de conectividade
-                        const testRef = realtimeDb.ref('.info/connected');
-                        statusElements.realtime.textContent = 'Online';
-                        statusElements.realtime.className = 'status-value status-online';
-                    } else {
-                        throw new Error('Realtime DB indisponível');
-                    }
+                    // Teste de canal realtime
+                    const channel = supabase.channel('test-connection');
+                    statusElements.realtime.textContent = 'Online';
+                    statusElements.realtime.className = 'status-value-inline status-online-inline';
+                    channel.unsubscribe();
                 } catch (realtimeError) {
-                    statusElements.realtime.textContent = 'Erro';
-                    statusElements.realtime.className = 'status-value status-offline';
-                }
-
-                // Verificar Conectividade de Rede
-                if (navigator.onLine) {
-                    statusElements.network.textContent = 'Online';
-                    statusElements.network.className = 'status-value status-online';
-                } else {
-                    statusElements.network.textContent = 'Offline';
-                    statusElements.network.className = 'status-value status-offline';
+                    statusElements.realtime.textContent = 'Local';
+                    statusElements.realtime.className = 'status-value-inline status-local-inline';
                 }
 
             } catch (error) {
-                console.error('Erro na verificação detalhada:', error);
+                console.error('Erro na verificação Supabase:', error);
                 
                 // Marcar todos como offline se houver erro geral
                 Object.values(statusElements).forEach(element => {
                     element.textContent = 'Erro';
-                    element.className = 'status-value status-offline';
+                    element.className = 'status-value-inline status-offline-inline';
                 });
             }
 
             // Atualizar timestamp
-            document.getElementById('lastUpdate').textContent = `Última verificação: ${new Date().toLocaleTimeString('pt-BR')}`;
+            document.getElementById('supabaseLastUpdate').textContent = 
+                `Última verificação: ${new Date().toLocaleTimeString('pt-BR')}`;
         }
 
-        function atualizarStatusFirebase() {
-            const panel = document.getElementById('firebaseStatusPanel');
-            const icon = document.getElementById('firebaseStatusIcon');
-            const title = document.getElementById('firebaseStatusTitle');
+        function atualizarStatusSupabase() {
+            const panel = document.getElementById('supabaseStatus');
+            const icon = document.getElementById('supabaseIcon');
+            const title = document.getElementById('supabaseTitle');
             
-            if (!verificarCredenciaisFirebase()) {
+            if (!verificarCredenciaisSupabase()) {
                 // Credenciais não configuradas
-                panel.className = 'firebase-status-panel error';
+                panel.className = 'supabase-status error';
                 icon.textContent = '⚠️';
-                title.textContent = 'Firebase: Credenciais Não Configuradas';
+                title.textContent = 'Supabase: Credenciais Não Configuradas';
                 
                 // Atualizar detalhes
-                ['firebaseAppStatus', 'authStatus', 'firestoreStatus', 'realtimeStatus'].forEach(id => {
+                ['supabaseConnectionStatus', 'supabaseAuthStatus', 'supabaseDatabaseStatus', 'supabaseRealtimeStatus'].forEach(id => {
                     const element = document.getElementById(id);
                     element.textContent = 'Config';
-                    element.className = 'status-value status-offline';
+                    element.className = 'status-value-inline status-offline-inline';
                 });
                 
-            } else if (firebaseDisponivel) {
-                // Firebase conectado
-                panel.className = 'firebase-status-panel connected';
-                icon.textContent = '🔥';
-                title.textContent = 'Firebase: Conectado';
+            } else if (supabaseDisponivel) {
+                // Supabase conectado
+                panel.className = 'supabase-status';
+                icon.textContent = '🚀';
+                title.textContent = 'Supabase: Conectado';
                 
             } else {
                 // Modo local
-                panel.className = 'firebase-status-panel local';
+                panel.className = 'supabase-status local';
                 icon.textContent = '📱';
-                title.textContent = 'Firebase: Modo Local';
+                title.textContent = 'Supabase: Modo Local';
                 
                 // Atualizar detalhes para modo local
-                ['firebaseAppStatus', 'authStatus', 'firestoreStatus', 'realtimeStatus'].forEach(id => {
+                ['supabaseConnectionStatus', 'supabaseAuthStatus', 'supabaseDatabaseStatus', 'supabaseRealtimeStatus'].forEach(id => {
                     const element = document.getElementById(id);
                     element.textContent = 'Local';
-                    element.className = 'status-value status-local';
+                    element.className = 'status-value-inline status-local-inline';
                 });
-            }
-
-            // Atualizar status de rede
-            const networkElement = document.getElementById('networkStatus');
-            if (navigator.onLine) {
-                networkElement.textContent = 'Online';
-                networkElement.className = 'status-value status-online';
-            } else {
-                networkElement.textContent = 'Offline';
-                networkElement.className = 'status-value status-offline';
             }
         }
 
-        function toggleFirebaseDetails() {
-            const details = document.getElementById('statusDetails');
-            const btn = document.getElementById('collapseBtn');
+        function toggleSupabaseDetails() {
+            const details = document.getElementById('supabaseDetails');
+            const btn = document.getElementById('statusToggle');
             
-            statusPanelCollapsed = !statusPanelCollapsed;
+            supabaseStatusCollapsed = !supabaseStatusCollapsed;
             
-            if (statusPanelCollapsed) {
+            if (supabaseStatusCollapsed) {
                 details.classList.add('collapsed');
                 btn.textContent = '▲';
             } else {
@@ -1526,63 +1423,43 @@
             }
         }
 
-        async function testarConexaoFirebase() {
-            const btn = document.getElementById('testConnectionBtn');
+        async function testarConexaoSupabase() {
+            const btn = document.getElementById('supabaseTestBtn');
             
             btn.disabled = true;
             btn.textContent = '🔄 Testando...';
             
             try {
-                await verificarStatusFirebaseDetalhado();
+                await verificarStatusSupabaseDetalhado();
                 
-                if (firebaseDisponivel) {
-                    mostrarAlerta('success', '✅ Teste de conexão bem-sucedido!\n\nTodos os serviços Firebase estão operacionais.');
+                if (supabaseDisponivel) {
+                    mostrarAlerta('success', '✅ Teste de conexão Supabase bem-sucedido!\n\nTodos os serviços estão operacionais.');
                 } else {
-                    mostrarAlerta('info', 'ℹ️ Sistema em modo local.\n\nPara usar Firebase, configure as credenciais no código.');
+                    mostrarAlerta('info', 'ℹ️ Sistema em modo local.\n\nPara usar Supabase, configure as credenciais no código.');
                 }
                 
             } catch (error) {
-                console.error('Erro no teste de conexão:', error);
-                mostrarAlerta('error', `❌ Erro no teste de conexão:\n${error.message}`);
+                console.error('Erro no teste de conexão Supabase:', error);
+                mostrarAlerta('error', `❌ Erro no teste de conexão Supabase:\n${error.message}`);
             } finally {
                 btn.disabled = false;
-                btn.textContent = '🔍 Testar Conexão';
+                btn.textContent = '🔍 Testar Conexão Supabase';
             }
         }
 
-        // Monitorar mudanças de conectividade
-        window.addEventListener('online', () => {
-            console.log('📶 Conexão restaurada');
-            atualizarStatusFirebase();
-            if (firebaseDisponivel) {
-                verificarStatusFirebaseDetalhado();
-            }
-        });
-
-        window.addEventListener('offline', () => {
-            console.log('📵 Conexão perdida');
-            atualizarStatusFirebase();
-        });
-
-        // ========== RESTO DAS FUNÇÕES (MANTIDAS IGUAIS) ==========
+        // ========== FUNÇÕES DE SISTEMA (ADAPTADAS) ==========
 
         function atualizarStatusSistema() {
             const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
-            
-            // Atualizar debug APENAS para desenvolvimento (não visível por padrão)
-            document.getElementById('debugUsers').textContent = usuarios.length;
-            document.getElementById('debugCurrentUser').textContent = usuarioLogado ? usuarioLogado.nome : 'Nenhum';
-            document.getElementById('debugUserLevel').textContent = usuarioLogado ? usuarioLogado.nivel : '-';
-            document.getElementById('debugFirebase').textContent = firebaseDisponivel ? 'Conectado' : 'Local';
 
             // Atualizar status do painel (APENAS para masters logados)
             const systemStatus = document.getElementById('systemStatus');
             const systemStatusDetails = document.getElementById('systemStatusDetails');
             
-            if (firebaseDisponivel) {
+            if (supabaseDisponivel) {
                 systemStatus.className = 'system-status';
                 systemStatusDetails.innerHTML = `
-                    🔥 Firebase: <strong>Conectado</strong><br>
+                    🚀 Supabase: <strong>Conectado</strong><br>
                     👥 Usuários: <strong>${usuarios.length}</strong><br>
                     🟢 Sincronização: <strong>Ativa</strong>
                 `;
@@ -1591,19 +1468,12 @@
                 systemStatusDetails.innerHTML = `
                     📱 Modo: <strong>Local</strong><br>
                     👥 Usuários: <strong>${usuarios.length}</strong><br>
-                    ⚠️ Firebase: <strong>Indisponível</strong>
+                    ⚠️ Supabase: <strong>Indisponível</strong>
                 `;
             }
             
-            // Atualizar status Firebase
-            atualizarStatusFirebase();
-        }
-
-        function toggleDebug() {
-            if (usuarioLogado && usuarioLogado.nivel === 'master') {
-                const debugInfo = document.getElementById('debugInfo');
-                debugInfo.classList.toggle('show');
-            }
+            // Atualizar status Supabase
+            atualizarStatusSupabase();
         }
 
         function mostrarIndicadorSync(mensagem, tipo = 'success', duracao = 2000) {
@@ -1626,9 +1496,9 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 INICIANDO SISTEMA SEGURO...');
+            console.log('🚀 INICIANDO SISTEMA SEGURO COM SUPABASE...');
             
-            tentarInicializarFirebase();
+            tentarInicializarSupabase();
             
             setTimeout(() => {
                 inicializarSistema();
@@ -1751,9 +1621,9 @@
         function fazerLogout() {
             if (confirm('Deseja realmente fazer logout do sistema?')) {
                 // Limpar intervalo de monitoramento
-                if (firebaseStatusInterval) {
-                    clearInterval(firebaseStatusInterval);
-                    firebaseStatusInterval = null;
+                if (supabaseStatusInterval) {
+                    clearInterval(supabaseStatusInterval);
+                    supabaseStatusInterval = null;
                 }
                 
                 sessionStorage.removeItem('usuarioLogado');
@@ -1806,22 +1676,22 @@
             }
         }
 
-        function abrirPainelUsuarios() {
-            console.log('🎛️ Tentativa de acesso ao painel por:', usuarioLogado.nivel);
+        function abrirPainelGovernanca() {
+            console.log('🎛️ Tentativa de acesso ao Painel de Governança por:', usuarioLogado.nivel);
             
             if (usuarioLogado.nivel !== 'master') {
                 console.log('❌ Acesso negado - nível insuficiente');
-                mostrarAlerta('error', '⚠️ Acesso negado! Apenas usuários MASTER podem acessar este painel.');
+                mostrarAlerta('error', '⚠️ Acesso negado! Apenas usuários MASTER podem acessar o Painel de Governança.');
                 return;
             }
             
-            console.log('✅ Acesso ao painel autorizado');
+            console.log('✅ Acesso ao Painel de Governança autorizado');
             carregarListaUsuarios();
             atualizarStatusSistema();
             document.getElementById('userPanel').style.display = 'flex';
         }
 
-        function fecharPainelUsuarios() {
+        function fecharPainelGovernanca() {
             document.getElementById('userPanel').style.display = 'none';
         }
 
@@ -1873,8 +1743,8 @@
             localStorage.setItem('usuariosSistema', JSON.stringify(usuarios));
             console.log('💾 Usuário criado e salvo localmente');
 
-            if (firebaseDisponivel && db) {
-                salvarUsuarioFirebase(novoUsuario);
+            if (supabaseDisponivel) {
+                salvarUsuarioSupabase(novoUsuario);
             }
 
             document.getElementById('novoNome').value = '';
@@ -1888,29 +1758,34 @@
             mostrarAlerta('success', `✅ Usuário ${nome} criado com sucesso!\n\n👤 Nível: ${nivel}\n💾 Salvo e disponível para uso imediato!\n\n🔐 Credenciais foram fornecidas ao usuário em canal seguro.`);
         }
 
-        async function salvarUsuarioFirebase(usuario) {
-            if (!firebaseDisponivel || !db) return;
+        async function salvarUsuarioSupabase(usuario) {
+            if (!supabaseDisponivel) return;
 
             try {
-                mostrarIndicadorSync('🔄 Sincronizando com Firebase...', 'syncing');
+                mostrarIndicadorSync('🔄 Sincronizando com Supabase...', 'syncing');
                 
-                const usuarioSeguro = {
+                const usuarioSupabase = {
                     nome: usuario.nome,
                     login: usuario.login,
-                    senha: usuario.senha,
+                    senha: usuario.senha, // Em produção, seria hash
                     nivel: usuario.nivel,
                     email: usuario.email,
-                    criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-                    criadoPor: usuario.criadoPor
+                    criado_por: usuario.criadoPor
                 };
 
-                await db.collection('usuarios').add(usuarioSeguro);
+                const { data, error } = await supabase
+                    .from('usuarios')
+                    .insert([usuarioSupabase]);
 
-                console.log('✅ Usuário salvo no Firebase');
-                mostrarIndicadorSync('✅ Sincronizado com Firebase!');
+                if (error) {
+                    throw error;
+                }
+
+                console.log('✅ Usuário salvo no Supabase');
+                mostrarIndicadorSync('✅ Sincronizado com Supabase!');
             } catch (error) {
-                console.error('❌ Erro ao salvar no Firebase:', error);
-                mostrarIndicadorSync('⚠️ Firebase indisponível - salvo localmente', 'error');
+                console.error('❌ Erro ao salvar no Supabase:', error);
+                mostrarIndicadorSync('⚠️ Supabase indisponível - salvo localmente', 'error');
             }
         }
 
@@ -1923,7 +1798,9 @@
                     <div class="user-item">
                         <div>
                             <strong>${user.nome}</strong>
-                            <span style="color: #28a745; font-size: 10px;">💾 LOCAL</span><br>
+                            <span style="color: ${supabaseDisponivel ? '#10b981' : '#28a745'}; font-size: 10px;">
+                                ${supabaseDisponivel ? '🚀 SUPABASE' : '💾 LOCAL'}
+                            </span><br>
                             <small style="color: #6c757d;"><strong>Login:</strong> ${user.login}</small><br>
                             <small style="color: #6c757d;"><strong>Email:</strong> ${user.email}</small>
                             ${user.criadoEm ? `<br><small style="color: #95a5a6;">Criado: ${new Date(user.criadoEm).toLocaleDateString('pt-BR')}</small>` : ''}
