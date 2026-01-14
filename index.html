@@ -36,6 +36,154 @@
             overflow: hidden;
         }
 
+        /* INDICADOR DE STATUS FIREBASE MELHORADO */
+        .firebase-status-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            padding: 15px;
+            min-width: 280px;
+            z-index: 1003;
+            border-left: 4px solid #6c757d;
+            transition: all 0.3s ease;
+        }
+
+        .firebase-status-panel.connected {
+            border-left-color: #28a745;
+        }
+
+        .firebase-status-panel.error {
+            border-left-color: #dc3545;
+        }
+
+        .firebase-status-panel.local {
+            border-left-color: #ffc107;
+        }
+
+        .status-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            cursor: pointer;
+        }
+
+        .status-icon {
+            font-size: 18px;
+            margin-right: 8px;
+        }
+
+        .status-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: #2c3e50;
+        }
+
+        .collapse-btn {
+            background: none;
+            border: none;
+            font-size: 12px;
+            cursor: pointer;
+            color: #6c757d;
+            padding: 2px 6px;
+            border-radius: 3px;
+            transition: all 0.2s;
+        }
+
+        .collapse-btn:hover {
+            background: #f8f9fa;
+        }
+
+        .status-details {
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .status-details.collapsed {
+            max-height: 0;
+            margin: 0;
+            padding: 0;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 12px;
+        }
+
+        .status-item:last-child {
+            border-bottom: none;
+        }
+
+        .status-label {
+            color: #6c757d;
+            font-weight: 500;
+        }
+
+        .status-value {
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+        }
+
+        .status-online {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-offline {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-local {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-unknown {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        .connection-test-btn {
+            width: 100%;
+            padding: 8px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.3s;
+        }
+
+        .connection-test-btn:hover {
+            background: #0056b3;
+        }
+
+        .connection-test-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .last-update {
+            text-align: center;
+            font-size: 10px;
+            color: #999;
+            margin-top: 8px;
+            font-style: italic;
+        }
+
         /* SISTEMA DE PRESENÇA ONLINE */
         .online-status {
             position: fixed;
@@ -832,6 +980,12 @@
                 position: relative;
                 margin: 10px;
             }
+            .firebase-status-panel {
+                position: relative;
+                margin: 10px;
+                top: auto;
+                right: auto;
+            }
         }
     </style>
 </head>
@@ -839,6 +993,48 @@
     <!-- SISTEMA DE PRESENÇA ONLINE -->
     <div class="online-status" id="onlineStatus" onclick="toggleDebug()">
         <span id="onlineStatusText">🔄 Conectando...</span>
+    </div>
+
+    <!-- PAINEL DE STATUS FIREBASE COMPLETO -->
+    <div class="firebase-status-panel" id="firebaseStatusPanel">
+        <div class="status-header" onclick="toggleFirebaseDetails()">
+            <div>
+                <span class="status-icon" id="firebaseStatusIcon">🔄</span>
+                <span class="status-title" id="firebaseStatusTitle">Verificando Firebase...</span>
+            </div>
+            <button class="collapse-btn" id="collapseBtn">▼</button>
+        </div>
+        
+        <div class="status-details" id="statusDetails">
+            <div class="status-item">
+                <span class="status-label">App Firebase:</span>
+                <span class="status-value status-unknown" id="firebaseAppStatus">Verificando...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Authentication:</span>
+                <span class="status-value status-unknown" id="authStatus">Verificando...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Firestore:</span>
+                <span class="status-value status-unknown" id="firestoreStatus">Verificando...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Realtime DB:</span>
+                <span class="status-value status-unknown" id="realtimeStatus">Verificando...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Conectividade:</span>
+                <span class="status-value status-unknown" id="networkStatus">Verificando...</span>
+            </div>
+            
+            <button class="connection-test-btn" id="testConnectionBtn" onclick="testarConexaoFirebase()">
+                🔍 Testar Conexão
+            </button>
+            
+            <div class="last-update" id="lastUpdate">
+                Última verificação: Nunca
+            </div>
+        </div>
     </div>
 
     <!-- DEBUG INFO (APENAS PARA DESENVOLVIMENTO) -->
@@ -1105,6 +1301,8 @@
         let db = null;
         let realtimeDb = null;
         let firebaseDisponivel = false;
+        let statusPanelCollapsed = false;
+        let firebaseStatusInterval = null;
 
         // 🔥 CONFIGURAÇÃO FIREBASE - COLOQUE SUAS CREDENCIAIS AQUI:
         const firebaseConfig = {
@@ -1161,7 +1359,8 @@
             }
         ];
 
-        // VERIFICAR SE AS CREDENCIAIS FORAM CONFIGURADAS
+        // ========== FUNÇÕES DE STATUS FIREBASE ==========
+
         function verificarCredenciaisFirebase() {
             const credenciaisVazias = Object.values(firebaseConfig).some(value => 
                 typeof value === 'string' && value.includes('COLE_')
@@ -1170,14 +1369,12 @@
             return !credenciaisVazias;
         }
 
-        // INICIALIZAR FIREBASE 
         function tentarInicializarFirebase() {
             try {
-                // Verificar se as credenciais foram configuradas
                 if (!verificarCredenciaisFirebase()) {
                     console.log('⚠️ Credenciais do Firebase não configuradas - usando modo local');
                     firebaseDisponivel = false;
-                    atualizarStatusSistema();
+                    atualizarStatusFirebase();
                     return false;
                 }
 
@@ -1188,30 +1385,232 @@
                 firebaseDisponivel = true;
                 
                 console.log('🔥 Firebase inicializado com sucesso');
-                atualizarStatusSistema();
+                atualizarStatusFirebase();
+                iniciarMonitoramentoFirebase();
                 return true;
             } catch (error) {
                 console.log('⚠️ Erro ao inicializar Firebase, usando modo local:', error.message);
                 firebaseDisponivel = false;
-                atualizarStatusSistema();
+                atualizarStatusFirebase();
                 return false;
             }
         }
 
-        // ATUALIZAR STATUS DO SISTEMA (SEM EXPOSIÇÃO DE DADOS)
+        function iniciarMonitoramentoFirebase() {
+            // Verificação periódica do status (a cada 30 segundos)
+            if (firebaseStatusInterval) {
+                clearInterval(firebaseStatusInterval);
+            }
+            
+            firebaseStatusInterval = setInterval(() => {
+                verificarStatusFirebaseDetalhado();
+            }, 30000);
+
+            // Primeira verificação imediata
+            setTimeout(() => {
+                verificarStatusFirebaseDetalhado();
+            }, 2000);
+        }
+
+        async function verificarStatusFirebaseDetalhado() {
+            const statusElements = {
+                app: document.getElementById('firebaseAppStatus'),
+                auth: document.getElementById('authStatus'),
+                firestore: document.getElementById('firestoreStatus'),
+                realtime: document.getElementById('realtimeStatus'),
+                network: document.getElementById('networkStatus')
+            };
+
+            try {
+                // Verificar App Firebase
+                if (firebase && firebase.apps && firebase.apps.length > 0) {
+                    statusElements.app.textContent = 'Online';
+                    statusElements.app.className = 'status-value status-online';
+                } else {
+                    throw new Error('App não inicializado');
+                }
+
+                // Verificar Authentication
+                try {
+                    if (auth) {
+                        // Teste simples de auth
+                        statusElements.auth.textContent = 'Online';
+                        statusElements.auth.className = 'status-value status-online';
+                    } else {
+                        throw new Error('Auth indisponível');
+                    }
+                } catch (authError) {
+                    statusElements.auth.textContent = 'Erro';
+                    statusElements.auth.className = 'status-value status-offline';
+                }
+
+                // Verificar Firestore
+                try {
+                    if (db) {
+                        // Teste de conectividade do Firestore
+                        await db.enableNetwork();
+                        statusElements.firestore.textContent = 'Online';
+                        statusElements.firestore.className = 'status-value status-online';
+                    } else {
+                        throw new Error('Firestore indisponível');
+                    }
+                } catch (firestoreError) {
+                    statusElements.firestore.textContent = 'Erro';
+                    statusElements.firestore.className = 'status-value status-offline';
+                }
+
+                // Verificar Realtime Database
+                try {
+                    if (realtimeDb) {
+                        // Teste simples de conectividade
+                        const testRef = realtimeDb.ref('.info/connected');
+                        statusElements.realtime.textContent = 'Online';
+                        statusElements.realtime.className = 'status-value status-online';
+                    } else {
+                        throw new Error('Realtime DB indisponível');
+                    }
+                } catch (realtimeError) {
+                    statusElements.realtime.textContent = 'Erro';
+                    statusElements.realtime.className = 'status-value status-offline';
+                }
+
+                // Verificar Conectividade de Rede
+                if (navigator.onLine) {
+                    statusElements.network.textContent = 'Online';
+                    statusElements.network.className = 'status-value status-online';
+                } else {
+                    statusElements.network.textContent = 'Offline';
+                    statusElements.network.className = 'status-value status-offline';
+                }
+
+            } catch (error) {
+                console.error('Erro na verificação detalhada:', error);
+                
+                // Marcar todos como offline se houver erro geral
+                Object.values(statusElements).forEach(element => {
+                    element.textContent = 'Erro';
+                    element.className = 'status-value status-offline';
+                });
+            }
+
+            // Atualizar timestamp
+            document.getElementById('lastUpdate').textContent = `Última verificação: ${new Date().toLocaleTimeString('pt-BR')}`;
+        }
+
+        function atualizarStatusFirebase() {
+            const panel = document.getElementById('firebaseStatusPanel');
+            const icon = document.getElementById('firebaseStatusIcon');
+            const title = document.getElementById('firebaseStatusTitle');
+            const onlineStatus = document.getElementById('onlineStatusText');
+            
+            if (!verificarCredenciaisFirebase()) {
+                // Credenciais não configuradas
+                panel.className = 'firebase-status-panel error';
+                icon.textContent = '⚠️';
+                title.textContent = 'Firebase: Credenciais Não Configuradas';
+                onlineStatus.textContent = '⚠️ Configuração Pendente';
+                document.getElementById('onlineStatus').className = 'online-status offline';
+                
+                // Atualizar detalhes
+                ['firebaseAppStatus', 'authStatus', 'firestoreStatus', 'realtimeStatus'].forEach(id => {
+                    const element = document.getElementById(id);
+                    element.textContent = 'Config';
+                    element.className = 'status-value status-offline';
+                });
+                
+            } else if (firebaseDisponivel) {
+                // Firebase conectado
+                panel.className = 'firebase-status-panel connected';
+                icon.textContent = '🔥';
+                title.textContent = 'Firebase: Conectado';
+                onlineStatus.textContent = '🟢 Sistema Completo';
+                document.getElementById('onlineStatus').className = 'online-status';
+                
+            } else {
+                // Modo local
+                panel.className = 'firebase-status-panel local';
+                icon.textContent = '📱';
+                title.textContent = 'Firebase: Modo Local';
+                onlineStatus.textContent = '📱 Modo Local';
+                document.getElementById('onlineStatus').className = 'online-status local';
+                
+                // Atualizar detalhes para modo local
+                ['firebaseAppStatus', 'authStatus', 'firestoreStatus', 'realtimeStatus'].forEach(id => {
+                    const element = document.getElementById(id);
+                    element.textContent = 'Local';
+                    element.className = 'status-value status-local';
+                });
+            }
+
+            // Atualizar status de rede
+            const networkElement = document.getElementById('networkStatus');
+            if (navigator.onLine) {
+                networkElement.textContent = 'Online';
+                networkElement.className = 'status-value status-online';
+            } else {
+                networkElement.textContent = 'Offline';
+                networkElement.className = 'status-value status-offline';
+            }
+        }
+
+        function toggleFirebaseDetails() {
+            const details = document.getElementById('statusDetails');
+            const btn = document.getElementById('collapseBtn');
+            
+            statusPanelCollapsed = !statusPanelCollapsed;
+            
+            if (statusPanelCollapsed) {
+                details.classList.add('collapsed');
+                btn.textContent = '▲';
+            } else {
+                details.classList.remove('collapsed');
+                btn.textContent = '▼';
+            }
+        }
+
+        async function testarConexaoFirebase() {
+            const btn = document.getElementById('testConnectionBtn');
+            
+            btn.disabled = true;
+            btn.textContent = '🔄 Testando...';
+            
+            try {
+                await verificarStatusFirebaseDetalhado();
+                
+                if (firebaseDisponivel) {
+                    mostrarAlerta('success', '✅ Teste de conexão bem-sucedido!\n\nTodos os serviços Firebase estão operacionais.');
+                } else {
+                    mostrarAlerta('info', 'ℹ️ Sistema em modo local.\n\nPara usar Firebase, configure as credenciais no código.');
+                }
+                
+            } catch (error) {
+                console.error('Erro no teste de conexão:', error);
+                mostrarAlerta('error', `❌ Erro no teste de conexão:\n${error.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔍 Testar Conexão';
+            }
+        }
+
+        // Monitorar mudanças de conectividade
+        window.addEventListener('online', () => {
+            console.log('📶 Conexão restaurada');
+            atualizarStatusFirebase();
+            if (firebaseDisponivel) {
+                verificarStatusFirebaseDetalhado();
+            }
+        });
+
+        window.addEventListener('offline', () => {
+            console.log('📵 Conexão perdida');
+            atualizarStatusFirebase();
+        });
+
+        // ========== RESTO DAS FUNÇÕES (MANTIDAS IGUAIS) ==========
+
         function atualizarStatusSistema() {
             const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
             
-            // Atualizar indicador online
-            const onlineStatus = document.getElementById('onlineStatusText');
-            if (firebaseDisponivel) {
-                onlineStatus.textContent = '🟢 Sistema Completo';
-                document.getElementById('onlineStatus').className = 'online-status';
-            } else {
-                onlineStatus.textContent = '📱 Modo Local';
-                document.getElementById('onlineStatus').className = 'online-status local';
-            }
-
             // Atualizar debug APENAS para desenvolvimento (não visível por padrão)
             document.getElementById('debugUsers').textContent = usuarios.length;
             document.getElementById('debugCurrentUser').textContent = usuarioLogado ? usuarioLogado.nome : 'Nenhum';
@@ -1237,18 +1636,18 @@
                     ⚠️ Firebase: <strong>Indisponível</strong>
                 `;
             }
+            
+            // Atualizar status Firebase
+            atualizarStatusFirebase();
         }
 
-        // TOGGLE DEBUG (APENAS DESENVOLVIMENTO)
         function toggleDebug() {
-            // Só mostra debug se for master logado
             if (usuarioLogado && usuarioLogado.nivel === 'master') {
                 const debugInfo = document.getElementById('debugInfo');
                 debugInfo.classList.toggle('show');
             }
         }
 
-        // MOSTRAR INDICADOR DE SINCRONIZAÇÃO
         function mostrarIndicadorSync(mensagem, tipo = 'success', duracao = 2000) {
             const indicator = document.getElementById('syncIndicator');
             
@@ -1268,14 +1667,11 @@
             }, duracao);
         }
 
-        // INICIALIZAR SISTEMA
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 INICIANDO SISTEMA SEGURO...');
             
-            // Tentar Firebase 
             tentarInicializarFirebase();
             
-            // Inicializar sistema principal
             setTimeout(() => {
                 inicializarSistema();
             }, 500);
@@ -1284,14 +1680,12 @@
         function inicializarSistema() {
             console.log('🔄 INICIALIZANDO SISTEMA...');
             
-            // GARANTIR usuários padrão (SEM EXPOSIÇÃO)
             let usuariosSalvos = localStorage.getItem('usuariosSistema');
             
             if (!usuariosSalvos) {
                 console.log('📥 Primeira inicialização - carregando usuários padrão');
                 localStorage.setItem('usuariosSistema', JSON.stringify(USUARIOS_PADRAO));
             } else {
-                // Garantir que o usuário master sempre existe
                 let usuarios = JSON.parse(usuariosSalvos);
                 const masterExiste = usuarios.some(u => u.nivel === 'master');
                 
@@ -1306,10 +1700,8 @@
             const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
             console.log('👥 Sistema inicializado com', usuarios.length, 'usuários');
 
-            // Atualizar status (SEM EXPOSIÇÃO DE DADOS SENSÍVEIS)
             atualizarStatusSistema();
 
-            // Verificar credenciais salvas
             const credenciaisSalvas = localStorage.getItem('credenciaisLembradas');
             if (credenciaisSalvas) {
                 const { login, senha } = JSON.parse(credenciaisSalvas);
@@ -1318,7 +1710,6 @@
                 return;
             }
 
-            // Verificar sessão ativa
             const sessaoAtiva = sessionStorage.getItem('usuarioLogado');
             
             if (sessaoAtiva) {
@@ -1364,7 +1755,6 @@
             
             const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
             
-            // Busca case-insensitive e com trim
             const usuarioEncontrado = usuarios.find(u => 
                 u.login.toLowerCase().trim() === login.toLowerCase().trim() && 
                 u.senha.trim() === senha.trim()
@@ -1402,6 +1792,12 @@
 
         function fazerLogout() {
             if (confirm('Deseja realmente fazer logout do sistema?')) {
+                // Limpar intervalo de monitoramento
+                if (firebaseStatusInterval) {
+                    clearInterval(firebaseStatusInterval);
+                    firebaseStatusInterval = null;
+                }
+                
                 sessionStorage.removeItem('usuarioLogado');
                 localStorage.removeItem('credenciaisLembradas');
                 location.reload();
@@ -1515,17 +1911,14 @@
                 criadoPor: usuarioLogado.nome
             };
 
-            // Salvar localmente
             usuarios.push(novoUsuario);
             localStorage.setItem('usuariosSistema', JSON.stringify(usuarios));
             console.log('💾 Usuário criado e salvo localmente');
 
-            // Tentar salvar no Firebase se disponível
             if (firebaseDisponivel && db) {
                 salvarUsuarioFirebase(novoUsuario);
             }
 
-            // Limpar formulário
             document.getElementById('novoNome').value = '';
             document.getElementById('novoLogin').value = '';
             document.getElementById('novaSenha').value = '';
@@ -1543,11 +1936,10 @@
             try {
                 mostrarIndicadorSync('🔄 Sincronizando com Firebase...', 'syncing');
                 
-                // Remove dados sensíveis antes de salvar no Firebase
                 const usuarioSeguro = {
                     nome: usuario.nome,
                     login: usuario.login,
-                    senha: usuario.senha, // Em produção, seria hash
+                    senha: usuario.senha,
                     nivel: usuario.nivel,
                     email: usuario.email,
                     criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1568,7 +1960,6 @@
             const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
             const lista = document.getElementById('userList');
             
-            // EXIBIR APENAS PARA MASTERS (SEM EXPOSIÇÃO PÚBLICA)
             lista.innerHTML = usuarios.map(user => {
                 return `
                     <div class="user-item">
@@ -1618,7 +2009,6 @@
                 return;
             }
 
-            // Atualizar localmente
             usuario.senha = novaSenha;
             usuario.senhaAlteradaEm = new Date().toISOString();
             usuario.senhaAlteradaPor = usuarioLogado.nome;
@@ -2424,7 +2814,6 @@
             mostrarAlerta('success', '✓ Arquivo exportado com sucesso!');
         }
 
-        // Eventos de busca em tempo real
         document.getElementById('searchPlaca').addEventListener('input', aplicarFiltros);
     </script>
 </body>
