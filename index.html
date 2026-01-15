@@ -82,8 +82,8 @@
             50% { opacity: 0.7; transform: scale(1.05); }
         }
 
-        /* VISUALIZADOR DE ÚLTIMA IMPORTAÇÃO */
-        .import-timestamp {
+        /* VISUALIZADOR DE ÚLTIMA ATUALIZAÇÃO */
+        .update-timestamp {
             position: fixed;
             top: 65px;
             left: 20px;
@@ -96,6 +96,7 @@
             font-weight: 600;
             z-index: 1003;
             box-shadow: 0 1px 6px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
         }
 
         /* NOTIFICAÇÃO DE ATUALIZAÇÕES */
@@ -1131,7 +1132,7 @@
 
         /* MEDIA QUERIES PARA CENTRALIZAÇÃO AUTOMÁTICA */
 
-        /* Telas grandes (>1400px) - Layout horizontal completo */
+        /* Telas grandes (>1400px) - Layout horizontal centralizado */
         @media (min-width: 1400px) {
             .controls-content {
                 flex-wrap: nowrap;
@@ -1263,7 +1264,7 @@
                 gap: 8px;
             }
             
-            .polling-indicator, .update-notification, .import-timestamp {
+            .polling-indicator, .update-notification, .update-timestamp {
                 position: relative;
                 margin: 8px auto;
                 top: auto;
@@ -1348,9 +1349,9 @@
         <span id="pollingStatusText">🔄 Conectando Supabase...</span>
     </div>
 
-    <!-- VISUALIZADOR DE ÚLTIMA IMPORTAÇÃO -->
-    <div class="import-timestamp" id="importTimestamp">
-        📥 Última importação: Nunca
+    <!-- VISUALIZADOR DE ÚLTIMA ATUALIZAÇÃO -->
+    <div class="update-timestamp" id="updateTimestamp">
+        📅 Última atualização: Nunca
     </div>
 
     <!-- NOTIFICAÇÃO DE ATUALIZAÇÕES -->
@@ -1785,6 +1786,65 @@
             }
         }
 
+        // ========== VISUALIZADOR DE ÚLTIMA ATUALIZAÇÃO ==========
+
+        async function atualizarTimestampUltimaAtualizacao() {
+            const timestamp = document.getElementById('updateTimestamp');
+            
+            if (!supabaseDisponivel) {
+                // Fallback para localStorage se Supabase indisponível
+                const ultimaImportacao = localStorage.getItem('ultimaImportacaoExcel');
+                if (ultimaImportacao) {
+                    const dados = JSON.parse(ultimaImportacao);
+                    timestamp.textContent = `📅 Última atualização: ${dados.data} às ${dados.hora}`;
+                } else {
+                    timestamp.textContent = '📅 Última atualização: Nunca';
+                }
+                return;
+            }
+
+            try {
+                // Consultar timestamp mais recente da tabela dados_patio
+                const { data, error } = await supabase
+                    .from('dados_patio')
+                    .select('criado_em')
+                    .order('criado_em', { ascending: false })
+                    .limit(1);
+
+                if (error || !data || data.length === 0) {
+                    timestamp.textContent = '📅 Última atualização: Nunca';
+                    return;
+                }
+
+                // Formatar data brasileira
+                const dataAtualizacao = new Date(data[0].criado_em);
+                const dataFormatada = dataAtualizacao.toLocaleDateString('pt-BR');
+                const horaFormatada = dataAtualizacao.toLocaleTimeString('pt-BR');
+                
+                timestamp.textContent = `📅 Última atualização: ${dataFormatada} às ${horaFormatada}`;
+                
+                console.log('📅 Timestamp atualizado:', dataFormatada, horaFormatada);
+                
+            } catch (error) {
+                console.error('❌ Erro ao consultar última atualização:', error);
+                timestamp.textContent = '📅 Última atualização: Erro';
+            }
+        }
+
+        function salvarTimestampLocal() {
+            // Backup local para fallback
+            const agora = new Date();
+            const data = agora.toLocaleDateString('pt-BR');
+            const hora = agora.toLocaleTimeString('pt-BR');
+            
+            localStorage.setItem('ultimaImportacaoExcel', JSON.stringify({
+                data: data,
+                hora: hora,
+                timestamp: agora.getTime(),
+                usuario: usuarioLogado.nome
+            }));
+        }
+
         // ========== SINCRONIZAÇÃO DE USUÁRIOS ==========
 
         async function sincronizarUsuarios() {
@@ -1914,8 +1974,8 @@
                 iniciarSistema();
                 atualizarStatusSistema();
                 
-                // Carregar última importação salva
-                carregarUltimaImportacao();
+                // Carregar timestamp de última atualização
+                await atualizarTimestampUltimaAtualizacao();
                 
                 if (!lembrarMe) {
                     mostrarAlerta('success', `✅ Bem-vindo, ${usuarioEncontrado.nome}!\n\n🎯 Nível: ${usuarioEncontrado.nivel.toUpperCase()}\n🚀 Supabase: ${supabaseDisponivel ? 'Conectado' : 'Erro'}\n👥 Login cross-device ativo!`);
@@ -1925,35 +1985,6 @@
                 alert('❌ Usuário ou senha incorretos!\n\nVerifique suas credenciais e tente novamente.\n\n💡 Se foi criado em outro computador, aguarde sincronização.');
                 localStorage.removeItem('credenciaisLembradas');
             }
-        }
-
-        function carregarUltimaImportacao() {
-            const ultimaImportacao = localStorage.getItem('ultimaImportacaoExcel');
-            const timestamp = document.getElementById('importTimestamp');
-            
-            if (ultimaImportacao) {
-                const dados = JSON.parse(ultimaImportacao);
-                timestamp.textContent = `📥 Última importação: ${dados.data} às ${dados.hora}`;
-            } else {
-                timestamp.textContent = '📥 Última importação: Nunca';
-            }
-        }
-
-        function atualizarTimestampImportacao() {
-            const agora = new Date();
-            const data = agora.toLocaleDateString('pt-BR');
-            const hora = agora.toLocaleTimeString('pt-BR');
-            
-            // Salvar no localStorage
-            localStorage.setItem('ultimaImportacaoExcel', JSON.stringify({
-                data: data,
-                hora: hora,
-                timestamp: agora.getTime(),
-                usuario: usuarioLogado.nome
-            }));
-            
-            // Atualizar visualizador
-            document.getElementById('importTimestamp').textContent = `📥 Última importação: ${data} às ${hora}`;
         }
 
         async function criarUsuario(event) {
@@ -2060,16 +2091,25 @@
                         ultimoTimestampBanco = ultimoTimestamp;
                         
                         await carregarDadosSupabase();
+                        
+                        // Atualizar timestamp para TODOS os usuários
+                        await atualizarTimestampUltimaAtualizacao();
+                        
                         mostrarNotificacaoUpdate('Dados atualizados via Supabase!');
                         aplicarEfeitoUpdate();
                     }
                 } else {
+                    // Tabela vazia
                     if (dadosPatio.length > 0) {
                         console.log('🗑️ Tabela foi limpa via Supabase');
                         dadosPatio = [];
                         popularFiltros();
                         renderizarTabela();
                         atualizarEstatisticas();
+                        
+                        // Atualizar timestamp para limpeza
+                        await atualizarTimestampUltimaAtualizacao();
+                        
                         mostrarNotificacaoUpdate('Dados limpos via Supabase!');
                         aplicarEfeitoUpdate();
                     }
@@ -2464,8 +2504,8 @@
                     
                     console.log(`📊 ${dadosProcessados.length} registros processados`);
                     
-                    // ATUALIZAR TIMESTAMP DE IMPORTAÇÃO
-                    atualizarTimestampImportacao();
+                    // Salvar timestamp local (backup)
+                    salvarTimestampLocal();
                     
                     salvarDadosNoSupabase(dadosProcessados);
                     
@@ -2552,6 +2592,9 @@
                 renderizarTabela();
                 atualizarEstatisticas();
                 
+                // Atualizar timestamp para master e preparar para outros usuários
+                await atualizarTimestampUltimaAtualizacao();
+                
                 lastSyncTime = Date.now();
                 ultimoTimestampBanco = Date.now();
                 
@@ -2619,6 +2662,9 @@
                     popularFiltros();
                     renderizarTabela();
                     atualizarEstatisticas();
+                    
+                    // Atualizar timestamp após limpeza
+                    await atualizarTimestampUltimaAtualizacao();
                     
                     lastSyncTime = Date.now();
                     ultimoTimestampBanco = Date.now();
@@ -2937,7 +2983,7 @@
                 const usuariosAtualizados = usuarios.filter(u => u.id !== id);
                 localStorage.setItem('usuariosSistema', JSON.stringify(usuariosAtualizados));
                 
-                carregarListaUsuarios();
+                carregarListaUsuários();
                 atualizarStatusSistema();
                 mostrarAlerta('info', `✅ Usuário ${usuario.nome} excluído!`);
             }
