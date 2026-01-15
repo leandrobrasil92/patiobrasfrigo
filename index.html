@@ -22,6 +22,7 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #f0f2f5;
             padding: 20px;
+            overflow-x: auto;
         }
 
         .container {
@@ -40,15 +41,15 @@
             left: 20px;
             background: #10b981;
             color: white;
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 12px;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 11px;
             font-weight: 600;
             z-index: 1004;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             transition: all 0.3s ease;
             cursor: pointer;
         }
@@ -84,33 +85,33 @@
         /* CONTADOR DE POLLING */
         .polling-counter {
             position: fixed;
-            top: 80px;
+            top: 65px;
             left: 20px;
             background: rgba(255,255,255,0.95);
-            border: 2px solid #3b82f6;
+            border: 1px solid #3b82f6;
             color: #1e40af;
-            padding: 6px 10px;
-            border-radius: 10px;
-            font-size: 10px;
+            padding: 4px 8px;
+            border-radius: 8px;
+            font-size: 9px;
             font-weight: 600;
             z-index: 1003;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 6px rgba(0,0,0,0.1);
         }
 
         /* NOTIFICAÇÃO DE ATUALIZAÇÕES */
         .update-notification {
             position: fixed;
-            top: 130px;
+            top: 100px;
             left: 20px;
             background: #059669;
             color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            font-size: 14px;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12px;
             font-weight: 600;
             display: none;
             z-index: 1002;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 12px rgba(0,0,0,0.2);
             animation: slideIn 0.3s ease;
         }
 
@@ -126,13 +127,13 @@
             right: 20px;
             background: #28a745;
             color: white;
-            padding: 8px 15px;
+            padding: 6px 12px;
             border-radius: 6px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             display: none;
             z-index: 1001;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
         }
 
         .sync-indicator.syncing {
@@ -444,12 +445,12 @@
 
         .supabase-test-btn {
             width: 100%;
-            padding: 10px;
+            padding: 8px;
             background: #10b981;
             color: white;
             border: none;
             border-radius: 6px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             cursor: pointer;
             margin-bottom: 10px;
@@ -570,97 +571,121 @@
             transform: scale(1.05);
         }
 
-        /* CONTROLES TOTALMENTE RESPONSIVOS */
+        /* CONTROLES COMPACTOS E PROFISSIONAIS */
         .controls {
-            padding: 20px;
+            padding: 12px 16px;
             background: #f8f9fa;
             border-bottom: 2px solid #dee2e6;
             overflow-x: auto;
         }
 
+        .controls::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .controls::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+
+        .controls::-webkit-scrollbar-thumb {
+            background: #2c3e50;
+            border-radius: 3px;
+        }
+
+        .controls::-webkit-scrollbar-thumb:hover {
+            background: #1a252f;
+        }
+
         .controls-content {
             display: flex;
             flex-wrap: wrap;
-            gap: 15px;
+            gap: 8px;
             align-items: end;
-            min-width: 100%;
+            min-width: max-content;
         }
 
         .control-group {
             display: flex;
             flex-direction: column;
-            gap: 5px;
-            min-width: 140px;
-            flex: 1;
+            gap: 3px;
+            min-width: 120px;
+            flex: 0 0 auto;
         }
 
         .control-group.date-range {
             display: flex;
             flex-direction: column;
-            gap: 5px;
-            min-width: 200px;
-            flex: 1.5;
+            gap: 3px;
+            min-width: 160px;
+            flex: 0 0 auto;
         }
 
         .date-range-inputs {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
+            gap: 4px;
         }
 
         .date-input-group {
             display: flex;
             flex-direction: column;
-            gap: 2px;
+            gap: 1px;
         }
 
         .control-group label {
-            font-size: 12px;
+            font-size: 10px;
             font-weight: 600;
             color: #495057;
             text-transform: uppercase;
             text-align: center;
             white-space: nowrap;
+            line-height: 1.2;
         }
 
         .control-group input,
         .control-group select {
-            padding: 10px;
-            border: 2px solid #dee2e6;
-            border-radius: 6px;
-            font-size: 14px;
+            padding: 6px 8px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            font-size: 12px;
             transition: all 0.3s;
             min-width: 0;
+            height: 32px;
+            background: white;
         }
 
         .control-group input:focus,
         .control-group select:focus {
             outline: none;
             border-color: #2c3e50;
+            box-shadow: 0 0 0 2px rgba(44, 62, 80, 0.1);
         }
 
         .date-input-small {
-            padding: 8px !important;
-            font-size: 12px !important;
+            padding: 4px 6px !important;
+            font-size: 11px !important;
+            height: 28px !important;
         }
 
         .date-label-small {
-            font-size: 9px !important;
+            font-size: 8px !important;
             color: #6c757d !important;
-            margin-bottom: 2px;
+            margin-bottom: 1px;
             text-align: left;
+            font-weight: 500;
         }
 
         .controls-buttons {
             display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
+            gap: 6px;
+            flex-wrap: nowrap;
             align-items: end;
-            min-width: max-content;
+            flex: 0 0 auto;
         }
 
         .btn-search {
-            padding: 10px 20px;
+            padding: 6px 12px;
             background: #2c3e50;
             color: white;
             border: none;
@@ -668,17 +693,21 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
-            height: 42px;
+            height: 32px;
             white-space: nowrap;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
 
         .btn-search:hover {
             background: #1a252f;
-            transform: translateY(-2px);
+            transform: translateY(-1px);
         }
 
         .btn-clear {
-            padding: 10px 20px;
+            padding: 6px 12px;
             background: #6c757d;
             color: white;
             border: none;
@@ -686,17 +715,21 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
-            height: 42px;
+            height: 32px;
             white-space: nowrap;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
 
         .btn-clear:hover {
             background: #545b62;
-            transform: translateY(-2px);
+            transform: translateY(-1px);
         }
 
         .btn-clear-file {
-            padding: 10px 20px;
+            padding: 6px 12px;
             background: #dc3545;
             color: white;
             border: none;
@@ -704,13 +737,17 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
-            height: 42px;
+            height: 32px;
             white-space: nowrap;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
 
         .btn-clear-file:hover {
             background: #c82333;
-            transform: translateY(-2px);
+            transform: translateY(-1px);
         }
 
         .btn-clear-file:disabled {
@@ -788,32 +825,53 @@
 
         .table-container {
             overflow: hidden;
-            padding: 20px;
+            padding: 16px;
             position: relative;
         }
 
+        /* TABELA COM SCROLL ADAPTATIVO */
         .table-wrapper {
             overflow-x: auto;
             overflow-y: auto;
-            max-height: calc(100vh - 500px);
             border: 1px solid #dee2e6;
             border-radius: 8px;
             position: relative;
+            background: white;
         }
 
+        /* Altura da tabela adaptativa conforme tela */
+        @media (min-height: 900px) {
+            .table-wrapper {
+                max-height: calc(100vh - 420px);
+            }
+        }
+
+        @media (max-height: 900px) and (min-height: 700px) {
+            .table-wrapper {
+                max-height: calc(100vh - 380px);
+            }
+        }
+
+        @media (max-height: 700px) {
+            .table-wrapper {
+                max-height: calc(100vh - 320px);
+            }
+        }
+
+        /* Scroll customizado para diferentes tamanhos */
         .table-wrapper::-webkit-scrollbar {
-            width: 12px;
-            height: 12px;
+            width: 8px;
+            height: 8px;
         }
 
         .table-wrapper::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 6px;
+            background: #f8f9fa;
+            border-radius: 4px;
         }
 
         .table-wrapper::-webkit-scrollbar-thumb {
             background: #2c3e50;
-            border-radius: 6px;
+            border-radius: 4px;
         }
 
         .table-wrapper::-webkit-scrollbar-thumb:hover {
@@ -821,20 +879,21 @@
         }
 
         .table-wrapper::-webkit-scrollbar-corner {
-            background: #f1f1f1;
+            background: #f8f9fa;
         }
 
         .button-group {
             display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 12px;
-            min-width: 2000px;
+            font-size: 11px;
+            min-width: 1800px;
         }
 
         thead {
@@ -846,13 +905,14 @@
         }
 
         th {
-            padding: 12px 8px;
+            padding: 8px 6px;
             text-align: center;
             font-weight: 600;
-            font-size: 11px;
+            font-size: 10px;
             text-transform: uppercase;
             white-space: nowrap;
             border-right: 1px solid #34495e;
+            line-height: 1.2;
         }
 
         th:last-child {
@@ -860,10 +920,11 @@
         }
 
         td {
-            padding: 10px 8px;
+            padding: 6px 4px;
             border-bottom: 1px solid #dee2e6;
             white-space: nowrap;
             text-align: center;
+            font-size: 11px;
         }
 
         tbody tr:hover {
@@ -898,7 +959,7 @@
 
         .expand-icon {
             display: inline-block;
-            margin-right: 8px;
+            margin-right: 6px;
             transition: transform 0.3s;
             font-weight: bold;
             color: #2c3e50;
@@ -924,18 +985,18 @@
         .count-badge {
             background: #2c3e50;
             color: white;
-            padding: 2px 6px;
-            border-radius: 10px;
-            font-size: 10px;
+            padding: 1px 4px;
+            border-radius: 8px;
+            font-size: 9px;
             font-weight: bold;
-            margin-left: 5px;
+            margin-left: 4px;
         }
 
         .status-badge {
             display: inline-block;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 9px;
             font-weight: 600;
             text-transform: uppercase;
         }
@@ -948,20 +1009,22 @@
         .dedicada-sim { 
             background: #d1ecf1; 
             color: #0c5460;
-            padding: 3px 8px;
+            padding: 2px 6px;
             border-radius: 4px;
             font-weight: 600;
+            font-size: 9px;
         }
 
         .dedicada-nao { 
             background: #f8f9fa; 
             color: #6c757d;
-            padding: 3px 8px;
+            padding: 2px 6px;
             border-radius: 4px;
+            font-size: 9px;
         }
 
         .btn-export {
-            padding: 10px 20px;
+            padding: 8px 16px;
             background: #27ae60;
             color: white;
             border: none;
@@ -969,14 +1032,19 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
 
         .btn-export:hover {
             background: #229954;
+            transform: translateY(-1px);
         }
 
         .btn-import {
-            padding: 10px 20px;
+            padding: 8px 16px;
             background: #3498db;
             color: white;
             border: none;
@@ -984,10 +1052,15 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
 
         .btn-import:hover {
             background: #2980b9;
+            transform: translateY(-1px);
         }
 
         .btn-import:disabled {
@@ -1002,16 +1075,17 @@
 
         .no-data {
             text-align: center;
-            padding: 60px 20px;
+            padding: 40px 20px;
             color: #6c757d;
-            font-size: 16px;
+            font-size: 14px;
         }
 
         .alert {
-            padding: 15px;
-            margin-bottom: 15px;
+            padding: 12px;
+            margin-bottom: 12px;
             border-radius: 6px;
             display: none;
+            font-size: 13px;
         }
 
         .alert.success {
@@ -1038,132 +1112,111 @@
             right: 20px;
             background: #28a745;
             color: white;
-            padding: 8px 15px;
+            padding: 6px 12px;
             border-radius: 6px;
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 600;
             display: none;
             z-index: 1000;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
         }
 
         .hidden {
             display: none !important;
         }
 
-        /* MEDIA QUERIES RESPONSIVAS PARA FILTROS */
+        /* MEDIA QUERIES OTIMIZADAS PARA LAYOUT COMPACTO */
 
-        /* Telas muito grandes (>1600px) - Grid completo */
-        @media (min-width: 1600px) {
+        /* Telas grandes (>1400px) - Layout horizontal completo */
+        @media (min-width: 1400px) {
             .controls-content {
-                display: grid;
-                grid-template-columns: repeat(8, minmax(140px, 1fr)) repeat(3, auto);
-                gap: 15px;
-                align-items: end;
+                flex-wrap: nowrap;
+                justify-content: flex-start;
+            }
+            
+            .control-group {
+                min-width: 130px;
             }
             
             .control-group.date-range {
-                min-width: 200px;
+                min-width: 170px;
             }
         }
 
-        /* Telas grandes (1200-1600px) - 3 linhas */
-        @media (max-width: 1600px) and (min-width: 1200px) {
+        /* Telas médias (1000-1400px) - Quebra em 2 linhas */
+        @media (max-width: 1400px) and (min-width: 1000px) {
             .controls-content {
                 display: grid;
-                grid-template-columns: repeat(4, 1fr);
-                gap: 12px;
-                align-items: end;
-            }
-            
-            .controls-buttons {
-                grid-column: 1 / -1;
-                display: flex;
-                gap: 10px;
-                justify-content: center;
-                margin-top: 15px;
-            }
-        }
-
-        /* Telas médias (768-1200px) - 2 colunas com stack */
-        @media (max-width: 1200px) and (min-width: 768px) {
-            .controls-content {
-                display: grid;
-                grid-template-columns: repeat(3, 1fr);
-                gap: 12px;
-                align-items: start;
-            }
-            
-            .control-group.date-range {
-                min-width: 180px;
-            }
-            
-            .controls-buttons {
-                grid-column: 1 / -1;
-                display: flex;
+                grid-template-columns: repeat(4, minmax(120px, 1fr));
                 gap: 8px;
+                align-items: end;
+            }
+            
+            .controls-buttons {
+                grid-column: 1 / -1;
+                display: flex;
+                gap: 6px;
                 justify-content: center;
-                margin-top: 15px;
-                flex-wrap: wrap;
+                margin-top: 8px;
             }
         }
 
-        /* Telas pequenas (480-768px) - 2 colunas */
-        @media (max-width: 768px) and (min-width: 480px) {
+        /* Telas pequenas (600-1000px) - Stack responsivo */
+        @media (max-width: 1000px) and (min-width: 600px) {
             .controls {
-                padding: 15px;
+                padding: 10px 12px;
             }
             
             .controls-content {
                 display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 10px;
+                grid-template-columns: repeat(3, minmax(110px, 1fr));
+                gap: 6px;
                 align-items: start;
             }
             
             .control-group {
-                min-width: 120px;
+                min-width: 110px;
             }
             
             .control-group.date-range {
-                grid-column: 1 / -1;
+                grid-column: span 2;
                 min-width: 100%;
             }
             
             .date-range-inputs {
                 grid-template-columns: 1fr 1fr;
-                gap: 8px;
+                gap: 4px;
             }
             
             .controls-buttons {
                 grid-column: 1 / -1;
                 display: flex;
-                gap: 8px;
-                justify-content: stretch;
-                margin-top: 15px;
+                gap: 6px;
+                justify-content: center;
+                margin-top: 8px;
+                flex-wrap: wrap;
             }
             
             .controls-buttons button {
-                flex: 1;
-                font-size: 12px;
-                padding: 8px 12px;
+                font-size: 10px;
+                padding: 5px 10px;
             }
         }
 
-        /* Telas muito pequenas (<480px) - Single column */
-        @media (max-width: 480px) {
+        /* Telas muito pequenas (<600px) - Single stack */
+        @media (max-width: 600px) {
             body {
                 padding: 10px;
             }
             
             .controls {
-                padding: 15px;
+                padding: 8px 10px;
             }
             
             .controls-content {
                 display: flex;
                 flex-direction: column;
-                gap: 12px;
+                gap: 8px;
                 align-items: stretch;
             }
             
@@ -1177,22 +1230,26 @@
             }
             
             .date-range-inputs {
-                display: flex;
-                flex-direction: column;
-                gap: 8px;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 6px;
             }
             
             .controls-buttons {
-                display: flex;
-                flex-direction: column;
-                gap: 8px;
-                margin-top: 15px;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 6px;
+                margin-top: 8px;
+            }
+            
+            .controls-buttons .btn-clear-file {
+                grid-column: 1 / -1;
             }
             
             .controls-buttons button {
-                width: 100%;
-                font-size: 14px;
-                padding: 12px;
+                font-size: 11px;
+                padding: 8px;
+                height: 36px;
             }
             
             .user-panel-modal {
@@ -1200,28 +1257,32 @@
                 height: 100%;
                 max-height: none;
                 border-radius: 0;
-                padding: 20px;
+                padding: 15px;
             }
             
             .user-form {
                 grid-template-columns: 1fr;
-                gap: 10px;
+                gap: 8px;
             }
             
             .polling-indicator, .update-notification, .polling-counter {
                 position: relative;
-                margin: 10px auto;
+                margin: 8px auto;
                 top: auto;
                 left: auto;
                 max-width: calc(100vw - 20px);
+                font-size: 10px;
+                padding: 4px 8px;
             }
             
             .auto-save-indicator, .sync-indicator {
                 position: relative;
-                margin: 10px auto;
+                margin: 8px auto;
                 top: auto;
                 right: auto;
                 max-width: calc(100vw - 20px);
+                font-size: 11px;
+                padding: 4px 8px;
             }
             
             .user-info {
@@ -1229,34 +1290,53 @@
                 margin-bottom: 15px;
                 justify-content: center;
                 flex-wrap: wrap;
+                font-size: 11px;
             }
             
             .header h1 {
-                font-size: 22px;
+                font-size: 20px;
             }
             
             .header p {
-                font-size: 12px;
+                font-size: 11px;
             }
             
             body.panel-open {
                 overflow: hidden;
             }
+            
+            /* Scroll da tabela mais fino em mobile */
+            .table-wrapper::-webkit-scrollbar {
+                width: 4px;
+                height: 4px;
+            }
+            
+            .table-wrapper {
+                max-height: calc(100vh - 280px);
+            }
+        }
+
+        /* Melhorias específicas para scroll em diferentes resoluções */
+        @media (max-width: 1200px) {
+            .table-wrapper::-webkit-scrollbar {
+                width: 6px;
+                height: 6px;
+            }
         }
 
         /* Melhorias para modal responsivo */
         .user-panel-modal::-webkit-scrollbar {
-            width: 8px;
+            width: 6px;
         }
 
         .user-panel-modal::-webkit-scrollbar-track {
             background: #f1f1f1;
-            border-radius: 4px;
+            border-radius: 3px;
         }
 
         .user-panel-modal::-webkit-scrollbar-thumb {
             background: #9b59b6;
-            border-radius: 4px;
+            border-radius: 3px;
         }
 
         .user-panel-modal::-webkit-scrollbar-thumb:hover {
@@ -1272,12 +1352,12 @@
 
     <!-- CONTADOR DE POLLING -->
     <div class="polling-counter" id="pollingCounter">
-        🔄 Inicializando polling...
+        🔄 Inicializando...
     </div>
 
     <!-- NOTIFICAÇÃO DE ATUALIZAÇÕES -->
     <div class="update-notification" id="updateNotification">
-        ⚡ Dados atualizados via Supabase!
+        ⚡ Dados atualizados!
     </div>
 
     <!-- INDICADOR DE SINCRONIZAÇÃO -->
@@ -1408,12 +1488,12 @@
         <div class="controls">
             <div class="controls-content">
                 <div class="control-group">
-                    <label>🔍 Buscar por Placa</label>
+                    <label>🔍 Buscar Placa</label>
                     <input type="text" id="searchPlaca" placeholder="Digite a placa...">
                 </div>
                 
                 <div class="control-group">
-                    <label>📦 Filtrar por Status</label>
+                    <label>📦 Status</label>
                     <select id="filterStatus">
                         <option value="">Todos</option>
                         <option value="AGUARDANDO">Aguardando</option>
@@ -1424,21 +1504,21 @@
                 </div>
                 
                 <div class="control-group">
-                    <label>🏭 Filtrar por Origem</label>
+                    <label>🏭 Origem</label>
                     <select id="filterOrigem">
                         <option value="">Todas</option>
                     </select>
                 </div>
                 
                 <div class="control-group">
-                    <label>🌎 Tipo de Mercado</label>
+                    <label>🌎 Mercado</label>
                     <select id="filterTipoMercado">
                         <option value="">Todos</option>
                     </select>
                 </div>
                 
                 <div class="control-group">
-                    <label>💰 Gerando Diária</label>
+                    <label>💰 Diária</label>
                     <select id="filterGerandoDiaria">
                         <option value="">Todos</option>
                         <option value="SIM">Sim</option>
@@ -1447,7 +1527,7 @@
                 </div>
                 
                 <div class="control-group">
-                    <label>🚢 Tipo de Descarga</label>
+                    <label>🚢 Descarga</label>
                     <select id="filterTipoDescarga">
                         <option value="">Todos</option>
                         <option value="BREAK BULK">Break Bulk</option>
@@ -1456,7 +1536,7 @@
                 </div>
                 
                 <div class="control-group date-range">
-                    <label>📅 Data de Chegada</label>
+                    <label>📅 Data Chegada</label>
                     <div class="date-range-inputs">
                         <div class="date-input-group">
                             <div class="date-label-small">De:</div>
@@ -1470,7 +1550,7 @@
                 </div>
                 
                 <div class="control-group date-range">
-                    <label>📆 Data de Descarga</label>
+                    <label>📆 Data Descarga</label>
                     <div class="date-range-inputs">
                         <div class="date-input-group">
                             <div class="date-label-small">De:</div>
@@ -1484,9 +1564,15 @@
                 </div>
                 
                 <div class="controls-buttons">
-                    <button class="btn-search" onclick="aplicarFiltros()">Aplicar Filtros</button>
-                    <button class="btn-clear" onclick="limparFiltros()">🔄 Limpar</button>
-                    <button class="btn-clear-file" id="btnLimparArquivo" onclick="limparArquivo()">🗑️ Limpar Arquivo</button>
+                    <button class="btn-search" onclick="aplicarFiltros()">
+                        <span>🔍</span> Aplicar
+                    </button>
+                    <button class="btn-clear" onclick="limparFiltros()">
+                        <span>🔄</span> Limpar
+                    </button>
+                    <button class="btn-clear-file" id="btnLimparArquivo" onclick="limparArquivo()">
+                        <span>🗑️</span> Limpar Arquivo
+                    </button>
                 </div>
             </div>
         </div>
@@ -1536,12 +1622,12 @@
 
             <div class="button-group">
                 <button class="btn-import" id="btnImportar" onclick="document.getElementById('fileInput').click()">
-                    🚀 Importar Excel → Supabase
+                    <span>🚀</span> Importar Excel
                 </button>
                 <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="importarExcel(event)">
                 
                 <button class="btn-export" onclick="exportarParaExcel()">
-                    📥 Exportar para Excel
+                    <span>📥</span> Exportar Excel
                 </button>
             </div>
             
@@ -2074,10 +2160,10 @@
             
             switch (status) {
                 case 'connecting':
-                    statusText.textContent = '🔗 Conectando Supabase...';
+                    statusText.textContent = '🔗 Conectando...';
                     break;
                 case 'connected':
-                    statusText.textContent = '✅ Supabase Conectado';
+                    statusText.textContent = '✅ Conectado';
                     break;
                 case 'polling':
                     indicator.className += ' polling';
@@ -2089,11 +2175,11 @@
                     break;
                 case 'error':
                     indicator.className += ' error';
-                    statusText.textContent = '❌ Erro Supabase';
+                    statusText.textContent = '❌ Erro';
                     break;
                 case 'local':
                     indicator.className += ' local';
-                    statusText.textContent = '📱 Modo Local';
+                    statusText.textContent = '📱 Local';
                     break;
                 default:
                     statusText.textContent = '🔄 Iniciando...';
@@ -2104,11 +2190,11 @@
             const counter = document.getElementById('pollingCounter');
             
             if (supabaseDisponivel) {
-                counter.textContent = `🔄 Polling #${pollingCount} | Próxima: 3s`;
+                counter.textContent = `#${pollingCount} | 3s`;
                 counter.style.borderColor = '#3b82f6';
                 counter.style.color = '#1e40af';
             } else {
-                counter.textContent = `📱 Modo Local | Tentativas: ${pollingCount}`;
+                counter.textContent = `Local #${pollingCount}`;
                 counter.style.borderColor = '#6b7280';
                 counter.style.color = '#374151';
             }
@@ -2452,8 +2538,8 @@
                 atualizarIndicadorPolling('polling');
                 atualizarStatusPolling('success');
                 
-                mostrarIndicadorSync('✅ Dados salvos no Supabase! Outros usuários receberão via polling.', 'success', 4000);
-                mostrarAlerta('success', `✅ Importação concluída com sucesso!\n\n📊 ${dadosArray.length} registros salvos na tabela dados_patio\n🚀 Dados disponíveis no Supabase\n🔄 Outros usuários receberão em até 3 segundos!\n\n🌐 Sincronização cross-device ativa!`);
+                mostrarIndicadorSync('✅ Dados salvos! Outros usuários receberão via polling.', 'success', 4000);
+                mostrarAlerta('success', `✅ Importação concluída!\n\n📊 ${dadosArray.length} registros salvos\n🚀 Disponível no Supabase\n🔄 Sincronização em até 3s!\n\n🌐 Cross-device ativo!`);
                 
             } catch (error) {
                 console.error('❌ Erro ao salvar no Supabase:', error);
@@ -2464,8 +2550,8 @@
                 renderizarTabela();
                 atualizarEstatisticas();
                 
-                mostrarIndicadorSync('❌ Erro no Supabase - salvo apenas localmente', 'error', 4000);
-                mostrarAlerta('error', `❌ Erro ao salvar no Supabase:\n${error.message}\n\n💾 Dados salvos localmente\n⚠️ Execute os scripts SQL fornecidos`);
+                mostrarIndicadorSync('❌ Erro no Supabase - salvo localmente', 'error', 4000);
+                mostrarAlerta('error', `❌ Erro ao salvar no Supabase:\n${error.message}\n\n💾 Dados salvos localmente\n⚠️ Execute os scripts SQL`);
                 atualizarIndicadorPolling('error');
             }
         }
@@ -2476,7 +2562,7 @@
                 return;
             }
             
-            if (confirm('Tem certeza que deseja limpar todos os dados?\n\n🚀 Esta ação será sincronizada via Supabase!')) {
+            if (confirm('Tem certeza que deseja limpar todos os dados?\n\n🚀 Será sincronizado via Supabase!')) {
                 
                 try {
                     if (supabaseDisponivel) {
@@ -2517,11 +2603,11 @@
                     lastSyncTime = Date.now();
                     ultimoTimestampBanco = Date.now();
                     
-                    mostrarAlerta('info', '🗑️ Dados limpos com sucesso!\n\n🚀 Sincronizado via Supabase\n🔄 Outros usuários verão a limpeza via polling.');
+                    mostrarAlerta('info', '🗑️ Dados limpos!\n\n🚀 Sincronizado via Supabase\n🔄 Outros usuários verão via polling.');
                     
                 } catch (error) {
                     console.error('❌ Erro ao limpar dados:', error);
-                    mostrarAlerta('error', `❌ Erro ao limpar dados:\n${error.message}`);
+                    mostrarAlerta('error', `❌ Erro ao limpar:\n${error.message}`);
                 }
             }
         }
@@ -2714,8 +2800,8 @@
             tipoUsuario.textContent = usuarioLogado.nivel.toUpperCase();
             
             if (usuarioLogado.nivel === 'master') {
-                btnImportar.style.display = 'block';
-                btnLimparArquivo.style.display = 'block';
+                btnImportar.style.display = 'flex';
+                btnLimparArquivo.style.display = 'flex';
                 btnControlPanel.style.display = 'inline-block';
                 tipoUsuario.className = 'user-badge user-master';
             } else if (usuarioLogado.nivel === 'administrador') {
@@ -2810,7 +2896,7 @@
             localStorage.setItem('usuariosSistema', JSON.stringify(usuarios));
             carregarListaUsuarios();
             
-            mostrarAlerta('success', `✅ Senha resetada com sucesso!\n\n👤 Usuário: ${usuario.nome}\n🔐 Nova senha configurada.`);
+            mostrarAlerta('success', `✅ Senha resetada!\n\n👤 Usuário: ${usuario.nome}\n🔐 Nova senha configurada.`);
         }
 
         function excluirUsuario(id) {
@@ -2833,7 +2919,7 @@
                 
                 carregarListaUsuarios();
                 atualizarStatusSistema();
-                mostrarAlerta('info', `✅ Usuário ${usuario.nome} excluído com sucesso!`);
+                mostrarAlerta('info', `✅ Usuário ${usuario.nome} excluído!`);
             }
         }
 
@@ -3034,7 +3120,7 @@
             
             renderizarTabela();
             atualizarEstatisticas();
-            mostrarAlerta('info', 'ℹ️ Filtros limpos com sucesso!');
+            mostrarAlerta('info', 'ℹ️ Filtros limpos!');
         }
 
         function converterValor(valor) {
@@ -3080,11 +3166,11 @@
             if (tipo === 'success') {
                 if (mensagem) alertSuccess.innerHTML = mensagem;
                 alertSuccess.style.display = 'block';
-                setTimeout(() => alertSuccess.style.display = 'none', 8000);
+                setTimeout(() => alertSuccess.style.display = 'none', 6000);
             } else if (tipo === 'error') {
                 if (mensagem) alertError.innerHTML = mensagem;
                 alertError.style.display = 'block';
-                setTimeout(() => alertError.style.display = 'none', 7000);
+                setTimeout(() => alertError.style.display = 'none', 6000);
             } else if (tipo === 'info') {
                 if (mensagem) alertInfo.innerHTML = mensagem;
                 alertInfo.style.display = 'block';
@@ -3137,7 +3223,7 @@
                         <td>
                             <span class="expand-icon" data-icon="${chaveGrupo}">▶</span>
                             <strong>${grupo.placa}</strong>
-                            <span class="count-badge">${grupo.registros.length} notas</span>
+                            <span class="count-badge">${grupo.registros.length}</span>
                         </td>
                         <td>-</td>
                         <td>${grupo.dataChegada}</td>
@@ -3152,14 +3238,14 @@
                         <td>${primeiroRegistro.tipoDescarga}</td>
                         <td>${primeiroRegistro.tipoMercado}</td>
                         <td><span class="status-badge status-${grupo.status.toLowerCase()}">${grupo.status}</span></td>
-                        <td colspan="16">📋 Clique para expandir detalhes</td>
+                        <td colspan="16">📋 Clique para expandir</td>
                     </tr>
                 `;
                 
                 grupo.registros.forEach(item => {
                     html += `
                         <tr class="grupo-details" data-grupo="${chaveGrupo}">
-                            <td style="padding-left: 30px;">↳ ${item.placa}</td>
+                            <td style="padding-left: 20px;">↳ ${item.placa}</td>
                             <td>${item.container}</td>
                             <td>${item.dataChegada}</td>
                             <td>${item.dataDescarga}</td>
@@ -3205,7 +3291,6 @@
             const filterGerandoDiaria = document.getElementById('filterGerandoDiaria').value;
             const filterTipoDescarga = document.getElementById('filterTipoDescarga').value;
             
-            // NOVOS FILTROS DE INTERVALO DE DATAS
             const filterDataChegadaDe = document.getElementById('filterDataChegadaDe').value;
             const filterDataChegadaAte = document.getElementById('filterDataChegadaAte').value;
             const filterDataDescargaDe = document.getElementById('filterDataDescargaDe').value;
@@ -3226,13 +3311,11 @@
                 
                 let matchTipoDescarga = !filterTipoDescarga || item.tipoDescarga === filterTipoDescarga;
                 
-                // NOVO: Filtro de intervalo para Data de Chegada
                 let matchDataChegada = true;
                 if (filterDataChegadaDe || filterDataChegadaAte) {
                     matchDataChegada = verificarIntervaloData(item.dataChegada, filterDataChegadaDe, filterDataChegadaAte);
                 }
                 
-                // NOVO: Filtro de intervalo para Data de Descarga
                 let matchDataDescarga = true;
                 if (filterDataDescargaDe || filterDataDescargaAte) {
                     matchDataDescarga = verificarIntervaloData(item.dataDescarga, filterDataDescargaDe, filterDataDescargaAte);
@@ -3306,7 +3389,7 @@
             link.download = `minerva_patio_atual_${new Date().toISOString().split('T')[0]}.csv`;
             link.click();
             
-            mostrarAlerta('success', '✓ Arquivo exportado com sucesso!');
+            mostrarAlerta('success', '✓ Arquivo exportado!');
         }
 
         document.getElementById('searchPlaca').addEventListener('input', aplicarFiltros);
