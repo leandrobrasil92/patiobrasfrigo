@@ -570,32 +570,48 @@
             transform: scale(1.05);
         }
 
-        /* CONTROLES COM FILTROS DE INTERVALO */
+        /* CONTROLES TOTALMENTE RESPONSIVOS */
         .controls {
             padding: 20px;
             background: #f8f9fa;
             border-bottom: 2px solid #dee2e6;
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr auto auto auto;
+            overflow-x: auto;
+        }
+
+        .controls-content {
+            display: flex;
+            flex-wrap: wrap;
             gap: 15px;
             align-items: end;
+            min-width: 100%;
         }
 
         .control-group {
             display: flex;
             flex-direction: column;
             gap: 5px;
+            min-width: 140px;
+            flex: 1;
         }
 
         .control-group.date-range {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            min-width: 200px;
+            flex: 1.5;
+        }
+
+        .date-range-inputs {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 8px;
         }
 
-        .control-group.date-range label {
-            grid-column: 1 / -1;
-            text-align: center;
+        .date-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
         }
 
         .control-group label {
@@ -604,6 +620,7 @@
             color: #495057;
             text-transform: uppercase;
             text-align: center;
+            white-space: nowrap;
         }
 
         .control-group input,
@@ -613,6 +630,7 @@
             border-radius: 6px;
             font-size: 14px;
             transition: all 0.3s;
+            min-width: 0;
         }
 
         .control-group input:focus,
@@ -630,6 +648,15 @@
             font-size: 9px !important;
             color: #6c757d !important;
             margin-bottom: 2px;
+            text-align: left;
+        }
+
+        .controls-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: end;
+            min-width: max-content;
         }
 
         .btn-search {
@@ -642,6 +669,7 @@
             cursor: pointer;
             transition: all 0.3s;
             height: 42px;
+            white-space: nowrap;
         }
 
         .btn-search:hover {
@@ -659,6 +687,7 @@
             cursor: pointer;
             transition: all 0.3s;
             height: 42px;
+            white-space: nowrap;
         }
 
         .btn-clear:hover {
@@ -676,6 +705,7 @@
             cursor: pointer;
             transition: all 0.3s;
             height: 42px;
+            white-space: nowrap;
         }
 
         .btn-clear-file:hover {
@@ -1021,45 +1051,177 @@
             display: none !important;
         }
 
-        /* RESPONSIVO PARA TELAS MENORES E PAINEL ABERTO */
-        @media (max-width: 1400px) {
-            .controls {
-                grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
-                gap: 12px;
+        /* MEDIA QUERIES RESPONSIVAS PARA FILTROS */
+
+        /* Telas muito grandes (>1600px) - Grid completo */
+        @media (min-width: 1600px) {
+            .controls-content {
+                display: grid;
+                grid-template-columns: repeat(8, minmax(140px, 1fr)) repeat(3, auto);
+                gap: 15px;
+                align-items: end;
             }
             
             .control-group.date-range {
-                grid-column: span 2;
+                min-width: 200px;
             }
         }
 
-        @media (max-width: 1200px) {
-            .controls {
-                grid-template-columns: 1fr 1fr 1fr;
+        /* Telas grandes (1200-1600px) - 3 linhas */
+        @media (max-width: 1600px) and (min-width: 1200px) {
+            .controls-content {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 12px;
+                align-items: end;
+            }
+            
+            .controls-buttons {
+                grid-column: 1 / -1;
+                display: flex;
                 gap: 10px;
+                justify-content: center;
+                margin-top: 15px;
             }
         }
 
-        @media (max-width: 968px) {
+        /* Telas médias (768-1200px) - 2 colunas com stack */
+        @media (max-width: 1200px) and (min-width: 768px) {
+            .controls-content {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 12px;
+                align-items: start;
+            }
+            
+            .control-group.date-range {
+                min-width: 180px;
+            }
+            
+            .controls-buttons {
+                grid-column: 1 / -1;
+                display: flex;
+                gap: 8px;
+                justify-content: center;
+                margin-top: 15px;
+                flex-wrap: wrap;
+            }
+        }
+
+        /* Telas pequenas (480-768px) - 2 colunas */
+        @media (max-width: 768px) and (min-width: 480px) {
             .controls {
+                padding: 15px;
+            }
+            
+            .controls-content {
+                display: grid;
                 grid-template-columns: 1fr 1fr;
                 gap: 10px;
+                align-items: start;
+            }
+            
+            .control-group {
+                min-width: 120px;
             }
             
             .control-group.date-range {
-                grid-column: span 2;
+                grid-column: 1 / -1;
+                min-width: 100%;
+            }
+            
+            .date-range-inputs {
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+            
+            .controls-buttons {
+                grid-column: 1 / -1;
+                display: flex;
+                gap: 8px;
+                justify-content: stretch;
+                margin-top: 15px;
+            }
+            
+            .controls-buttons button {
+                flex: 1;
+                font-size: 12px;
+                padding: 8px 12px;
+            }
+        }
+
+        /* Telas muito pequenas (<480px) - Single column */
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+            
+            .controls {
+                padding: 15px;
+            }
+            
+            .controls-content {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                align-items: stretch;
+            }
+            
+            .control-group {
+                min-width: 100%;
+                flex: none;
+            }
+            
+            .control-group.date-range {
+                min-width: 100%;
+            }
+            
+            .date-range-inputs {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .controls-buttons {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                margin-top: 15px;
+            }
+            
+            .controls-buttons button {
+                width: 100%;
+                font-size: 14px;
+                padding: 12px;
             }
             
             .user-panel-modal {
-                width: 98%;
-                height: 95vh;
+                width: 100%;
+                height: 100%;
+                max-height: none;
+                border-radius: 0;
                 padding: 20px;
-                margin: 10px;
             }
             
             .user-form {
-                grid-template-columns: 1fr 1fr;
-                gap: 8px;
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            
+            .polling-indicator, .update-notification, .polling-counter {
+                position: relative;
+                margin: 10px auto;
+                top: auto;
+                left: auto;
+                max-width: calc(100vw - 20px);
+            }
+            
+            .auto-save-indicator, .sync-indicator {
+                position: relative;
+                margin: 10px auto;
+                top: auto;
+                right: auto;
+                max-width: calc(100vw - 20px);
             }
             
             .user-info {
@@ -1068,53 +1230,13 @@
                 justify-content: center;
                 flex-wrap: wrap;
             }
-        }
-
-        @media (max-width: 768px) {
-            .controls {
-                grid-template-columns: 1fr;
-                gap: 8px;
+            
+            .header h1 {
+                font-size: 22px;
             }
             
-            .control-group.date-range {
-                grid-column: 1;
-            }
-            
-            .polling-indicator, .update-notification, .polling-counter {
-                position: relative;
-                margin: 10px auto;
-                top: auto;
-                left: auto;
-                max-width: calc(100vw - 40px);
-            }
-            
-            .auto-save-indicator, .sync-indicator {
-                position: relative;
-                margin: 10px auto;
-                top: auto;
-                right: auto;
-                max-width: calc(100vw - 40px);
-            }
-            
-            .user-panel {
-                padding: 10px;
-                align-items: flex-start;
-                overflow-y: auto;
-            }
-            
-            .user-panel-modal {
-                margin: 0;
-                width: 100%;
-                height: 100%;
-                max-height: none;
-                border-radius: 0;
-                display: flex;
-                flex-direction: column;
-            }
-            
-            .user-form {
-                grid-template-columns: 1fr;
-                gap: 10px;
+            .header p {
+                font-size: 12px;
             }
             
             body.panel-open {
@@ -1122,7 +1244,7 @@
             }
         }
 
-        /* MELHORIAS PARA MODAL ABERTO */
+        /* Melhorias para modal responsivo */
         .user-panel-modal::-webkit-scrollbar {
             width: 8px;
         }
@@ -1284,73 +1406,89 @@
         </div>
 
         <div class="controls">
-            <div class="control-group">
-                <label>🔍 Buscar por Placa</label>
-                <input type="text" id="searchPlaca" placeholder="Digite a placa...">
-            </div>
-            <div class="control-group">
-                <label>📦 Filtrar por Status</label>
-                <select id="filterStatus">
-                    <option value="">Todos</option>
-                    <option value="AGUARDANDO">Aguardando</option>
-                    <option value="TRÂNSITO">Em Trânsito</option>
-                    <option value="DESCARREGADO">Descarregado</option>
-                    <option value="DESOVANDO">Desovando</option>
-                </select>
-            </div>
-            <div class="control-group">
-                <label>🏭 Filtrar por Origem</label>
-                <select id="filterOrigem">
-                    <option value="">Todas</option>
-                </select>
-            </div>
-            <div class="control-group">
-                <label>🌎 Tipo de Mercado</label>
-                <select id="filterTipoMercado">
-                    <option value="">Todos</option>
-                </select>
-            </div>
-            <div class="control-group">
-                <label>💰 Gerando Diária</label>
-                <select id="filterGerandoDiaria">
-                    <option value="">Todos</option>
-                    <option value="SIM">Sim</option>
-                    <option value="NAO">Não</option>
-                </select>
-            </div>
-            <div class="control-group">
-                <label>🚢 Tipo de Descarga</label>
-                <select id="filterTipoDescarga">
-                    <option value="">Todos</option>
-                    <option value="BREAK BULK">Break Bulk</option>
-                    <option value="ITAJAI">Itajaí</option>
-                </select>
-            </div>
-            <div class="control-group date-range">
-                <label>📅 Data de Chegada</label>
-                <div>
-                    <div class="date-label-small">De:</div>
-                    <input type="date" id="filterDataChegadaDe" class="date-input-small">
+            <div class="controls-content">
+                <div class="control-group">
+                    <label>🔍 Buscar por Placa</label>
+                    <input type="text" id="searchPlaca" placeholder="Digite a placa...">
                 </div>
-                <div>
-                    <div class="date-label-small">Até:</div>
-                    <input type="date" id="filterDataChegadaAte" class="date-input-small">
+                
+                <div class="control-group">
+                    <label>📦 Filtrar por Status</label>
+                    <select id="filterStatus">
+                        <option value="">Todos</option>
+                        <option value="AGUARDANDO">Aguardando</option>
+                        <option value="TRÂNSITO">Em Trânsito</option>
+                        <option value="DESCARREGADO">Descarregado</option>
+                        <option value="DESOVANDO">Desovando</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>🏭 Filtrar por Origem</label>
+                    <select id="filterOrigem">
+                        <option value="">Todas</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>🌎 Tipo de Mercado</label>
+                    <select id="filterTipoMercado">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>💰 Gerando Diária</label>
+                    <select id="filterGerandoDiaria">
+                        <option value="">Todos</option>
+                        <option value="SIM">Sim</option>
+                        <option value="NAO">Não</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>🚢 Tipo de Descarga</label>
+                    <select id="filterTipoDescarga">
+                        <option value="">Todos</option>
+                        <option value="BREAK BULK">Break Bulk</option>
+                        <option value="ITAJAI">Itajaí</option>
+                    </select>
+                </div>
+                
+                <div class="control-group date-range">
+                    <label>📅 Data de Chegada</label>
+                    <div class="date-range-inputs">
+                        <div class="date-input-group">
+                            <div class="date-label-small">De:</div>
+                            <input type="date" id="filterDataChegadaDe" class="date-input-small">
+                        </div>
+                        <div class="date-input-group">
+                            <div class="date-label-small">Até:</div>
+                            <input type="date" id="filterDataChegadaAte" class="date-input-small">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="control-group date-range">
+                    <label>📆 Data de Descarga</label>
+                    <div class="date-range-inputs">
+                        <div class="date-input-group">
+                            <div class="date-label-small">De:</div>
+                            <input type="date" id="filterDataDescargaDe" class="date-input-small">
+                        </div>
+                        <div class="date-input-group">
+                            <div class="date-label-small">Até:</div>
+                            <input type="date" id="filterDataDescargaAte" class="date-input-small">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="controls-buttons">
+                    <button class="btn-search" onclick="aplicarFiltros()">Aplicar Filtros</button>
+                    <button class="btn-clear" onclick="limparFiltros()">🔄 Limpar</button>
+                    <button class="btn-clear-file" id="btnLimparArquivo" onclick="limparArquivo()">🗑️ Limpar Arquivo</button>
                 </div>
             </div>
-            <div class="control-group date-range">
-                <label>📆 Data de Descarga</label>
-                <div>
-                    <div class="date-label-small">De:</div>
-                    <input type="date" id="filterDataDescargaDe" class="date-input-small">
-                </div>
-                <div>
-                    <div class="date-label-small">Até:</div>
-                    <input type="date" id="filterDataDescargaAte" class="date-input-small">
-                </div>
-            </div>
-            <button class="btn-search" onclick="aplicarFiltros()">Aplicar Filtros</button>
-            <button class="btn-clear" onclick="limparFiltros()">🔄 Limpar Filtros</button>
-            <button class="btn-clear-file" id="btnLimparArquivo" onclick="limparArquivo()">🗑️ Limpar Arquivo</button>
         </div>
 
         <div class="total-diarias-info" id="totalDiariasInfo">
@@ -2729,18 +2867,15 @@
             if (!dataItem) return false;
             
             try {
-                // Converter data brasileira para ISO para comparação
                 const dataItemISO = converterDataParaISO(dataItem);
                 if (!dataItemISO) return false;
                 
                 let match = true;
                 
-                // Se tem data "De", verificar se item é >= dataDe
                 if (dataDe) {
                     match = match && (dataItemISO >= dataDe);
                 }
                 
-                // Se tem data "Até", verificar se item é <= dataAte
                 if (dataAte) {
                     match = match && (dataItemISO <= dataAte);
                 }
