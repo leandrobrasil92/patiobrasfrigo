@@ -676,12 +676,14 @@
             font-weight: 500;
         }
 
+        /* BOTÕES CENTRALIZADOS EMBAIXO */
         .controls-buttons {
             display: flex;
             gap: 6px;
-            flex-wrap: nowrap;
-            align-items: end;
-            flex: 0 0 auto;
+            justify-content: center;
+            margin-top: 12px;
+            padding-top: 8px;
+            border-top: 1px solid #e9ecef;
         }
 
         .btn-search {
@@ -1151,14 +1153,6 @@
                 gap: 8px;
                 align-items: end;
             }
-            
-            .controls-buttons {
-                grid-column: 1 / -1;
-                display: flex;
-                gap: 6px;
-                justify-content: center;
-                margin-top: 8px;
-            }
         }
 
         /* Telas pequenas (600-1000px) - Stack responsivo */
@@ -1186,15 +1180,6 @@
             .date-range-inputs {
                 grid-template-columns: 1fr 1fr;
                 gap: 4px;
-            }
-            
-            .controls-buttons {
-                grid-column: 1 / -1;
-                display: flex;
-                gap: 6px;
-                justify-content: center;
-                margin-top: 8px;
-                flex-wrap: wrap;
             }
             
             .controls-buttons button {
@@ -1562,18 +1547,19 @@
                         </div>
                     </div>
                 </div>
-                
-                <div class="controls-buttons">
-                    <button class="btn-search" onclick="aplicarFiltros()">
-                        <span>🔍</span> Aplicar
-                    </button>
-                    <button class="btn-clear" onclick="limparFiltros()">
-                        <span>🔄</span> Limpar
-                    </button>
-                    <button class="btn-clear-file" id="btnLimparArquivo" onclick="limparArquivo()">
-                        <span>🗑️</span> Limpar Arquivo
-                    </button>
-                </div>
+            </div>
+            
+            <!-- BOTÕES CENTRALIZADOS EMBAIXO -->
+            <div class="controls-buttons">
+                <button class="btn-search" onclick="aplicarFiltros()">
+                    <span>🔍</span> Aplicar
+                </button>
+                <button class="btn-clear" onclick="limparFiltros()">
+                    <span>🔄</span> Limpar
+                </button>
+                <button class="btn-clear-file" id="btnLimparArquivo" onclick="limparArquivo()">
+                    <span>🗑️</span> Limpar Arquivo
+                </button>
             </div>
         </div>
 
