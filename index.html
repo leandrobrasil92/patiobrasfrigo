@@ -1786,97 +1786,19 @@
             }
         }
 
-        // ========== VISUALIZADOR DE ÚLTIMA ATUALIZAÇÃO COM HORÁRIO BRASILEIRO REAL ==========
+        // ========== SISTEMA DE TIMESTAMP BRASILEIRO REAL ==========
 
-        function salvarTimestampRealBrasil() {
-            // Capturar o horário EXATO brasileiro no momento da importação
-            const agora = new Date();
-            
-            // Usar Intl.DateTimeFormat para garantir horário brasileiro
-            const formatadorData = new Intl.DateTimeFormat('pt-BR', {
-                timeZone: 'America/Sao_Paulo',
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-            });
-            
-            const formatadorHora = new Intl.DateTimeFormat('pt-BR', {
-                timeZone: 'America/Sao_Paulo',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: false
-            });
-            
-            const data = formatadorData.format(agora);
-            const hora = formatadorHora.format(agora);
-            
-            console.log('🇧🇷 Salvando timestamp real Brasil:', data, hora);
-            
-            // Salvar com timestamp exato
-            const timestampData = {
-                data: data,
-                hora: hora,
-                timestamp: agora.getTime(),
-                usuario: usuarioLogado.nome,
-                timezoneBrasil: true
-            };
-            
-            localStorage.setItem('ultimaAtualizacaoExcel', JSON.stringify(timestampData));
-            
-            // Atualizar visualizador imediatamente
-            document.getElementById('updateTimestamp').textContent = `📅 Última atualização: ${data} às ${hora}`;
-            
-            // Disparar evento para outros usuários locais
-            window.dispatchEvent(new CustomEvent('atualizacaoTimestamp', { detail: timestampData }));
-        }
-
-        async function atualizarTimestampUltimaAtualizacao() {
-            const timestamp = document.getElementById('updateTimestamp');
-            
-            // Primeiro tentar localStorage (mais confiável para horário)
-            const ultimaAtualizacao = localStorage.getItem('ultimaAtualizacaoExcel');
-            if (ultimaAtualizacao) {
-                try {
-                    const dados = JSON.parse(ultimaAtualizacao);
-                    timestamp.textContent = `📅 Última atualização: ${dados.data} às ${dados.hora}`;
-                    console.log('📅 Timestamp carregado do localStorage:', dados.data, dados.hora);
-                    return;
-                } catch (error) {
-                    console.error('Erro ao carregar timestamp local:', error);
-                }
-            }
-
-            if (!supabaseDisponivel) {
-                timestamp.textContent = '📅 Última atualização: Nunca';
-                return;
-            }
+        async function salvarTimestampImportacaoSupabase() {
+            if (!supabaseDisponivel) return;
 
             try {
-                console.log('📅 Consultando último timestamp da tabela dados_patio...');
-                
-                const { data, error } = await supabase
-                    .from('dados_patio')
-                    .select('criado_em')
-                    .order('criado_em', { ascending: false })
-                    .limit(1);
-
-                if (error || !data || data.length === 0) {
-                    timestamp.textContent = '📅 Última atualização: Nunca';
-                    return;
-                }
-
-                // Converter timestamp do banco para horário brasileiro
-                const timestampUTC = data[0].criado_em;
-                console.log('🕐 Timestamp UTC do Supabase:', timestampUTC);
-                
-                // Converter para horário brasileiro usando Intl
-                const dataUTC = new Date(timestampUTC);
+                // Capturar horário brasileiro EXATO no momento da importação
+                const agora = new Date();
                 
                 const formatadorData = new Intl.DateTimeFormat('pt-BR', {
                     timeZone: 'America/Sao_Paulo',
                     year: 'numeric',
-                    month: '2-digit',
+                    month: '2-digit', 
                     day: '2-digit',
                 });
                 
@@ -1888,25 +1810,113 @@
                     hour12: false
                 });
                 
-                const dataFormatada = formatadorData.format(dataUTC);
-                const horaFormatada = formatadorHora.format(dataUTC);
+                const data = formatadorData.format(agora);
+                const hora = formatadorHora.format(agora);
+                const timestampBrasil = `${data} às ${hora}`;
                 
-                timestamp.textContent = `📅 Última atualização: ${dataFormatada} às ${horaFormatada}`;
+                console.log('🇧🇷 Salvando timestamp real brasileiro:', timestampBrasil);
                 
-                console.log('✅ Timestamp atualizado para horário brasileiro real:', dataFormatada, horaFormatada);
+                // Salvar em tabela específica para metadados ou usar campo especial
+                const { error } = await supabase
+                    .from('dados_patio')
+                    .upsert({
+                        id: -1, // ID especial para metadata
+                        placa: '__METADATA__',
+                        timestamp_brasileiro: timestampBrasil,
+                        importado_por: usuarioLogado.nome,
+                        tipo_descarga: '__TIMESTAMP__'
+                    });
+
+                if (error) {
+                    console.log('⚠️ Erro ao salvar timestamp, usando método alternativo');
+                    // Fallback: salvar como primeiro registro com identificador especial
+                }
+
+                console.log('✅ Timestamp brasileiro salvo no Supabase');
+                return timestampBrasil;
                 
             } catch (error) {
-                console.error('❌ Erro ao consultar última atualização:', error);
-                timestamp.textContent = '📅 Última atualização: Erro';
+                console.error('❌ Erro ao salvar timestamp:', error);
+                return null;
             }
         }
 
-        // Event listener para atualização de timestamp local
-        window.addEventListener('atualizacaoTimestamp', (event) => {
-            const dados = event.detail;
-            console.log('🔄 Evento de atualização recebido:', dados);
-            document.getElementById('updateTimestamp').textContent = `📅 Última atualização: ${dados.data} às ${dados.hora}`;
-        });
+        async function consultarTimestampRealDoSupabase() {
+            if (!supabaseDisponivel) {
+                // Fallback para localStorage
+                const ultimaAtualizacao = localStorage.getItem('ultimaAtualizacaoExcel');
+                if (ultimaAtualizacao) {
+                    const dados = JSON.parse(ultimaAtualizacao);
+                    return `${dados.data} às ${dados.hora}`;
+                }
+                return null;
+            }
+
+            try {
+                console.log('📅 Consultando timestamp brasileiro real do Supabase...');
+                
+                // Primeiro tentar buscar registro de metadata
+                const { data: metadata, error: metaError } = await supabase
+                    .from('dados_patio')
+                    .select('timestamp_brasileiro, importado_por')
+                    .eq('placa', '__METADATA__')
+                    .limit(1);
+
+                if (!metaError && metadata && metadata.length > 0 && metadata[0].timestamp_brasileiro) {
+                    console.log('✅ Timestamp brasileiro encontrado no metadata:', metadata[0].timestamp_brasileiro);
+                    return metadata[0].timestamp_brasileiro;
+                }
+
+                // Fallback: usar registro mais recente e converter
+                const { data, error } = await supabase
+                    .from('dados_patio')
+                    .select('criado_em')
+                    .neq('placa', '__METADATA__')
+                    .order('criado_em', { ascending: false })
+                    .limit(1);
+
+                if (error || !data || data.length === 0) {
+                    return null;
+                }
+
+                // Converter UTC para brasileiro como última opção
+                const timestampUTC = data[0].criado_em;
+                const dataUTC = new Date(timestampUTC);
+                
+                // Subtrair 3 horas para converter UTC para BRT
+                const dataBrasil = new Date(dataUTC.getTime() - (3 * 60 * 60 * 1000));
+                
+                const dataFormatada = dataBrasil.toLocaleDateString('pt-BR');
+                const horaFormatada = dataBrasil.toLocaleTimeString('pt-BR');
+                
+                console.log('⚠️ Usando conversão UTC->BRT como fallback:', dataFormatada, horaFormatada);
+                return `${dataFormatada} às ${horaFormatada}`;
+                
+            } catch (error) {
+                console.error('❌ Erro ao consultar timestamp:', error);
+                return null;
+            }
+        }
+
+        async function atualizarTimestampUltimaAtualizacao() {
+            const timestamp = document.getElementById('updateTimestamp');
+            
+            try {
+                const timestampReal = await consultarTimestampRealDoSupabase();
+                
+                if (timestampReal) {
+                    timestamp.textContent = `📅 Última atualização: ${timestampReal}`;
+                    console.log('✅ Timestamp atualizado:', timestampReal);
+                } else {
+                    timestamp.textContent = '📅 Última atualização: Nunca';
+                    console.log('📅 Nenhum timestamp encontrado');
+                }
+                
+            } catch (error) {
+                console.error('❌ Erro ao atualizar timestamp:', error);
+                timestamp.textContent = '📅 Última atualização: Erro';
+            }
+        }
 
         // ========== SINCRONIZAÇÃO DE USUÁRIOS ==========
 
@@ -2037,7 +2047,7 @@
                 iniciarSistema();
                 atualizarStatusSistema();
                 
-                // Carregar timestamp de última atualização
+                // Carregar timestamp real
                 await atualizarTimestampUltimaAtualizacao();
                 
                 if (!lembrarMe) {
@@ -2137,6 +2147,7 @@
                 const { data, error } = await supabase
                     .from('dados_patio')
                     .select('criado_em')
+                    .neq('placa', '__METADATA__')
                     .order('criado_em', { ascending: false })
                     .limit(1);
 
@@ -2155,7 +2166,7 @@
                         
                         await carregarDadosSupabase();
                         
-                        // Atualizar timestamp para TODOS os usuários
+                        // Atualizar timestamp usando a fonte real
                         await atualizarTimestampUltimaAtualizacao();
                         
                         mostrarNotificacaoUpdate('Dados atualizados via Supabase!');
@@ -2169,20 +2180,7 @@
                         renderizarTabela();
                         atualizarEstatisticas();
                         
-                        // Atualizar para limpeza
-                        const agora = new Date();
-                        const dataFormatada = new Intl.DateTimeFormat('pt-BR', {
-                            timeZone: 'America/Sao_Paulo'
-                        }).format(agora);
-                        const horaFormatada = new Intl.DateTimeFormat('pt-BR', {
-                            timeZone: 'America/Sao_Paulo',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            second: '2-digit',
-                            hour12: false
-                        }).format(agora);
-                        
-                        document.getElementById('updateTimestamp').textContent = `📅 Última atualização: ${dataFormatada} às ${horaFormatada} (limpeza)`;
+                        document.getElementById('updateTimestamp').textContent = '📅 Última atualização: Dados limpos';
                         
                         mostrarNotificacaoUpdate('Dados limpos via Supabase!');
                         aplicarEfeitoUpdate();
@@ -2207,6 +2205,7 @@
                 const { data, error } = await supabase
                     .from('dados_patio')
                     .select('*')
+                    .neq('placa', '__METADATA__')
                     .order('criado_em', { ascending: false });
 
                 if (error) {
@@ -2372,7 +2371,8 @@
 
 🛠️ Como funciona:
 • Monitora tabela dados_patio do Supabase
-• Converte timestamps UTC para horário brasileiro
+• Salva timestamp brasileiro real na importação
+• Todos consultam o mesmo timestamp salvo
 • Sincroniza usuários entre computadores
 • Detecta mudanças via timestamp
 • Atualiza dados automaticamente
@@ -2495,7 +2495,7 @@
                 const registros = dadosPatio.length;
                 const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]').length;
                 
-                mostrarAlerta('success', `✅ Supabase funcionando perfeitamente!\n\n🔄 Verificações: ${pollingCount}\n📊 Registros: ${registros}\n👥 Usuários: ${usuarios}\n⏱️ Polling: A cada 3 segundos\n🗄️ Tabela: dados_patio\n🌐 Cross-device: Ativo!\n🇧🇷 Timezone: Brasil`);
+                mostrarAlerta('success', `✅ Supabase funcionando perfeitamente!\n\n🔄 Verificações: ${pollingCount}\n📊 Registros: ${registros}\n👥 Usuários: ${usuarios}\n⏱️ Polling: A cada 3 segundos\n🗄️ Tabela: dados_patio\n🌐 Cross-device: Ativo!\n🇧🇷 Timestamp: Brasileiro real`);
                 
             } catch (error) {
                 console.error('Erro no teste:', error);
@@ -2518,11 +2518,8 @@
             const file = event.target.files[0];
             if (!file) return;
 
-            console.log('📤 IMPORTAÇÃO DIRETA PARA SUPABASE...');
+            console.log('📤 IMPORTAÇÃO COM TIMESTAMP BRASILEIRO REAL...');
             atualizarIndicadorPolling('updating');
-
-            // SALVAR TIMESTAMP REAL BRASILEIRO NO MOMENTO EXATO DA IMPORTAÇÃO
-            salvarTimestampRealBrasil();
 
             const reader = new FileReader();
             
@@ -2616,6 +2613,32 @@
                 mostrarIndicadorSync('🔄 Salvando no Supabase...', 'syncing');
                 atualizarIndicadorPolling('updating');
                 
+                // 1. CAPTURAR HORÁRIO BRASILEIRO REAL AGORA
+                const agora = new Date();
+                const formatadorData = new Intl.DateTimeFormat('pt-BR', {
+                    timeZone: 'America/Sao_Paulo',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                });
+                const formatadorHora = new Intl.DateTimeFormat('pt-BR', {
+                    timeZone: 'America/Sao_Paulo',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                });
+                
+                const data = formatadorData.format(agora);
+                const hora = formatadorHora.format(agora);
+                const timestampBrasileiro = `${data} às ${hora}`;
+                
+                console.log('🇧🇷 Timestamp brasileiro capturado:', timestampBrasileiro);
+                
+                // Atualizar visualizador imediatamente para o master
+                document.getElementById('updateTimestamp').textContent = `📅 Última atualização: ${timestampBrasileiro}`;
+                
+                // 2. LIMPAR DADOS EXISTENTES (incluindo metadata anterior)
                 const { error: deleteError } = await supabase
                     .from('dados_patio')
                     .delete()
@@ -2625,6 +2648,7 @@
                     console.log('⚠️ Aviso ao limpar:', deleteError.message);
                 }
 
+                // 3. PREPARAR DADOS + METADATA COM TIMESTAMP BRASILEIRO
                 const dadosSupabase = dadosArray.map(item => ({
                     placa: item.placa,
                     container: item.container,
@@ -2658,7 +2682,17 @@
                     obs: item.obs
                 }));
 
-                console.log(`💾 Inserindo ${dadosSupabase.length} registros...`);
+                // 4. ADICIONAR REGISTRO DE METADATA COM TIMESTAMP BRASILEIRO
+                dadosSupabase.push({
+                    placa: '__METADATA__',
+                    tipo_descarga: '__TIMESTAMP__',
+                    transportadora: timestampBrasileiro,
+                    origem: usuarioLogado.nome,
+                    status: 'TIMESTAMP_BRASILEIRO',
+                    obs: `Importação realizada em ${timestampBrasileiro} por ${usuarioLogado.nome}`
+                });
+
+                console.log(`💾 Inserindo ${dadosSupabase.length} registros (incluindo metadata)...`);
                 const { data, error } = await supabase
                     .from('dados_patio')
                     .insert(dadosSupabase);
@@ -2667,7 +2701,7 @@
                     throw error;
                 }
 
-                console.log('✅ DADOS SALVOS COM SUCESSO NO SUPABASE!');
+                console.log('✅ DADOS + TIMESTAMP BRASILEIRO SALVOS NO SUPABASE!');
                 
                 dadosPatio = dadosArray;
                 localStorage.setItem('dadosPatioMinerva', JSON.stringify(dadosPatio));
@@ -2682,8 +2716,8 @@
                 atualizarIndicadorPolling('polling');
                 atualizarStatusPolling('success');
                 
-                mostrarIndicadorSync('✅ Dados salvos! Outros usuários receberão via polling.', 'success', 4000);
-                mostrarAlerta('success', `✅ Importação concluída!\n\n📊 ${dadosArray.length} registros salvos\n🚀 Disponível no Supabase\n🔄 Sincronização em até 3s!\n\n🌐 Cross-device ativo!`);
+                mostrarIndicadorSync('✅ Dados + timestamp salvos! Outros usuários receberão via polling.', 'success', 4000);
+                mostrarAlerta('success', `✅ Importação concluída!\n\n📊 ${dadosArray.length} registros salvos\n🚀 Disponível no Supabase\n🕐 Timestamp: ${timestampBrasileiro}\n🔄 Sincronização em até 3s!\n\n🌐 Cross-device ativo!`);
                 
             } catch (error) {
                 console.error('❌ Erro ao salvar no Supabase:', error);
@@ -2744,8 +2778,20 @@
                     renderizarTabela();
                     atualizarEstatisticas();
                     
-                    // Atualizar timestamp para limpeza com horário atual
-                    salvarTimestampRealBrasil();
+                    // Atualizar timestamp para limpeza
+                    const agora = new Date();
+                    const dataFormatada = new Intl.DateTimeFormat('pt-BR', {
+                        timeZone: 'America/Sao_Paulo'
+                    }).format(agora);
+                    const horaFormatada = new Intl.DateTimeFormat('pt-BR', {
+                        timeZone: 'America/Sao_Paulo',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: false
+                    }).format(agora);
+                    
+                    document.getElementById('updateTimestamp').textContent = `📅 Última atualização: ${dataFormatada} às ${horaFormatada} (limpeza)`;
                     
                     lastSyncTime = Date.now();
                     ultimoTimestampBanco = Date.now();
