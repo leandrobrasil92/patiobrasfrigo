@@ -1786,7 +1786,7 @@
             }
         }
 
-        // ========== VISUALIZADOR DE ÚLTIMA ATUALIZAÇÃO ==========
+        // ========== VISUALIZADOR DE ÚLTIMA ATUALIZAÇÃO COM HORÁRIO BRASILEIRO CORRETO ==========
 
         async function atualizarTimestampUltimaAtualizacao() {
             const timestamp = document.getElementById('updateTimestamp');
@@ -1804,6 +1804,8 @@
             }
 
             try {
+                console.log('📅 Consultando último timestamp da tabela dados_patio...');
+                
                 // Consultar timestamp mais recente da tabela dados_patio
                 const { data, error } = await supabase
                     .from('dados_patio')
@@ -1813,17 +1815,29 @@
 
                 if (error || !data || data.length === 0) {
                     timestamp.textContent = '📅 Última atualização: Nunca';
+                    console.log('📅 Nenhum registro encontrado na tabela');
                     return;
                 }
 
-                // Formatar data brasileira
-                const dataAtualizacao = new Date(data[0].criado_em);
-                const dataFormatada = dataAtualizacao.toLocaleDateString('pt-BR');
-                const horaFormatada = dataAtualizacao.toLocaleTimeString('pt-BR');
+                // CORREÇÃO: Converter UTC para horário brasileiro
+                const timestampUTC = data[0].criado_em;
+                console.log('🕐 Timestamp UTC do Supabase:', timestampUTC);
+                
+                // Criar data em UTC primeiro
+                const dataUTC = new Date(timestampUTC);
+                console.log('🕐 Data UTC parseada:', dataUTC.toISOString());
+                
+                // Converter para horário brasileiro (UTC-3)
+                const dataBrasil = new Date(dataUTC.toLocaleString("en-US", {timeZone: "America/Sao_Paulo"}));
+                console.log('🇧🇷 Data Brasil convertida:', dataBrasil);
+                
+                // Formatar para exibição brasileira
+                const dataFormatada = dataBrasil.toLocaleDateString('pt-BR');
+                const horaFormatada = dataBrasil.toLocaleTimeString('pt-BR');
                 
                 timestamp.textContent = `📅 Última atualização: ${dataFormatada} às ${horaFormatada}`;
                 
-                console.log('📅 Timestamp atualizado:', dataFormatada, horaFormatada);
+                console.log('✅ Timestamp atualizado para horário brasileiro:', dataFormatada, horaFormatada);
                 
             } catch (error) {
                 console.error('❌ Erro ao consultar última atualização:', error);
@@ -1832,7 +1846,7 @@
         }
 
         function salvarTimestampLocal() {
-            // Backup local para fallback
+            // Backup local para fallback com horário brasileiro
             const agora = new Date();
             const data = agora.toLocaleDateString('pt-BR');
             const hora = agora.toLocaleTimeString('pt-BR');
@@ -1843,6 +1857,8 @@
                 timestamp: agora.getTime(),
                 usuario: usuarioLogado.nome
             }));
+            
+            console.log('💾 Timestamp local salvo:', data, hora);
         }
 
         // ========== SINCRONIZAÇÃO DE USUÁRIOS ==========
@@ -1974,7 +1990,7 @@
                 iniciarSistema();
                 atualizarStatusSistema();
                 
-                // Carregar timestamp de última atualização
+                // Carregar timestamp de última atualização (corrigido)
                 await atualizarTimestampUltimaAtualizacao();
                 
                 if (!lembrarMe) {
@@ -2092,7 +2108,7 @@
                         
                         await carregarDadosSupabase();
                         
-                        // Atualizar timestamp para TODOS os usuários
+                        // Atualizar timestamp para TODOS os usuários com horário correto
                         await atualizarTimestampUltimaAtualizacao();
                         
                         mostrarNotificacaoUpdate('Dados atualizados via Supabase!');
@@ -2108,7 +2124,7 @@
                         atualizarEstatisticas();
                         
                         // Atualizar timestamp para limpeza
-                        await atualizarTimestampUltimaAtualizacao();
+                        document.getElementById('updateTimestamp').textContent = '📅 Última atualização: Dados limpos';
                         
                         mostrarNotificacaoUpdate('Dados limpos via Supabase!');
                         aplicarEfeitoUpdate();
@@ -2271,7 +2287,7 @@
 
         function mostrarDetalhesPolling() {
             const registros = dadosPatio.length;
-            const ultimaSync = lastSyncTime ? new Date(lastSyncTime).toLocaleTimeString() : 'Nunca';
+            const ultimaSync = lastSyncTime ? new Date(lastSyncTime).toLocaleTimeString('pt-BR') : 'Nunca';
             const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]').length;
             
             const info = `
@@ -2290,6 +2306,7 @@
 • Monitora tabela dados_patio do Supabase
 • Sincroniza usuários entre computadores
 • Detecta mudanças via timestamp
+• Converte UTC para horário brasileiro
 • Atualiza dados automaticamente
 • Funciona entre computadores diferentes
 
@@ -2504,7 +2521,7 @@
                     
                     console.log(`📊 ${dadosProcessados.length} registros processados`);
                     
-                    // Salvar timestamp local (backup)
+                    // Salvar timestamp local com horário atual (backup)
                     salvarTimestampLocal();
                     
                     salvarDadosNoSupabase(dadosProcessados);
@@ -2584,6 +2601,7 @@
                 }
 
                 console.log('✅ DADOS SALVOS COM SUCESSO NO SUPABASE!');
+                console.log('📅 Campo criado_em será automaticamente atualizado pelo Supabase');
                 
                 dadosPatio = dadosArray;
                 localStorage.setItem('dadosPatioMinerva', JSON.stringify(dadosPatio));
@@ -2592,7 +2610,7 @@
                 renderizarTabela();
                 atualizarEstatisticas();
                 
-                // Atualizar timestamp para master e preparar para outros usuários
+                // Atualizar timestamp imediatamente após importação com horário real
                 await atualizarTimestampUltimaAtualizacao();
                 
                 lastSyncTime = Date.now();
@@ -2664,7 +2682,7 @@
                     atualizarEstatisticas();
                     
                     // Atualizar timestamp após limpeza
-                    await atualizarTimestampUltimaAtualizacao();
+                    document.getElementById('updateTimestamp').textContent = '📅 Última atualização: Dados limpos agora';
                     
                     lastSyncTime = Date.now();
                     ultimoTimestampBanco = Date.now();
@@ -2983,7 +3001,7 @@
                 const usuariosAtualizados = usuarios.filter(u => u.id !== id);
                 localStorage.setItem('usuariosSistema', JSON.stringify(usuariosAtualizados));
                 
-                carregarListaUsuários();
+                carregarListaUsuarios();
                 atualizarStatusSistema();
                 mostrarAlerta('info', `✅ Usuário ${usuario.nome} excluído!`);
             }
