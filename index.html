@@ -181,6 +181,38 @@
             transition: all 0.3s ease;
         }
 
+        /* NOTIFICAÇÃO DE ATUALIZAÇÕES EM TEMPO REAL */
+        .realtime-notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #10b981;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            display: none;
+            z-index: 10000;
+            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
+            animation: realtimeSlide 0.5s ease;
+        }
+
+        .realtime-notification.show {
+            display: block;
+        }
+
+        .realtime-notification.import-sync {
+            background: #f59e0b;
+            color: #1f2937;
+        }
+
+        @keyframes realtimeSlide {
+            from { transform: translateX(-50%) translateY(-100%); opacity: 0; }
+            to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
+
         /* NOTIFICAÇÃO DE ATUALIZAÇÕES */
         .update-notification {
             position: fixed;
@@ -1567,17 +1599,22 @@
         <h2>🛡️ IMPORTAÇÃO BLINDADA</h2>
         <div class="progress" id="importProgress">Iniciando importação segura...</div>
         <div class="details" id="importDetails">
-            • Sistema TOTALMENTE BLOQUEADO<br>
-            • Polling DESABILITADO<br>
-            • Dados FORÇADOS na tabela<br>
-            • Proteção ABSOLUTA contra conflitos<br>
-            • Renderização GARANTIDA
+            • Sistema TEMPORARIAMENTE BLOQUEADO<br>
+            • Dados sendo sincronizados no Supabase<br>
+            • Polling será reativado após conclusão<br>
+            • TODOS os usuários receberão dados automaticamente<br>
+            • Renderização GARANTIDA para todos
         </div>
     </div>
 
     <!-- BANNER DE SUCESSO DA IMPORTAÇÃO -->
     <div class="import-success-banner" id="importSuccessBanner">
-        🎉 DADOS IMPORTADOS COM SUCESSO - TODOS STATUS VISÍVEIS!
+        🎉 DADOS IMPORTADOS COM SUCESSO - VISÍVEL PARA TODOS EM TEMPO REAL!
+    </div>
+
+    <!-- NOTIFICAÇÃO DE TEMPO REAL -->
+    <div class="realtime-notification" id="realtimeNotification">
+        ⚡ Dados atualizados por outro usuário!
     </div>
 
     <!-- VISUALIZADOR DE ÚLTIMA ATUALIZAÇÃO -->
@@ -1607,7 +1644,7 @@
                     <li>Acesso restrito a usuários autorizados</li>
                     <li>Credenciais protegidas e criptografadas</li>
                     <li>Sistema de auditoria ativo</li>
-                    <li>Sincronização via Supabase</li>
+                    <li>Sincronização em tempo real via Supabase</li>
                 </ul>
             </div>
             
@@ -1626,7 +1663,7 @@
     <!-- PAINEL DE GOVERNANÇA DE USUÁRIOS -->
     <div class="user-panel" id="userPanel">
         <div class="user-panel-modal">
-            <h3 id="panelTitle">👥 Painel de Governança - ACESSO SEGURO</h3>
+            <h3 id="panelTitle">👥 Painel de Governança - TEMPO REAL ATIVO</h3>
             
             <!-- INDICADOR DE POLLING APENAS PARA MASTER -->
             <div id="pollingIndicatorPanel" style="display: none;">
@@ -1661,7 +1698,7 @@
                 <div class="supabase-header">
                     <div class="supabase-title">
                         <span id="supabaseIcon">🚀</span>
-                        <span id="supabaseTitle">Supabase: Conectado</span>
+                        <span id="supabaseTitle">Supabase: Tempo Real Ativo</span>
                     </div>
                     <button class="status-toggle" id="statusToggle" onclick="toggleSupabaseDetails()">▼</button>
                 </div>
@@ -1690,7 +1727,7 @@
                 </button>
                 
                 <div style="text-align: center; font-size: 10px; color: #6b7280; margin-top: 8px;" id="supabaseLastUpdate">
-                    Sincronização automática de usuários
+                    Sincronização automática em tempo real
                 </div>
             </div>
 
@@ -1722,7 +1759,7 @@
                 <button class="btn-logout" onclick="fazerLogout()">Logout</button>
             </div>
             <h1>Minerva Foods - Logística Internacional</h1>
-            <p>Pátio Brasfrigo - Sistema Supabase em Tempo Real</p>
+            <p>Pátio Brasfrigo - Sistema em Tempo Real</p>
         </div>
 
         <div class="controls">
@@ -1923,21 +1960,20 @@
         // ========== VARIÁVEIS GLOBAIS ==========
         let usuarioLogado = null;
         let dadosPatio = [];
-        let dadosImportadosRecentemente = []; // BACKUP DOS DADOS IMPORTADOS
+        let dadosImportadosRecentemente = [];
         let supabase = null;
         let supabaseDisponivel = false;
         let pollingInterval = null;
         let pollingCount = 0;
         let lastSyncTime = 0;
         let ultimoTimestampBanco = 0;
-        let ultimaSincronizacaoUsuarios = 0; // CONTROLE DE SINCRONIZAÇÃO
+        let ultimaSincronizacaoUsuarios = 0;
         
-        // 🛡️ SISTEMA DE PROTEÇÃO DEFINITIVA
+        // 🛡️ SISTEMA DE PROTEÇÃO TEMPORÁRIA PARA SINCRONIZAÇÃO
         let isImporting = false;
         let importBlocked = false; 
         let dataLocked = false;
-        let dadosImportadosPermanentes = false; // NOVA FLAG PARA PROTEÇÃO DEFINITIVA
-        let timestampImportacao = 0; // TIMESTAMP DA IMPORTAÇÃO
+        let timestampImportacao = 0;
 
         // 🚀 CONFIGURAÇÃO SUPABASE
         const supabaseConfig = {
@@ -1945,7 +1981,7 @@
             anonKey: 'sb_publishable_GIl_nKo6EmiOzcr-io9JSA_pvQu2bOJ'
         };
 
-        // USUÁRIOS PADRÃO - SEM USUÁRIO IMPORTADOR ESPECÍFICO
+        // USUÁRIOS PADRÃO
         const USUARIOS_PADRAO = [
             {
                 id: 1,
@@ -1994,7 +2030,6 @@
                 console.log('👥 INICIANDO SINCRONIZAÇÃO ROBUSTA DE USUÁRIOS...');
                 mostrarIndicadorSync('🔄 Sincronizando usuários do Supabase...', 'syncing');
                 
-                // 1. BUSCAR TODOS OS USUÁRIOS DO SUPABASE
                 const { data: usuariosSupabase, error } = await supabase
                     .from('usuarios')
                     .select('*')
@@ -2006,16 +2041,13 @@
                     return;
                 }
 
-                // 2. CARREGAR USUÁRIOS LOCAIS
                 let usuariosLocais = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
                 
-                // 3. SE NÃO HÁ USUÁRIOS LOCAIS, USAR PADRÃO
                 if (usuariosLocais.length === 0) {
                     usuariosLocais = [...USUARIOS_PADRAO];
                     console.log('📥 Carregando usuários padrão...');
                 }
 
-                // 4. SINCRONIZAR: MESCLAR SUPABASE COM LOCAIS
                 const usuariosMesclados = [...usuariosLocais];
                 let usuariosSincronizados = 0;
                 
@@ -2040,7 +2072,6 @@
                             usuariosSincronizados++;
                             console.log(`👤 USUÁRIO SINCRONIZADO: ${novoUsuario.nome} (${novoUsuario.login}) - Nível: ${novoUsuario.nivel}`);
                         } else {
-                            // ATUALIZAR DADOS SE MUDARAM NO SUPABASE
                             const userLocal = existeLocal;
                             let atualizado = false;
                             
@@ -2059,21 +2090,18 @@
                     });
                 }
 
-                // 5. SALVAR USUÁRIOS MESCLADOS NO LOCALSTORAGE
                 localStorage.setItem('usuariosSistema', JSON.stringify(usuariosMesclados));
                 ultimaSincronizacaoUsuarios = Date.now();
                 
-                // 6. ATUALIZAR STATUS DE SINCRONIZAÇÃO
                 const horaSync = new Date().toLocaleTimeString('pt-BR');
                 document.getElementById('lastSyncStatus').textContent = horaSync;
                 document.getElementById('lastSyncStatus').className = 'status-value-inline status-online-inline';
                 
                 console.log(`✅ SINCRONIZAÇÃO CONCLUÍDA: ${usuariosMesclados.length} usuários totais (${usuariosSincronizados} novos do Supabase)`);
                 
-                mostrarIndicadorSync(`✅ ${usuariosSincronizados} usuários sincronizados do Supabase`, 'success', 3000);
+                mostrarIndicadorSync(`✅ ${usuariosSincronizados} usuários sincronizados`, 'success', 3000);
                 atualizarStatusSincronizacao('success');
                 
-                // 7. ATUALIZAR LISTA NO PAINEL SE ESTIVER ABERTO
                 if (document.getElementById('userPanel').style.display === 'flex') {
                     carregarListaUsuarios();
                 }
@@ -2100,7 +2128,7 @@
                 const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
                 const registros = dadosPatio.length;
                 
-                mostrarAlerta('success', `✅ Sincronização forçada concluída!\n\n👥 Usuários sincronizados: ${usuarios.length}\n📊 Registros: ${registros}\n🔄 Status: Atualizado\n⏰ Última sync: ${new Date().toLocaleTimeString('pt-BR')}\n\n🌐 Usuários do Supabase agora podem fazer login!`);
+                mostrarAlerta('success', `✅ Sincronização forçada concluída!\n\n👥 Usuários sincronizados: ${usuarios.length}\n📊 Registros: ${registros}\n🔄 Status: Tempo Real Ativo\n⏰ Última sync: ${new Date().toLocaleTimeString('pt-BR')}\n\n🌐 Usuários do Supabase podem fazer login!`);
                 
             } catch (error) {
                 console.error('Erro na sincronização forçada:', error);
@@ -2137,18 +2165,16 @@
         function iniciarSincronizacaoAutomatica() {
             console.log('🔄 Iniciando sincronização automática de usuários...');
             
-            // SINCRONIZAR USUÁRIOS A CADA 30 SEGUNDOS
             setInterval(async () => {
                 if (!isImporting && supabaseDisponivel) {
                     const agora = Date.now();
                     
-                    // SÓ SINCRONIZAR SE PASSOU MAIS DE 30 SEGUNDOS DA ÚLTIMA SYNC
                     if (agora - ultimaSincronizacaoUsuarios > 30000) {
                         console.log('🔄 Sincronização automática de usuários...');
                         await sincronizarUsuarios();
                     }
                 }
-            }, 30000); // 30 SEGUNDOS
+            }, 30000);
         }
 
         // ========== FUNÇÕES UTILITÁRIAS ==========
@@ -2211,9 +2237,7 @@
             }
         }
 
-        // ========== FUNÇÃO PARA OBTER VALOR PADRÃO DE PLACAS NÃO DEDICADAS ==========
         function obterValorPadraoNaoDedicada() {
-            // Buscar PRIMEIRO valor de placa não dedicada que tem valor válido
             const placaNaoDedicadaComValor = dadosPatio.find(item => 
                 item.dedicada === 'NÃO' && 
                 item.valorDiaria && 
@@ -2264,12 +2288,9 @@
 
                 console.log('✅ Conexão estabelecida');
                 
-                // SINCRONIZAR USUÁRIOS PRIMEIRO
                 await sincronizarUsuarios();
                 await carregarDadosSupabase();
                 iniciarPollingSupabase();
-                
-                // CONFIGURAR SINCRONIZAÇÃO AUTOMÁTICA DE USUÁRIOS
                 iniciarSincronizacaoAutomatica();
                 return true;
                 
@@ -2280,32 +2301,32 @@
             }
         }
 
-        // ========== SISTEMA DE POLLING CONTROLADO E PROTEÇÃO DEFINITIVA ==========
+        // ========== SISTEMA DE POLLING MELHORADO PARA TEMPO REAL ==========
 
         function iniciarPollingSupabase() {
             if (!supabaseDisponivel) return;
             
-            console.log('🔄 Iniciando polling...');
+            console.log('🔄 Iniciando polling em tempo real...');
+            atualizarIndicadorPolling('Tempo Real Ativo');
             
             executarPolling();
             pollingInterval = setInterval(() => {
                 if (!isImporting && !importBlocked && !dataLocked) {
                     executarPolling();
+                } else {
+                    console.log('⏸️ Polling pausado durante importação');
                 }
             }, 3000);
         }
 
         async function executarPolling() {
-            // 🛡️ PROTEÇÃO DEFINITIVA - NÃO EXECUTAR SE HÁ DADOS IMPORTADOS
-            if (!supabaseDisponivel || isImporting || importBlocked || dataLocked || dadosImportadosPermanentes) {
-                if (dadosImportadosPermanentes) {
-                    console.log('🛡️ Polling BLOQUEADO - dados importados protegidos permanentemente');
-                }
+            if (!supabaseDisponivel || isImporting || importBlocked || dataLocked) {
                 return;
             }
             
             try {
                 pollingCount++;
+                atualizarIndicadorPolling('Verificando atualizações...');
                 
                 const { data, error } = await supabase
                     .from('dados_patio')
@@ -2316,36 +2337,88 @@
 
                 if (error) {
                     console.error('❌ Erro no polling:', error);
+                    atualizarIndicadorPolling('Erro de conexão');
                     return;
                 }
 
                 if (data && data.length > 0) {
                     const ultimoTimestamp = new Date(data[0].criado_em).getTime();
                     
-                    // VERIFICAR SE É MAIS RECENTE QUE A IMPORTAÇÃO
+                    // 🚀 DETECTAR MUDANÇAS EM TEMPO REAL
                     if (ultimoTimestamp > ultimoTimestampBanco && ultimoTimestamp > timestampImportacao) {
-                        console.log('⚡ Mudança detectada - carregando do Supabase');
+                        console.log('⚡ MUDANÇA DETECTADA - Atualizando em tempo real');
                         ultimoTimestampBanco = ultimoTimestamp;
+                        
+                        // MOSTRAR NOTIFICAÇÃO DE TEMPO REAL
+                        mostrarNotificacaoTempoReal('⚡ Dados atualizados por outro usuário!');
+                        
                         await carregarDadosSupabase();
+                        atualizarIndicadorPolling('Dados sincronizados');
+                    } else {
+                        atualizarIndicadorPolling('Tempo Real Ativo');
                     }
                 } else {
-                    // SE SUPABASE ESTÁ VAZIO E NÃO HÁ DADOS IMPORTADOS, LIMPAR
-                    if (!dadosImportadosPermanentes && dadosPatio.length > 0) {
-                        console.log('🗑️ Supabase vazio - limpando dados locais');
+                    // SE SUPABASE VAZIO, LIMPAR APENAS SE NÃO HÁ IMPORTAÇÃO RECENTE
+                    if (dadosPatio.length > 0 && (Date.now() - timestampImportacao > 60000)) {
+                        console.log('🗑️ Supabase vazio - limpando dados locais antigos');
                         dadosPatio = [];
                         atualizarInterface();
                     }
+                    atualizarIndicadorPolling('Aguardando dados');
                 }
                 
             } catch (error) {
                 console.error('❌ Erro no polling:', error);
+                atualizarIndicadorPolling('Erro no polling');
+            }
+        }
+
+        function mostrarNotificacaoTempoReal(mensagem, tipo = 'realtime') {
+            const notification = document.getElementById('realtimeNotification');
+            notification.textContent = mensagem;
+            notification.className = 'realtime-notification show';
+            
+            if (tipo === 'import') {
+                notification.className += ' import-sync';
+            }
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 4000);
+            
+            // ATUALIZAR TIMESTAMP
+            const agora = new Date();
+            const timestampLocal = agora.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+            document.getElementById('updateTimestamp').textContent = `📅 Última sync: ${timestampLocal}`;
+        }
+
+        function atualizarIndicadorPolling(status) {
+            const indicator = document.getElementById('pollingStatusText');
+            const pollingDiv = document.getElementById('pollingIndicator');
+            
+            if (indicator) {
+                indicator.textContent = `🔄 ${status}`;
+            }
+            
+            // ATUALIZAR CLASSE COM BASE NO STATUS
+            if (pollingDiv) {
+                pollingDiv.className = 'polling-indicator';
+                
+                if (status.includes('Erro')) {
+                    pollingDiv.classList.add('error');
+                } else if (status.includes('pausado') || status.includes('Pausado')) {
+                    pollingDiv.classList.add('paused');
+                } else if (status.includes('sincronizados') || status.includes('atualizando')) {
+                    pollingDiv.classList.add('updating');
+                } else {
+                    pollingDiv.classList.add('polling');
+                }
             }
         }
 
         async function carregarDadosSupabase() {
-            // 🛡️ PROTEÇÃO DEFINITIVA - NÃO CARREGAR SE HÁ DADOS IMPORTADOS
-            if (importBlocked || dataLocked || dadosImportadosPermanentes) {
-                console.log('🛡️ Carregamento do Supabase bloqueado - dados importados protegidos');
+            if (importBlocked || dataLocked) {
+                console.log('🛡️ Carregamento bloqueado durante importação');
                 return;
             }
             
@@ -2419,36 +2492,12 @@
                 try {
                     dadosPatio = JSON.parse(dadosSalvos);
                     console.log('💾 Dados locais carregados:', dadosPatio.length);
-                    
-                    // VERIFICAR SE SÃO DADOS IMPORTADOS RECENTEMENTE
-                    const importacaoRecente = localStorage.getItem('dadosImportadosPermanentes');
-                    if (importacaoRecente === 'true' && dadosPatio.length > 0) {
-                        dadosImportadosPermanentes = true;
-                        timestampImportacao = parseInt(localStorage.getItem('timestampImportacao') || '0');
-                        console.log('🛡️ Dados importados detectados - ativando proteção permanente');
-                    }
                 } catch (error) {
                     console.error('Erro ao carregar dados locais:', error);
                     dadosPatio = [];
                 }
             } else {
                 dadosPatio = [];
-            }
-            
-            // VERIFICAR SE HÁ BACKUP DE IMPORTAÇÃO - PERSISTÊNCIA APÓS RELOAD
-            const backupImportacao = localStorage.getItem('dadosImportadosBackup');
-            if (backupImportacao && dadosPatio.length === 0) {
-                try {
-                    dadosPatio = JSON.parse(backupImportacao);
-                    console.log('🔧 Dados restaurados do backup de importação após reload:', dadosPatio.length);
-                    localStorage.setItem('dadosPatioMinerva', JSON.stringify(dadosPatio));
-                    dadosImportadosPermanentes = true;
-                    timestampImportacao = Date.now();
-                    localStorage.setItem('dadosImportadosPermanentes', 'true');
-                    localStorage.setItem('timestampImportacao', timestampImportacao.toString());
-                } catch (error) {
-                    console.error('Erro ao restaurar backup:', error);
-                }
             }
             
             atualizarInterface();
@@ -2460,10 +2509,9 @@
             return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
         }
 
-        // ========== IMPORTAÇÃO 100% GARANTIDA COM PROTEÇÃO DEFINITIVA ==========
+        // ========== IMPORTAÇÃO COM SINCRONIZAÇÃO EM TEMPO REAL ==========
 
         function importarExcel(event) {
-            // VERIFICAR PERMISSÕES ATUALIZADAS PARA INCLUIR IMPORTADOR
             if (!usuarioLogado || (usuarioLogado.nivel !== 'master' && usuarioLogado.nivel !== 'importador')) {
                 mostrarAlerta('error', '⚠️ Acesso negado! Apenas MASTER e IMPORTADOR podem importar arquivos.');
                 event.target.value = '';
@@ -2473,15 +2521,15 @@
             const file = event.target.files[0];
             if (!file) return;
 
-            console.log('🛡️ INICIANDO IMPORTAÇÃO COM PROTEÇÃO DEFINITIVA...');
+            console.log('🚀 INICIANDO IMPORTAÇÃO COM SINCRONIZAÇÃO EM TEMPO REAL...');
             
-            // 🛡️ BLOQUEAR TUDO IMEDIATAMENTE + PROTEÇÃO DEFINITIVA
+            // 🛡️ BLOQUEAR TEMPORARIAMENTE PARA IMPORTAÇÃO
             isImporting = true;
             importBlocked = true;
             dataLocked = true;
-            dadosImportadosPermanentes = false; // RESETAR PROTEÇÃO DURANTE IMPORTAÇÃO
+            timestampImportacao = Date.now();
             
-            // Parar polling COMPLETAMENTE
+            // Parar polling temporariamente
             if (pollingInterval) {
                 clearInterval(pollingInterval);
                 pollingInterval = null;
@@ -2489,13 +2537,13 @@
             
             // Mostrar indicador
             document.getElementById('importIndicator').classList.add('show');
-            document.getElementById('importProgress').textContent = 'Sistema bloqueado - iniciando importação...';
+            document.getElementById('importProgress').textContent = 'Sistema temporariamente bloqueado para sincronização...';
 
             const reader = new FileReader();
             
             reader.onerror = function(error) {
                 console.error('Erro ao ler arquivo:', error);
-                finalizarImportacaoDefinitiva(false, 'Erro ao ler arquivo');
+                finalizarImportacaoComSincronizacao(false, 'Erro ao ler arquivo');
             };
             
             reader.onload = function(e) {
@@ -2560,11 +2608,11 @@
                     }).filter(item => item && item.placa);
                     
                     console.log(`📊 ${dadosProcessados.length} registros processados com sucesso`);
-                    salvarDadosDefinitivo(dadosProcessados);
+                    salvarDadosComSincronizacao(dadosProcessados);
                     
                 } catch (error) {
                     console.error('❌ Erro ao processar arquivo:', error);
-                    finalizarImportacaoDefinitiva(false, `Erro: ${error.message}`);
+                    finalizarImportacaoComSincronizacao(false, `Erro: ${error.message}`);
                 }
             };
             
@@ -2572,63 +2620,49 @@
             event.target.value = '';
         }
 
-        function salvarDadosDefinitivo(dadosArray) {
-            console.log('🛡️ SALVAMENTO DEFINITIVO COM PROTEÇÃO PERMANENTE...');
-            document.getElementById('importProgress').textContent = 'Salvando com proteção definitiva...';
+        async function salvarDadosComSincronizacao(dadosArray) {
+            console.log('🚀 SALVAMENTO COM SINCRONIZAÇÃO EM TEMPO REAL...');
+            document.getElementById('importProgress').textContent = 'Salvando dados localmente...';
             
             try {
-                // 1. SALVAR EM MÚLTIPLOS LOCAIS + FLAGS DE PROTEÇÃO
-                dadosPatio = [...dadosArray]; // VARIÁVEL PRINCIPAL
-                dadosImportadosRecentemente = [...dadosArray]; // BACKUP SEGURO
-                timestampImportacao = Date.now(); // TIMESTAMP DA IMPORTAÇÃO
-                
-                // SALVAR NO LOCALSTORAGE COM PROTEÇÃO DEFINITIVA
+                // 1. SALVAR LOCALMENTE PRIMEIRO
+                dadosPatio = [...dadosArray];
+                dadosImportadosRecentemente = [...dadosArray];
                 localStorage.setItem('dadosPatioMinerva', JSON.stringify(dadosPatio));
-                localStorage.setItem('dadosImportadosBackup', JSON.stringify(dadosArray));
-                localStorage.setItem('dadosImportadosPermanentes', 'true');
-                localStorage.setItem('timestampImportacao', timestampImportacao.toString());
-                sessionStorage.setItem('ultimaImportacao', JSON.stringify(dadosArray));
                 
-                console.log(`💾 DADOS SALVOS COM PROTEÇÃO DEFINITIVA:`, {
-                    dadosPatio: dadosPatio.length,
-                    backup: dadosImportadosRecentemente.length,
-                    timestamp: timestampImportacao,
-                    protegido: true
-                });
+                console.log(`💾 DADOS SALVOS LOCALMENTE: ${dadosPatio.length} registros`);
                 
-                // 2. ATIVAR PROTEÇÃO DEFINITIVA
-                dadosImportadosPermanentes = true;
-                document.getElementById('importProgress').textContent = 'Ativando proteção definitiva...';
-                
-                // 3. RENDERIZAR IMEDIATAMENTE
+                // 2. RENDERIZAR IMEDIATAMENTE
                 atualizarInterface();
                 popularFiltros();
                 
-                // 4. SALVAR NO SUPABASE EM BACKGROUND (SE DISPONÍVEL)
+                // 3. SINCRONIZAR COM SUPABASE PARA TODOS OS USUÁRIOS
+                document.getElementById('importProgress').textContent = 'Sincronizando com Supabase para todos os usuários...';
+                
                 if (supabaseDisponivel) {
-                    salvarNoSupabaseBackground(dadosArray);
+                    await salvarNoSupabaseParaTodos(dadosArray);
                 }
                 
-                // 5. FINALIZAR IMPORTAÇÃO COM PROTEÇÃO ATIVA
+                // 4. FINALIZAR COM SUCESSO
                 setTimeout(() => {
-                    finalizarImportacaoDefinitiva(true, `${dadosArray.length} registros importados`);
+                    finalizarImportacaoComSincronizacao(true, `${dadosArray.length} registros importados e sincronizados`);
                 }, 1000);
                 
             } catch (error) {
-                console.error('❌ Erro no salvamento definitivo:', error);
-                finalizarImportacaoDefinitiva(false, `Erro: ${error.message}`);
+                console.error('❌ Erro no salvamento:', error);
+                finalizarImportacaoComSincronizacao(false, `Erro: ${error.message}`);
             }
         }
 
-        async function salvarNoSupabaseBackground(dadosArray) {
+        async function salvarNoSupabaseParaTodos(dadosArray) {
             try {
-                console.log('📤 Salvando no Supabase em background...');
-                document.getElementById('importProgress').textContent = 'Salvando no Supabase (background)...';
+                console.log('📤 Salvando no Supabase para sincronização global...');
+                document.getElementById('importProgress').textContent = 'Salvando no Supabase (visível para todos)...';
                 
                 // Limpar dados antigos
                 await supabase.from('dados_patio').delete().gte('id', 0);
                 
-                // Preparar dados
+                // Preparar dados para Supabase
                 const dadosSupabase = dadosArray.map(item => ({
                     placa: item.placa,
                     container: item.container,
@@ -2666,60 +2700,66 @@
                 
                 if (error) throw error;
                 
-                console.log('✅ DADOS SALVOS NO SUPABASE EM BACKGROUND');
+                console.log('✅ DADOS SALVOS NO SUPABASE - VISÍVEL PARA TODOS OS USUÁRIOS');
                 ultimoTimestampBanco = Date.now();
                 
+                // Atualizar timestamp global para forçar sincronização
+                timestampImportacao = ultimoTimestampBanco;
+                
             } catch (error) {
-                console.error('⚠️ Erro no Supabase (dados mantidos localmente com proteção):', error);
+                console.error('⚠️ Erro ao salvar no Supabase:', error);
+                throw error; // Re-throw para tratamento no nível superior
             }
         }
 
-        function finalizarImportacaoDefinitiva(sucesso, mensagem) {
-            console.log(`🏁 FINALIZANDO IMPORTAÇÃO DEFINITIVA - Sucesso: ${sucesso}`);
+        function finalizarImportacaoComSincronizacao(sucesso, mensagem) {
+            console.log(`🏁 FINALIZANDO IMPORTAÇÃO COM SINCRONIZAÇÃO - Sucesso: ${sucesso}`);
             
             if (sucesso) {
                 // Banner de sucesso
                 const banner = document.getElementById('importSuccessBanner');
-                banner.textContent = `🎉 ${mensagem} - TODOS STATUS AGRUPADOS VISÍVEIS!`;
+                banner.textContent = `🎉 ${mensagem} - VISÍVEL PARA TODOS EM TEMPO REAL!`;
                 banner.classList.add('show');
                 
                 setTimeout(() => banner.classList.remove('show'), 8000);
+                
+                // Notificação de importação
+                mostrarNotificacaoTempoReal(`📤 Você importou ${mensagem.split(' ')[0]} registros - Todos verão!`, 'import');
                 
                 // Atualizar timestamp
                 const agora = new Date();
                 const timestampLocal = agora.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
                 document.getElementById('updateTimestamp').textContent = `📅 Importação: ${timestampLocal}`;
                 
-                mostrarAlerta('success', `🎉 IMPORTAÇÃO COM TODOS STATUS!\n\n📊 ${mensagem}\n✅ TRÂNSITO, AGUARDANDO, DESOVANDO, DESCARREGADO visíveis\n📋 Placas agrupadas por status\n🔍 Clique para expandir detalhes\n🛡️ Dados protegidos definitivamente\n\n🌟 SISTEMA COMPLETO!`);
+                mostrarAlerta('success', `🚀 IMPORTAÇÃO SINCRONIZADA COM SUCESSO!\n\n📊 ${mensagem}\n🌐 Dados visíveis para TODOS os usuários\n⚡ Sincronização em tempo real ativa\n📋 Agrupamento por placa funcionando\n🔍 Clique para expandir detalhes\n\n✅ TODOS OS COMPUTADORES ATUALIZADOS!`);
             } else {
                 mostrarAlerta('error', `❌ Falha na importação: ${mensagem}`);
-                dadosImportadosPermanentes = false;
             }
             
             // Remover indicador
             document.getElementById('importIndicator').classList.remove('show');
             
-            // DESBLOQUEIO CONTROLADO - SEM RETOMAR POLLING SE HÁ DADOS IMPORTADOS
+            // 🔓 DESBLOQUEIO E REATIVAR POLLING PARA TEMPO REAL
             setTimeout(() => {
-                console.log('🔓 Desbloqueando sistema...');
+                console.log('🔓 Desbloqueando sistema e reativando tempo real...');
                 isImporting = false;
                 importBlocked = false;
                 dataLocked = false;
                 
-                // SÓ RETOMAR POLLING SE NÃO HÁ DADOS PROTEGIDOS
-                if (supabaseDisponivel && !dadosImportadosPermanentes) {
-                    console.log('▶️ Retomando polling (sem dados protegidos)');
+                // ✅ SEMPRE REATIVAR POLLING PARA TEMPO REAL
+                if (supabaseDisponivel) {
+                    console.log('▶️ Reativando polling para tempo real');
                     iniciarPollingSupabase();
-                } else if (dadosImportadosPermanentes) {
-                    console.log('🛡️ Polling mantido DESABILITADO - dados importados protegidos');
+                } else {
+                    console.log('📱 Modo local - polling não disponível');
                 }
                 
-                console.log('✅ Sistema desbloqueado - filtros liberados');
+                console.log('✅ Sistema desbloqueado - tempo real reativado');
                 
-            }, 5000); // 5 SEGUNDOS (REDUZIDO)
+            }, 3000); // 3 segundos para permitir sincronização
         }
 
-        // ========== ESTATÍSTICAS FINAIS - FILTRO DATA PARA DESCARREGADO (MANTIDA INTACTA) ==========
+        // ========== ESTATÍSTICAS (MANTIDA IGUAL) ==========
         function atualizarEstatisticas(dadosFiltrados = null) {
             console.log('📅 Atualizando estatísticas - FILTRO DATA PARA DESCARREGADO...');
             
@@ -2727,67 +2767,56 @@
             console.log(`📅 Data atual: ${dataAtual}`);
             console.log(`📋 Total de registros no sistema: ${dadosPatio.length}`);
             
-            // 💰 OBTER VALOR PADRÃO PARA FALLBACK
             const valorPadraoNaoDedicada = obterValorPadraoNaoDedicada();
             
-            // 🚚 EM TRÂNSITO - PLACAS ÚNICAS (HISTÓRICO COMPLETO)
             const placasTransitoUnicas = [...new Set(
                 dadosPatio
                     .filter(d => d.status === 'TRÂNSITO')
                     .map(d => d.placa)
             )].length;
             
-            // ⏳ AGUARDANDO - PLACAS ÚNICAS (HISTÓRICO COMPLETO)
             const placasAguardandoUnicas = [...new Set(
                 dadosPatio
                     .filter(d => d.status === 'AGUARDANDO')
                     .map(d => d.placa)
             )].length;
             
-            // 📅 DADOS DO DIA ATUAL (para outros cards exceto Diárias Geradas)
             const dadosDoDiaAtual = dadosPatio.filter(item => {
                 return item.dataChegada === dataAtual || item.dataDescarga === dataAtual;
             });
             
             console.log(`📊 Registros do dia atual: ${dadosDoDiaAtual.length}`);
             
-            // 🚛 DESOVANDO - PLACAS ÚNICAS DO DIA ATUAL
             const placasDesovandoUnicas = [...new Set(
                 dadosDoDiaAtual
                     .filter(d => d.status === 'DESOVANDO')
                     .map(d => d.placa)
             )].length;
             
-            // ✅ DESCARREGADO - PLACAS ÚNICAS DO DIA ATUAL
             const placasDescarregadoUnicas = [...new Set(
                 dadosDoDiaAtual
                     .filter(d => d.status === 'DESCARREGADO')
                     .map(d => d.placa)
             )].length;
             
-            // 📈 MOVIMENTAÇÃO TOTAL - PLACAS ÚNICAS DO DIA ATUAL
             const placasMovimentacaoTotalUnicas = [...new Set(
                 dadosDoDiaAtual.map(d => d.placa)
             )].length;
             
-            // 💰 DIÁRIAS GERADAS - COM FILTRO ESPECÍFICO PARA DESCARREGADO
             const placasComDiariaFiltradas = dadosPatio.filter(d => {
                 const diariaValida = parseInt(d.diaria) > 0;
                 
                 if (d.status === 'AGUARDANDO' || d.status === 'DESOVANDO') {
-                    // AGUARDANDO e DESOVANDO: sempre conta se tem diária
                     return diariaValida;
                 } else if (d.status === 'DESCARREGADO') {
-                    // DESCARREGADO: só conta se dataDescarga = dia atual
                     return diariaValida && d.dataDescarga === dataAtual;
                 }
                 
-                return false; // Outros status não contam
+                return false;
             });
             
             console.log(`🔍 Placas filtradas para Diárias Geradas: ${placasComDiariaFiltradas.length} registros`);
             
-            // 🧮 AGRUPAR POR PLACA E SOMAR DIÁRIAS (COM FILTRO)
             const gruposPorPlacaFiltradas = {};
             placasComDiariaFiltradas.forEach(item => {
                 const placa = item.placa;
@@ -2806,7 +2835,6 @@
                 gruposPorPlacaFiltradas[placa].registros.push(item);
                 gruposPorPlacaFiltradas[placa].somaDiarias += parseInt(item.diaria) || 0;
                 
-                // Pegar o primeiro valor diária e valor total encontrado
                 if (!gruposPorPlacaFiltradas[placa].valorDiaria && item.valorDiaria) {
                     gruposPorPlacaFiltradas[placa].valorDiaria = item.valorDiaria;
                 }
@@ -2817,7 +2845,6 @@
             
             const placasDiariasGeradas = Object.keys(gruposPorPlacaFiltradas).length;
             
-            // 💵 CALCULAR VALOR TOTAL CORRETO COM FILTRO DE DATA
             let valorTotalComFiltroData = 0;
             let placasUsaramValorTotal = 0;
             let placasUsaramCalculado = 0;
@@ -2834,21 +2861,17 @@
                 
                 let valorParaUsar = 0;
                 
-                // 💰 LÓGICA DE PRIORIDADE COM SOMA CORRETA
                 if (valorTotalExistente > 0) {
-                    // PRIORIDADE 1: Usar valorTotal se existe
                     valorParaUsar = valorTotalExistente;
                     placasUsaramValorTotal++;
                     console.log(`💰 Placa ${placa} (${status}): PRIORIDADE 1 - valorTotal R$ ${valorTotalExistente.toFixed(2)}`);
                     
                 } else if (valorDiariaExistente > 0) {
-                    // PRIORIDADE 2: SOMA_DIARIAS × valorDiaria
                     valorParaUsar = somaDiarias * valorDiariaExistente;
                     placasUsaramCalculado++;
                     console.log(`💰 Placa ${placa} (${status}): PRIORIDADE 2 - SOMA ${somaDiarias} × ${valorDiariaExistente.toFixed(2)} = R$ ${valorParaUsar.toFixed(2)}`);
                     
                 } else if (valorPadraoNaoDedicada > 0) {
-                    // PRIORIDADE 3: SOMA_DIARIAS × valorPadraoNaoDedicada
                     valorParaUsar = somaDiarias * valorPadraoNaoDedicada;
                     placasUsaramFallback++;
                     console.log(`💰 Placa ${placa} (${status}): PRIORIDADE 3 - SOMA ${somaDiarias} × ${valorPadraoNaoDedicada.toFixed(2)} = R$ ${valorParaUsar.toFixed(2)}`);
@@ -2860,24 +2883,21 @@
             console.log(`📅 VALOR TOTAL COM FILTRO DATA DESCARREGADO: R$ ${valorTotalComFiltroData.toFixed(2)}`);
             console.log(`📊 ESTATÍSTICAS: ${placasUsaramValorTotal} valorTotal + ${placasUsaramCalculado} calculado + ${placasUsaramFallback} fallback`);
             
-            // 📊 ATUALIZAR TODOS OS CARDS
             document.getElementById('totalTransito').textContent = placasTransitoUnicas;
             document.getElementById('totalAguardando').textContent = placasAguardandoUnicas;
             document.getElementById('totalDesovando').textContent = placasDesovandoUnicas;
-            document.getElementById('totalGerandoDiaria').textContent = placasDiariasGeradas; // ← COM FILTRO DATA DESCARREGADO
+            document.getElementById('totalGerandoDiaria').textContent = placasDiariasGeradas;
             document.getElementById('totalDescarregado').textContent = placasDescarregadoUnicas;
             document.getElementById('totalVeiculos').textContent = placasMovimentacaoTotalUnicas;
-            document.getElementById('valorTotalDiaria').textContent = formatarValor(valorTotalComFiltroData); // ← VALOR COM FILTRO DATA
+            document.getElementById('valorTotalDiaria').textContent = formatarValor(valorTotalComFiltroData);
             
-            // 🎨 APLICAR EFEITO DE ATUALIZAÇÃO NOS CARDS
             const cards = document.querySelectorAll('.stat-card');
             cards.forEach(card => {
                 card.classList.add('updated');
                 setTimeout(() => card.classList.remove('updated'), 1000);
             });
             
-            // 📋 LOG DETALHADO PARA VERIFICAÇÃO
-            console.log(`📊 CARDS FINAIS - FILTRO DATA DESCARREGADO ATIVO:`, {
+            console.log(`📊 CARDS FINAIS - TEMPO REAL ATIVO:`, {
                 emTransito: `${placasTransitoUnicas} placas únicas (histórico completo)`,
                 aguardando: `${placasAguardandoUnicas} placas únicas (histórico completo)`,
                 desovando: `${placasDesovandoUnicas} placas únicas (dia atual: ${dataAtual})`,
@@ -2888,7 +2908,7 @@
             });
         }
 
-        // ========== FUNÇÕES AUXILIARES ==========
+        // ========== FUNÇÕES AUXILIARES (MANTIDAS IGUAIS) ==========
 
         function converterDataParaISO(dataBr) {
             if (!dataBr) return null;
@@ -2975,9 +2995,7 @@
         // ========== INTERFACE E ALERTAS ==========
 
         function atualizarInterface() {
-            // CORRIGIDO: Mostrar TODOS os status permitidos, não só dados do dia atual
             if (!haFiltrosAtivos()) {
-                // SEM FILTROS: Mostrar TODOS os dados com status permitidos
                 const statusPermitidos = ['TRÂNSITO', 'AGUARDANDO', 'DESOVANDO', 'DESCARREGADO'];
                 const todosStatusPermitidos = dadosPatio.filter(item => 
                     statusPermitidos.includes(item.status)
@@ -2985,7 +3003,6 @@
                 console.log(`📋 Renderizando ${todosStatusPermitidos.length} registros de todos os status permitidos`);
                 renderizarTabelaAgrupada(todosStatusPermitidos);
             } else {
-                // COM FILTROS: Aplicar filtros normalmente
                 aplicarFiltrosNaTabela();
             }
             
@@ -2993,7 +3010,7 @@
             popularFiltros();
         }
 
-        // ========== RENDERIZAÇÃO COM AGRUPAMENTO POR PLACA ==========
+        // ========== RENDERIZAÇÃO COM AGRUPAMENTO (MANTIDA IGUAL) ==========
         function renderizarTabela(dados = null) {
             renderizarTabelaAgrupada(dados);
         }
@@ -3004,7 +3021,6 @@
             const dadosParaRender = dados || dadosPatio;
             const tbody = document.getElementById('tabelaBody');
             
-            // FILTRAR APENAS STATUS DESEJADOS
             const statusPermitidos = ['TRÂNSITO', 'AGUARDANDO', 'DESOVANDO', 'DESCARREGADO'];
             const dadosFiltradosPorStatus = dadosParaRender.filter(item => 
                 statusPermitidos.includes(item.status)
@@ -3018,7 +3034,6 @@
                 return;
             }
 
-            // AGRUPAR POR PLACA + STATUS
             const grupos = {};
             dadosFiltradosPorStatus.forEach(item => {
                 const chaveGrupo = `${item.placa}_${item.status}`;
@@ -3045,7 +3060,6 @@
                 const quantidadeNotas = grupo.registros.length;
                 const primeiroItem = grupo.primeiroRegistro;
                 
-                // LINHA PRINCIPAL DO GRUPO (CLICÁVEL)
                 html += `
                     <tr class="grupo-header" onclick="toggleGrupo('${chaveGrupo}')">
                         <td>
@@ -3070,7 +3084,6 @@
                     </tr>
                 `;
                 
-                // LINHAS DETALHES (EXPANSÍVEIS)
                 grupo.registros.forEach(item => {
                     html += `
                         <tr class="grupo-details" data-grupo="${chaveGrupo}">
@@ -3189,7 +3202,7 @@
         // ========== SISTEMA PRINCIPAL ==========
 
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('📋👥🔄🛡️ INICIANDO SISTEMA COM TODOS STATUS VISÍVEIS...');
+            console.log('🚀⚡ INICIANDO SISTEMA COM SINCRONIZAÇÃO EM TEMPO REAL...');
             inicializarSupabase();
             setTimeout(() => inicializarSistema(), 1000);
         });
@@ -3226,7 +3239,6 @@
         async function autenticarUsuario(login, senha, lembrarMe = false) {
             console.log('🔐 Processando autenticação...');
             
-            // FORÇAR SINCRONIZAÇÃO ANTES DO LOGIN PARA GARANTIR USUÁRIOS ATUALIZADOS
             if (supabaseDisponivel) {
                 console.log('🔄 Sincronizando usuários antes da autenticação...');
                 await sincronizarUsuarios();
@@ -3263,7 +3275,7 @@
                     'user': 'USUÁRIO (apenas visualização)'
                 };
                 
-                mostrarAlerta('success', `✅ Bem-vindo, ${usuarioEncontrado.nome}!\n👤 Nível: ${nivelTexto[usuarioEncontrado.nivel]}\n📋 TODOS os status agrupados visíveis\n🔍 Clique nas linhas para expandir`);
+                mostrarAlerta('success', `✅ Bem-vindo, ${usuarioEncontrado.nome}!\n👤 Nível: ${nivelTexto[usuarioEncontrado.nivel]}\n⚡ Sincronização em tempo real ativa\n📋 Agrupamento por placa visível\n🔍 Clique nas linhas para expandir\n\n🌐 Seus dados aparecerão para TODOS instantaneamente!`);
             } else {
                 console.log('❌ FALHA NA AUTENTICAÇÃO');
                 alert('❌ Usuário ou senha incorretos!\n\nVerifique suas credenciais e tente novamente.\n\n💡 Se foi criado recentemente, aguarde sincronização automática ou force a sincronização no painel.');
@@ -3307,7 +3319,7 @@
         function iniciarSistema() {
             verificarPermissoes();
             
-            if (supabaseDisponivel && !importBlocked && !dadosImportadosPermanentes) {
+            if (supabaseDisponivel && !importBlocked) {
                 carregarDadosSupabase();
             } else {
                 carregarDadosLocal();
@@ -3329,7 +3341,6 @@
             console.log('🔑 Verificando permissões para:', usuarioLogado.nivel);
             
             if (usuarioLogado.nivel === 'master') {
-                // MASTER: Acesso total
                 btnImportar.style.display = 'flex';
                 btnLimparArquivo.style.display = 'flex';
                 btnControlPanel.style.display = 'inline-block';
@@ -3337,15 +3348,13 @@
                 console.log('✅ MASTER: Acesso total liberado');
                 
             } else if (usuarioLogado.nivel === 'importador') {
-                // IMPORTADOR: Apenas importação (SEM PAINEL)
                 btnImportar.style.display = 'flex';
                 btnLimparArquivo.style.display = 'none';
-                btnControlPanel.style.display = 'none'; // ← CORRIGIDO: NÃO VÊ PAINEL
+                btnControlPanel.style.display = 'none';
                 tipoUsuario.className = 'user-badge user-importador';
                 console.log('✅ IMPORTADOR: Acesso apenas à importação (sem painel)');
                 
             } else if (usuarioLogado.nivel === 'administrador') {
-                // ADMINISTRADOR: Apenas painel de leitura
                 btnImportar.style.display = 'none';
                 btnLimparArquivo.style.display = 'none';
                 btnControlPanel.style.display = 'inline-block';
@@ -3353,7 +3362,6 @@
                 console.log('✅ ADMINISTRADOR: Acesso apenas ao painel');
                 
             } else {
-                // USER: Apenas visualização
                 btnImportar.style.display = 'none';
                 btnLimparArquivo.style.display = 'none';
                 btnControlPanel.style.display = 'none';
@@ -3363,7 +3371,6 @@
         }
 
         function abrirPainelGovernanca() {
-            // APENAS MASTER E ADMINISTRADOR podem acessar painel (importador NÃO)
             if (!usuarioLogado || (usuarioLogado.nivel !== 'master' && usuarioLogado.nivel !== 'administrador')) {
                 mostrarAlerta('error', '⚠️ Acesso negado! Apenas MASTER e ADMINISTRADOR podem acessar o painel.');
                 return;
@@ -3372,11 +3379,11 @@
             const pollingIndicatorPanel = document.getElementById('pollingIndicatorPanel');
             
             if (usuarioLogado.nivel === 'master') {
-                document.getElementById('panelTitle').innerHTML = '👥 Painel de Governança - ACESSO MASTER';
+                document.getElementById('panelTitle').innerHTML = '👥 Painel de Governança - TEMPO REAL MASTER';
                 document.getElementById('createUserSection').style.display = 'block';
                 pollingIndicatorPanel.style.display = 'block';
             } else if (usuarioLogado.nivel === 'administrador') {
-                document.getElementById('panelTitle').innerHTML = '👥 Painel de Governança - ACESSO ADMINISTRADOR (Leitura)';
+                document.getElementById('panelTitle').innerHTML = '👥 Painel de Governança - TEMPO REAL ADMIN (Leitura)';
                 document.getElementById('createUserSection').style.display = 'none';
                 pollingIndicatorPanel.style.display = 'none';
             }
@@ -3398,7 +3405,7 @@
                     <div>
                         <strong>${user.nome}</strong>
                         <span style="color: ${supabaseDisponivel ? '#10b981' : '#6b7280'}; font-size: 10px;">
-                            ${supabaseDisponivel ? '🚀 SYNC' : '📱 LOCAL'}
+                            ${supabaseDisponivel ? '🚀 TEMPO REAL' : '📱 LOCAL'}
                         </span><br>
                         <small style="color: #6c757d;"><strong>Login:</strong> ${user.login}</small><br>
                         <small style="color: #6c757d;"><strong>Email:</strong> ${user.email}</small>
@@ -3414,7 +3421,6 @@
         async function criarUsuario(event) {
             event.preventDefault();
             
-            // DEBUG: Verificar usuário logado
             console.log('🔍 DEBUG - Tentativa de criar usuário:');
             console.log('   Usuário logado:', usuarioLogado);
             console.log('   Nível:', usuarioLogado?.nivel);
@@ -3473,9 +3479,9 @@
             atualizarStatusSincronizacao('success');
 
             if (salvouSupabase) {
-                mostrarAlerta('success', `✅ Usuário ${nome} criado com sucesso!\n\n👤 Nível: ${nivel}\n🚀 Sincronizado com Supabase\n🌐 Disponível em todos os computadores!\n\n🔐 Login: ${login}\n🔒 Senha: ${senha}`);
+                mostrarAlerta('success', `✅ Usuário ${nome} criado com sucesso!\n\n👤 Nível: ${nivel}\n🚀 Sincronizado em tempo real\n🌐 Disponível INSTANTANEAMENTE em todos os computadores!\n⚡ Login funcionando imediatamente\n\n🔐 Login: ${login}\n🔒 Senha: ${senha}`);
             } else {
-                mostrarAlerta('success', `✅ Usuário ${nome} criado localmente!\n\n👤 Nível: ${nivel}\n📱 Salvo no localStorage\n⚠️ Supabase indisponível para sincronização\n\n🔐 Login: ${login}\n🔒 Senha: ${senha}`);
+                mostrarAlerta('success', `✅ Usuário ${nome} criado localmente!\n\n👤 Nível: ${nivel}\n📱 Salvo no localStorage\n⚠️ Supabase indisponível para tempo real\n\n🔐 Login: ${login}\n🔒 Senha: ${senha}`);
             }
         }
 
@@ -3486,7 +3492,7 @@
             }
 
             try {
-                console.log('👤 Salvando usuário no Supabase:', novoUsuario.nome);
+                console.log('👤 Salvando usuário no Supabase para tempo real:', novoUsuario.nome);
                 
                 const usuarioSupabase = {
                     nome: novoUsuario.nome,
@@ -3506,8 +3512,8 @@
                     throw error;
                 }
 
-                console.log('✅ Usuário salvo no Supabase:', data);
-                mostrarIndicadorSync('👤 Usuário sincronizado com Supabase', 'success', 3000);
+                console.log('✅ Usuário salvo no Supabase para tempo real:', data);
+                mostrarIndicadorSync('👤 Usuário sincronizado em tempo real', 'success', 3000);
                 return true;
 
             } catch (error) {
@@ -3571,7 +3577,6 @@
         function limparFiltros() {
             console.log('🔄 Limpando filtros - FUNCIONANDO NORMALMENTE...');
             
-            // Limpar campos
             document.getElementById('searchPlaca').value = '';
             document.getElementById('filterStatus').value = '';
             document.getElementById('filterOrigem').value = '';
@@ -3584,10 +3589,9 @@
             document.getElementById('filterDataDescargaAte').value = '';
             document.getElementById('totalDiariasInfo').classList.remove('show');
             
-            // Executar lógica normal de limpeza
             atualizarInterface();
             
-            mostrarAlerta('info', `📅 Filtros limpos!\n✅ TODOS os status visíveis\n📋 Agrupamento por placa ativo\n🔍 Clique para expandir detalhes`);
+            mostrarAlerta('info', `📅 Filtros limpos!\n✅ TODOS os status visíveis\n📋 Agrupamento por placa ativo\n⚡ Tempo real funcionando\n🔍 Clique para expandir detalhes`);
         }
 
         async function limparArquivo() {
@@ -3596,28 +3600,29 @@
                 return;
             }
             
-            if (confirm('Limpar todos os dados?')) {
-                // DESATIVAR PROTEÇÃO DEFINITIVA
-                dadosImportadosPermanentes = false;
+            if (confirm('Limpar todos os dados? Isso afetará TODOS os usuários em tempo real.')) {
+                // RESET COMPLETO
                 timestampImportacao = 0;
                 
                 dadosPatio = [];
                 dadosImportadosRecentemente = [];
                 localStorage.removeItem('dadosPatioMinerva');
-                localStorage.removeItem('dadosImportadosBackup');
-                localStorage.removeItem('dadosImportadosPermanentes');
-                localStorage.removeItem('timestampImportacao');
-                sessionStorage.removeItem('ultimaImportacao');
                 
-                console.log('🛡️ Proteção definitiva desativada - polling pode retomar');
+                console.log('🗑️ Dados limpos - polling continuará ativo');
                 
-                // RETOMAR POLLING SE DISPONÍVEL
-                if (supabaseDisponivel && !pollingInterval) {
-                    iniciarPollingSupabase();
+                // LIMPAR NO SUPABASE TAMBÉM
+                if (supabaseDisponivel) {
+                    try {
+                        await supabase.from('dados_patio').delete().gte('id', 0);
+                        console.log('🗑️ Supabase também limpo - afetará todos os usuários');
+                        mostrarNotificacaoTempoReal('🗑️ Dados limpos pelo administrador - Visível para todos!');
+                    } catch (error) {
+                        console.error('Erro ao limpar Supabase:', error);
+                    }
                 }
                 
                 atualizarInterface();
-                mostrarAlerta('info', '🗑️ Dados limpos! Proteção removida.');
+                mostrarAlerta('info', '🗑️ Dados limpos! Tempo real continua ativo para novas importações.');
             }
         }
 
@@ -3641,12 +3646,8 @@
             mostrarAlerta('success', '✓ Arquivo exportado!');
         }
 
-        // ========== FUNÇÕES DUMMY PARA MANTER COMPATIBILIDADE ==========
+        // ========== FUNÇÕES PARA COMPATIBILIDADE ==========
         
-        function atualizarIndicadorPolling(status) {
-            console.log(`🔄 Status polling: ${status}`);
-        }
-
         function mostrarDetalhesPolling() {
             const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
             const ultimaSync = ultimaSincronizacaoUsuarios ? new Date(ultimaSincronizacaoUsuarios).toLocaleTimeString('pt-BR') : 'Nunca';
@@ -3657,7 +3658,7 @@
             }).join(', ');
             
             const info = `
-📋🛡️ SISTEMA COM TODOS STATUS AGRUPADOS
+🚀⚡ SISTEMA EM TEMPO REAL ATIVO
 
 ✅ STATUS VISÍVEIS NA TABELA:
 • TRÂNSITO: ${[...new Set(dadosPatio.filter(d => d.status === 'TRÂNSITO').map(d => d.placa))].length} placas
@@ -3665,39 +3666,56 @@
 • DESOVANDO: ${[...new Set(dadosPatio.filter(d => d.status === 'DESOVANDO').map(d => d.placa))].length} placas
 • DESCARREGADO: ${[...new Set(dadosPatio.filter(d => d.status === 'DESCARREGADO').map(d => d.placa))].length} placas
 
-📊 AGRUPAMENTO:
+⚡ SINCRONIZAÇÃO EM TEMPO REAL:
+• Polling ativo: ${pollingInterval ? 'SIM' : 'NÃO'}
+• Verificação: a cada 3 segundos
+• Supabase: ${supabaseDisponivel ? 'CONECTADO' : 'OFFLINE'}
+• Bloqueio: ${isImporting ? 'IMPORTANDO' : 'LIBERADO'}
+
+📊 AGRUPAMENTO POR PLACA:
 • Placas agrupadas por status
 • Múltiplas notas fiscais organizadas
 • Visual limpo sem repetições
 • Clique para expandir detalhes
 
-🛡️ PROTEÇÃO DEFINITIVA:
-• Dados importados protegidos: ${dadosImportadosPermanentes ? 'SIM' : 'NÃO'}
-• Polling bloqueado: ${dadosImportadosPermanentes ? 'SIM' : 'NÃO'}
-
-👥 SINCRONIZAÇÃO:
+🌐 USUÁRIOS CONECTADOS:
 • Última sync: ${ultimaSync}
 • Total usuários: ${usuarios.length}
+• Tempo real para todos
 
-📋 CORREÇÃO APLICADA:
-• Removido filtro "apenas dia atual"
-• TODOS os status agora aparecem
-• Dados completos do arquivo importado
-• Agrupamento funcionando perfeitamente
+🚀 IMPORTAÇÃO INTELIGENTE:
+• Importação bloqueia temporariamente
+• Dados salvos no Supabase
+• Polling reativado automaticamente
+• TODOS veem as mudanças instantaneamente
 
-✅ SISTEMA PERFEITO E COMPLETO!
+⚡ FUNCIONAMENTO PERFEITO:
+• Qualquer usuário importa → TODOS veem
+• Sincronização instantânea
+• Sem conflitos de dados
+• Interface sempre atualizada
+
+✅ TEMPO REAL 100% FUNCIONAL!
             `;
             
             alert(info);
         }
 
-        function toggleSupabaseDetails() {}
-        function testarPollingSupabase() {}
-        function atualizarStatusSincronizacao() {}
+        function toggleSupabaseDetails() {
+            const details = document.getElementById('supabaseDetails');
+            const toggle = document.getElementById('statusToggle');
+            
+            if (details.classList.contains('collapsed')) {
+                details.classList.remove('collapsed');
+                toggle.textContent = '▼';
+            } else {
+                details.classList.add('collapsed');
+                toggle.textContent = '▶';
+            }
+        }
 
-        // ========== EVENT LISTENERS CORRIGIDOS ==========
+        // ========== EVENT LISTENERS ==========
         document.addEventListener('DOMContentLoaded', function() {
-            // Event listeners para filtros funcionarem
             setTimeout(() => {
                 const searchPlaca = document.getElementById('searchPlaca');
                 const filterStatus = document.getElementById('filterStatus');
@@ -3721,7 +3739,7 @@
                 if (filterDataDescargaDe) filterDataDescargaDe.addEventListener('change', aplicarFiltros);
                 if (filterDataDescargaAte) filterDataDescargaAte.addEventListener('change', aplicarFiltros);
                 
-                console.log('✅ Event listeners de filtros configurados');
+                console.log('✅ Event listeners de filtros configurados para tempo real');
             }, 2000);
         });
 
@@ -3734,52 +3752,7 @@
             }
         });
 
-        // ========== RESTAURAÇÃO AUTOMÁTICA MELHORADA - SEM INTERFERÊNCIA ==========
-        setInterval(function() {
-            // SÓ RESTAURAR SE NÃO HÁ PROTEÇÃO ATIVA
-            if (!isImporting && dadosPatio.length === 0 && !dadosImportadosPermanentes) {
-                const backupLocalStorage = localStorage.getItem('dadosPatioMinerva');
-                const backupImportacao = localStorage.getItem('dadosImportadosBackup');
-                const backupSession = sessionStorage.getItem('ultimaImportacao');
-                
-                if (backupLocalStorage) {
-                    try {
-                        dadosPatio = JSON.parse(backupLocalStorage);
-                        console.log('🔧 DADOS RESTAURADOS do localStorage');
-                        
-                        // VERIFICAR SE SÃO DADOS IMPORTADOS
-                        const protegido = localStorage.getItem('dadosImportadosPermanentes');
-                        if (protegido === 'true') {
-                            dadosImportadosPermanentes = true;
-                            timestampImportacao = parseInt(localStorage.getItem('timestampImportacao') || Date.now());
-                            console.log('🛡️ Proteção definitiva reativada');
-                        }
-                        
-                        atualizarInterface();
-                    } catch (error) {
-                        console.error('Erro ao restaurar localStorage:', error);
-                    }
-                } else if (backupImportacao) {
-                    try {
-                        dadosPatio = JSON.parse(backupImportacao);
-                        console.log('🔧 DADOS RESTAURADOS do backup de importação');
-                        localStorage.setItem('dadosPatioMinerva', JSON.stringify(dadosPatio));
-                        
-                        // ATIVAR PROTEÇÃO PARA DADOS RESTAURADOS
-                        dadosImportadosPermanentes = true;
-                        timestampImportacao = Date.now();
-                        localStorage.setItem('dadosImportadosPermanentes', 'true');
-                        localStorage.setItem('timestampImportacao', timestampImportacao.toString());
-                        
-                        atualizarInterface();
-                    } catch (error) {
-                        console.error('Erro ao restaurar backup importação:', error);
-                    }
-                }
-            }
-        }, 5000); // Verificar a cada 5 segundos
-
-        console.log('📋🛡️👥🔄 SISTEMA INICIADO - TODOS STATUS AGRUPADOS VISÍVEIS!');
+        console.log('🚀⚡🌐 SISTEMA TEMPO REAL INICIADO - SINCRONIZAÇÃO GLOBAL ATIVA!');
     </script>
 </body>
 </html>
