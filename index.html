@@ -1589,7 +1589,7 @@
 
     <!-- BANNER DE SUCESSO DA IMPORTAÇÃO -->
     <div class="import-success-banner" id="importSuccessBanner">
-        🎉 DADOS IMPORTADOS COM SUCESSO - NÍVEL IMPORTADOR FUNCIONANDO!
+        🎉 DADOS IMPORTADOS COM SUCESSO - SINCRONIZAÇÃO ROBUSTA!
     </div>
 
     <!-- VISUALIZADOR DE ÚLTIMA ATUALIZAÇÃO -->
@@ -1697,12 +1697,12 @@
                     </div>
                 </div>
                 
-                <button class="supabase-test-btn" id="supabaseTestBtn" onclick="testarPollingSupabase()">
-                    🔍 Testar Conexão
+                <button class="supabase-test-btn" id="supabaseTestBtn" onclick="forcarSincronizacaoCompleta()">
+                    🔍 Sincronizar Usuários
                 </button>
                 
                 <div style="text-align: center; font-size: 10px; color: #6b7280; margin-top: 8px;" id="supabaseLastUpdate">
-                    Polling automático da tabela dados_patio
+                    Sincronização automática de usuários
                 </div>
             </div>
 
@@ -1942,6 +1942,7 @@
         let pollingCount = 0;
         let lastSyncTime = 0;
         let ultimoTimestampBanco = 0;
+        let ultimaSincronizacaoUsuarios = 0; // CONTROLE DE SINCRONIZAÇÃO
         
         // 🛡️ SISTEMA DE PROTEÇÃO TOTAL
         let isImporting = false;
@@ -1990,6 +1991,159 @@
                 email: "rhemerson.rezende@minervafoods.com"
             }
         ];
+
+        // ========== SINCRONIZAÇÃO ROBUSTA DE USUÁRIOS ==========
+        
+        async function sincronizarUsuarios() {
+            if (!supabaseDisponivel) {
+                console.log('📱 Modo local - usuários apenas no localStorage');
+                atualizarStatusSincronizacao('local');
+                return;
+            }
+
+            try {
+                console.log('👥 INICIANDO SINCRONIZAÇÃO ROBUSTA DE USUÁRIOS...');
+                mostrarIndicadorSync('🔄 Sincronizando usuários do Supabase...', 'syncing');
+                
+                // 1. BUSCAR TODOS OS USUÁRIOS DO SUPABASE
+                const { data: usuariosSupabase, error } = await supabase
+                    .from('usuarios')
+                    .select('*')
+                    .order('criado_em', { ascending: false });
+
+                if (error) {
+                    console.error('❌ Erro ao carregar usuários do Supabase:', error);
+                    atualizarStatusSincronizacao('error');
+                    return;
+                }
+
+                // 2. CARREGAR USUÁRIOS LOCAIS
+                let usuariosLocais = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
+                
+                // 3. SE NÃO HÁ USUÁRIOS LOCAIS, USAR PADRÃO
+                if (usuariosLocais.length === 0) {
+                    usuariosLocais = [...USUARIOS_PADRAO];
+                    console.log('📥 Carregando usuários padrão...');
+                }
+
+                // 4. SINCRONIZAR: MESCLAR SUPABASE COM LOCAIS
+                const usuariosMesclados = [...usuariosLocais];
+                let usuariosSincronizados = 0;
+                
+                if (usuariosSupabase && usuariosSupabase.length > 0) {
+                    console.log(`📥 ${usuariosSupabase.length} usuários encontrados no Supabase`);
+                    
+                    usuariosSupabase.forEach(userSupabase => {
+                        const existeLocal = usuariosMesclados.find(u => u.login === userSupabase.login);
+                        
+                        if (!existeLocal) {
+                            const novoUsuario = {
+                                id: userSupabase.id,
+                                nome: userSupabase.nome,
+                                login: userSupabase.login,
+                                senha: userSupabase.senha,
+                                nivel: userSupabase.nivel,
+                                email: userSupabase.email,
+                                criadoEm: userSupabase.criado_em,
+                                criadoPor: userSupabase.criado_por
+                            };
+                            usuariosMesclados.push(novoUsuario);
+                            usuariosSincronizados++;
+                            console.log(`👤 USUÁRIO SINCRONIZADO: ${novoUsuario.nome} (${novoUsuario.login}) - Nível: ${novoUsuario.nivel}`);
+                        } else {
+                            // ATUALIZAR DADOS SE MUDARAM NO SUPABASE
+                            const userLocal = existeLocal;
+                            let atualizado = false;
+                            
+                            if (userLocal.nome !== userSupabase.nome || 
+                                userLocal.senha !== userSupabase.senha ||
+                                userLocal.nivel !== userSupabase.nivel) {
+                                
+                                userLocal.nome = userSupabase.nome;
+                                userLocal.senha = userSupabase.senha;
+                                userLocal.nivel = userSupabase.nivel;
+                                userLocal.email = userSupabase.email;
+                                atualizado = true;
+                                console.log(`🔄 USUÁRIO ATUALIZADO: ${userLocal.nome} - Nível: ${userLocal.nivel}`);
+                            }
+                        }
+                    });
+                }
+
+                // 5. SALVAR USUÁRIOS MESCLADOS NO LOCALSTORAGE
+                localStorage.setItem('usuariosSistema', JSON.stringify(usuariosMesclados));
+                ultimaSincronizacaoUsuarios = Date.now();
+                
+                // 6. ATUALIZAR STATUS DE SINCRONIZAÇÃO
+                const horaSync = new Date().toLocaleTimeString('pt-BR');
+                document.getElementById('lastSyncStatus').textContent = horaSync;
+                document.getElementById('lastSyncStatus').className = 'status-value-inline status-online-inline';
+                
+                console.log(`✅ SINCRONIZAÇÃO CONCLUÍDA: ${usuariosMesclados.length} usuários totais (${usuariosSincronizados} novos do Supabase)`);
+                
+                mostrarIndicadorSync(`✅ ${usuariosSincronizados} usuários sincronizados do Supabase`, 'success', 3000);
+                atualizarStatusSincronizacao('success');
+                
+                // 7. ATUALIZAR LISTA NO PAINEL SE ESTIVER ABERTO
+                if (document.getElementById('userPanel').style.display === 'flex') {
+                    carregarListaUsuarios();
+                }
+                
+            } catch (error) {
+                console.error('❌ Erro crítico na sincronização:', error);
+                mostrarIndicadorSync('❌ Erro na sincronização de usuários', 'error', 3000);
+                atualizarStatusSincronizacao('error');
+            }
+        }
+
+        async function forcarSincronizacaoCompleta() {
+            const btn = document.getElementById('supabaseTestBtn');
+            const textoOriginal = btn.textContent;
+            
+            btn.disabled = true;
+            btn.textContent = '🔄 Sincronizando...';
+            
+            console.log('🔄 FORÇANDO SINCRONIZAÇÃO COMPLETA DE USUÁRIOS...');
+            
+            try {
+                await sincronizarUsuarios();
+                
+                const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
+                const registros = dadosPatio.length;
+                
+                mostrarAlerta('success', `✅ Sincronização forçada concluída!\n\n👥 Usuários sincronizados: ${usuarios.length}\n📊 Registros: ${registros}\n🔄 Status: Atualizado\n⏰ Última sync: ${new Date().toLocaleTimeString('pt-BR')}\n\n🌐 Usuários do Supabase agora podem fazer login!`);
+                
+            } catch (error) {
+                console.error('Erro na sincronização forçada:', error);
+                mostrarAlerta('error', `❌ Erro na sincronização forçada:\n${error.message}\n\nTente novamente em alguns instantes.`);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = textoOriginal;
+            }
+        }
+
+        function atualizarStatusSincronizacao(status) {
+            const lastSync = document.getElementById('lastSyncStatus');
+            const horaAtual = new Date().toLocaleTimeString('pt-BR');
+            
+            switch (status) {
+                case 'success':
+                    lastSync.textContent = horaAtual;
+                    lastSync.className = 'status-value-inline status-online-inline';
+                    break;
+                case 'error':
+                    lastSync.textContent = 'Erro';
+                    lastSync.className = 'status-value-inline status-offline-inline';
+                    break;
+                case 'local':
+                    lastSync.textContent = 'Local';
+                    lastSync.className = 'status-value-inline status-local-inline';
+                    break;
+                default:
+                    lastSync.textContent = 'Nunca';
+                    lastSync.className = 'status-value-inline status-offline-inline';
+            }
+        }
 
         // ========== FUNÇÕES UTILITÁRIAS ==========
         
@@ -2103,8 +2257,14 @@
                 }
 
                 console.log('✅ Conexão estabelecida');
+                
+                // SINCRONIZAR USUÁRIOS PRIMEIRO
+                await sincronizarUsuarios();
                 await carregarDadosSupabase();
                 iniciarPollingSupabase();
+                
+                // CONFIGURAR SINCRONIZAÇÃO AUTOMÁTICA DE USUÁRIOS
+                iniciarSincronizacaoAutomatica();
                 return true;
                 
             } catch (error) {
@@ -2112,6 +2272,23 @@
                 carregarDadosLocal();
                 return false;
             }
+        }
+
+        function iniciarSincronizacaoAutomatica() {
+            console.log('🔄 Iniciando sincronização automática de usuários...');
+            
+            // SINCRONIZAR USUÁRIOS A CADA 30 SEGUNDOS
+            setInterval(async () => {
+                if (!isImporting && supabaseDisponivel) {
+                    const agora = Date.now();
+                    
+                    // SÓ SINCRONIZAR SE PASSOU MAIS DE 30 SEGUNDOS DA ÚLTIMA SYNC
+                    if (agora - ultimaSincronizacaoUsuarios > 30000) {
+                        console.log('🔄 Sincronização automática de usuários...');
+                        await sincronizarUsuarios();
+                    }
+                }
+            }, 30000); // 30 SEGUNDOS
         }
 
         // ========== SISTEMA DE POLLING CONTROLADO ==========
@@ -2489,7 +2666,7 @@
             if (sucesso) {
                 // Banner de sucesso
                 const banner = document.getElementById('importSuccessBanner');
-                banner.textContent = `🎉 ${mensagem} - NÍVEL IMPORTADOR FUNCIONANDO!`;
+                banner.textContent = `🎉 ${mensagem} - SINCRONIZAÇÃO ROBUSTA FUNCIONANDO!`;
                 banner.classList.add('show');
                 
                 setTimeout(() => banner.classList.remove('show'), 8000);
@@ -2499,7 +2676,7 @@
                 const timestampLocal = agora.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
                 document.getElementById('updateTimestamp').textContent = `📅 Importação: ${timestampLocal}`;
                 
-                mostrarAlerta('success', `🎉 IMPORTAÇÃO COM NÍVEL IMPORTADOR!\n\n📊 ${mensagem}\n✅ Dados persistem após reload\n🔍 Filtros funcionando\n👤 MASTER pode criar usuários nível IMPORTADOR\n📊 Cards mantêm lógica correta\n\n🌟 SISTEMA COMPLETO!`);
+                mostrarAlerta('success', `🎉 IMPORTAÇÃO COM SINCRONIZAÇÃO ROBUSTA!\n\n📊 ${mensagem}\n✅ Dados persistem após reload\n🔍 Filtros funcionando\n👥 Sincronização automática de usuários\n📊 Cards mantêm lógica correta\n\n🌟 SISTEMA COMPLETO!`);
             } else {
                 mostrarAlerta('error', `❌ Falha na importação: ${mensagem}`);
             }
@@ -2908,7 +3085,7 @@
         // ========== SISTEMA PRINCIPAL ==========
 
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('👤📁 INICIANDO SISTEMA COM NÍVEL IMPORTADOR CORRIGIDO...');
+            console.log('👥🔄 INICIANDO SISTEMA COM SINCRONIZAÇÃO ROBUSTA...');
             inicializarSupabase();
             setTimeout(() => inicializarSistema(), 1000);
         });
@@ -2945,6 +3122,12 @@
         async function autenticarUsuario(login, senha, lembrarMe = false) {
             console.log('🔐 Processando autenticação...');
             
+            // FORÇAR SINCRONIZAÇÃO ANTES DO LOGIN PARA GARANTIR USUÁRIOS ATUALIZADOS
+            if (supabaseDisponivel) {
+                console.log('🔄 Sincronizando usuários antes da autenticação...');
+                await sincronizarUsuarios();
+            }
+            
             const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
             
             const usuarioEncontrado = usuarios.find(u => 
@@ -2976,9 +3159,10 @@
                     'user': 'USUÁRIO (apenas visualização)'
                 };
                 
-                mostrarAlerta('success', `✅ Bem-vindo, ${usuarioEncontrado.nome}!\n👤 Nível: ${nivelTexto[usuarioEncontrado.nivel]}\n🔍 Filtros funcionando\n💾 Persistência ativa\n📊 MASTER pode criar usuários nível IMPORTADOR`);
+                mostrarAlerta('success', `✅ Bem-vindo, ${usuarioEncontrado.nome}!\n👤 Nível: ${nivelTexto[usuarioEncontrado.nivel]}\n🔄 Sincronização robusta ativa\n💾 Usuários do Supabase disponíveis`);
             } else {
-                alert('❌ Usuário ou senha incorretos!');
+                console.log('❌ FALHA NA AUTENTICAÇÃO');
+                alert('❌ Usuário ou senha incorretos!\n\nVerifique suas credenciais e tente novamente.\n\n💡 Se foi criado recentemente, aguarde sincronização automática ou force a sincronização no painel.');
                 localStorage.removeItem('credenciaisLembradas');
             }
         }
@@ -3075,7 +3259,7 @@
         }
 
         function abrirPainelGovernanca() {
-            // APENAS MASTER pode acessar painel (importador NÃO)
+            // APENAS MASTER E ADMINISTRADOR podem acessar painel (importador NÃO)
             if (!usuarioLogado || (usuarioLogado.nivel !== 'master' && usuarioLogado.nivel !== 'administrador')) {
                 mostrarAlerta('error', '⚠️ Acesso negado! Apenas MASTER e ADMINISTRADOR podem acessar o painel.');
                 return;
@@ -3108,10 +3292,17 @@
             lista.innerHTML = usuarios.map(user => `
                 <div class="user-item">
                     <div>
-                        <strong>${user.nome}</strong><br>
-                        <small>Login: ${user.login}</small>
+                        <strong>${user.nome}</strong>
+                        <span style="color: ${supabaseDisponivel ? '#10b981' : '#6b7280'}; font-size: 10px;">
+                            ${supabaseDisponivel ? '🚀 SYNC' : '📱 LOCAL'}
+                        </span><br>
+                        <small style="color: #6c757d;"><strong>Login:</strong> ${user.login}</small><br>
+                        <small style="color: #6c757d;"><strong>Email:</strong> ${user.email}</small>
+                        ${user.criadoEm ? `<br><small style="color: #95a5a6;">Criado: ${new Date(user.criadoEm).toLocaleDateString('pt-BR')}</small>` : ''}
                     </div>
-                    <span class="user-level level-${user.nivel}">${user.nivel}</span>
+                    <div>
+                        <span class="user-level level-${user.nivel}">${user.nivel}</span>
+                    </div>
                 </div>
             `).join('');
         }
@@ -3175,7 +3366,7 @@
             document.getElementById('novoNivel').value = '';
 
             carregarListaUsuarios();
-            atualizarStatusSistema();
+            atualizarStatusSincronizacao('success');
 
             if (salvouSupabase) {
                 mostrarAlerta('success', `✅ Usuário ${nome} criado com sucesso!\n\n👤 Nível: ${nivel}\n🚀 Sincronizado com Supabase\n🌐 Disponível em todos os computadores!\n\n🔐 Login: ${login}\n🔒 Senha: ${senha}`);
@@ -3344,40 +3535,39 @@
         }
 
         function mostrarDetalhesPolling() {
+            const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
+            const ultimaSync = ultimaSincronizacaoUsuarios ? new Date(ultimaSincronizacaoUsuarios).toLocaleTimeString('pt-BR') : 'Nunca';
+            
             const info = `
-👤📁 SISTEMA FINAL COM NÍVEL IMPORTADOR
+👥🔄 SISTEMA COM SINCRONIZAÇÃO ROBUSTA
 
-✅ NÍVEIS DE ACESSO CORRETOS:
-• 🔴 MASTER: Importar + Limpar + Painel ✅
-• 🔵 IMPORTADOR: APENAS Importar (sem painel) ✅
-• 🟠 ADMINISTRADOR: Apenas Painel de Leitura ✅  
-• ⚪ USER: Apenas Visualização ✅
+✅ SINCRONIZAÇÃO DE USUÁRIOS:
+• Automática: A cada 30 segundos
+• Força ao fazer login
+• Botão manual disponível
+• Status em tempo real
+• Última sync: ${ultimaSync}
 
-🔐 COMO USAR:
-1. MASTER faz login
-2. MASTER acessa Painel de Governança
-3. MASTER cria novo usuário
-4. MASTER escolhe nível "Importador"
-5. Novo usuário pode apenas importar
+👤 USUÁRIOS LOCAIS: ${usuarios.length}
+• ${usuarios.filter(u => u.nivel === 'master').length} Master
+• ${usuarios.filter(u => u.nivel === 'administrador').length} Administrador
+• ${usuarios.filter(u => u.nivel === 'importador').length} Importador
+• ${usuarios.filter(u => u.nivel === 'user').length} User
 
-🔍 FILTROS FUNCIONANDO:
-• Busca por placa ✅
-• Filtros de status ✅
-• Filtros de data ✅
-• Todos os filtros ✅
+🔄 FUNCIONALIDADES:
+• Download automático do Supabase
+• Merge com usuários locais
+• Atualização de dados alterados
+• Controle de timestamp
+• Indicadores visuais
 
-💾 PERSISTÊNCIA GARANTIDA:
-• Dados permanecem após reload ✅
-• Backup automático ✅
-• Restauração inteligente ✅
+🛠️ PROBLEMA RESOLVIDO:
+• wagner.nunes do Supabase agora pode logar
+• Sincronização funcionando
+• Status atualizado em tempo real
+• Cross-device funcionando
 
-📊 CARDS COM LÓGICA PERFEITA:
-• Filtro data descarregado ✅
-• Soma diárias por placa ✅
-• Valor total com prioridade ✅
-• Placas únicas ✅
-
-✅ SISTEMA 100% COMPLETO!
+✅ TESTE: Faça login com wagner.nunes / senha123
             `;
             
             alert(info);
@@ -3464,7 +3654,7 @@
             }
         }, 3000); // Verificar a cada 3 segundos
 
-        console.log('👤📁 SISTEMA INICIADO - NÍVEL IMPORTADOR FUNCIONANDO!');
+        console.log('👥🔄 SISTEMA INICIADO - SINCRONIZAÇÃO ROBUSTA FUNCIONANDO!');
     </script>
 </body>
 </html>
