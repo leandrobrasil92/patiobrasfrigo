@@ -1114,23 +1114,7 @@
             background: #f8f9fa;
         }
 
-        /* Highlight especial para dados importados */
-        tbody tr.imported-data {
-            background: #e8f5e8 !important;
-            border-left: 4px solid #28a745;
-        }
-
-        /* Highlight para linhas atualizadas em tempo real */
-        tbody tr.realtime-updated {
-            animation: rowHighlight 3s ease;
-        }
-
-        @keyframes rowHighlight {
-            0% { background: #dbeafe; border-left: 4px solid #3b82f6; }
-            100% { background: transparent; border-left: none; }
-        }
-
-        /* Estilos para agrupamento */
+        /* ESTILOS PARA AGRUPAMENTO POR PLACA */
         .grupo-header {
             background: #f1f3f4 !important;
             font-weight: bold;
@@ -1144,14 +1128,16 @@
 
         .grupo-header td {
             border-bottom: 2px solid #2c3e50;
+            font-weight: 600;
         }
 
         .expand-icon {
             display: inline-block;
-            margin-right: 6px;
+            margin-right: 8px;
             transition: transform 0.3s;
             font-weight: bold;
             color: #2c3e50;
+            font-size: 12px;
         }
 
         .expand-icon.expanded {
@@ -1168,17 +1154,19 @@
 
         .grupo-details td {
             background: #f8f9fa;
-            border-left: 3px solid #2c3e50;
+            border-left: 4px solid #2c3e50;
+            padding-left: 20px;
+            font-size: 10px;
         }
 
         .count-badge {
             background: #2c3e50;
             color: white;
-            padding: 1px 4px;
-            border-radius: 8px;
+            padding: 2px 6px;
+            border-radius: 10px;
             font-size: 9px;
             font-weight: bold;
-            margin-left: 4px;
+            margin-left: 6px;
         }
 
         .status-badge {
@@ -1589,7 +1577,7 @@
 
     <!-- BANNER DE SUCESSO DA IMPORTAÇÃO -->
     <div class="import-success-banner" id="importSuccessBanner">
-        🎉 DADOS IMPORTADOS COM SUCESSO - PROTEÇÃO DEFINITIVA!
+        🎉 DADOS IMPORTADOS COM SUCESSO - TODOS STATUS VISÍVEIS!
     </div>
 
     <!-- VISUALIZADOR DE ÚLTIMA ATUALIZAÇÃO -->
@@ -2692,7 +2680,7 @@
             if (sucesso) {
                 // Banner de sucesso
                 const banner = document.getElementById('importSuccessBanner');
-                banner.textContent = `🎉 ${mensagem} - DADOS PROTEGIDOS DEFINITIVAMENTE!`;
+                banner.textContent = `🎉 ${mensagem} - TODOS STATUS AGRUPADOS VISÍVEIS!`;
                 banner.classList.add('show');
                 
                 setTimeout(() => banner.classList.remove('show'), 8000);
@@ -2702,7 +2690,7 @@
                 const timestampLocal = agora.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
                 document.getElementById('updateTimestamp').textContent = `📅 Importação: ${timestampLocal}`;
                 
-                mostrarAlerta('success', `🎉 IMPORTAÇÃO COM PROTEÇÃO DEFINITIVA!\n\n📊 ${mensagem}\n✅ Dados PROTEGIDOS permanentemente\n🔍 Filtros funcionando\n👥 Sincronização de usuários ativa\n🛡️ Polling NÃO pode mais interferir\n\n🌟 PROBLEMA RESOLVIDO DEFINITIVAMENTE!`);
+                mostrarAlerta('success', `🎉 IMPORTAÇÃO COM TODOS STATUS!\n\n📊 ${mensagem}\n✅ TRÂNSITO, AGUARDANDO, DESOVANDO, DESCARREGADO visíveis\n📋 Placas agrupadas por status\n🔍 Clique para expandir detalhes\n🛡️ Dados protegidos definitivamente\n\n🌟 SISTEMA COMPLETO!`);
             } else {
                 mostrarAlerta('error', `❌ Falha na importação: ${mensagem}`);
                 dadosImportadosPermanentes = false;
@@ -2987,14 +2975,17 @@
         // ========== INTERFACE E ALERTAS ==========
 
         function atualizarInterface() {
-            // Lógica normal baseada em filtros
+            // CORRIGIDO: Mostrar TODOS os status permitidos, não só dados do dia atual
             if (!haFiltrosAtivos()) {
-                const dadosHoje = dadosPatio.filter(item => {
-                    const hoje = obterDataAtual();
-                    return item.dataChegada === hoje || item.dataDescarga === hoje;
-                });
-                renderizarTabela(dadosHoje);
+                // SEM FILTROS: Mostrar TODOS os dados com status permitidos
+                const statusPermitidos = ['TRÂNSITO', 'AGUARDANDO', 'DESOVANDO', 'DESCARREGADO'];
+                const todosStatusPermitidos = dadosPatio.filter(item => 
+                    statusPermitidos.includes(item.status)
+                );
+                console.log(`📋 Renderizando ${todosStatusPermitidos.length} registros de todos os status permitidos`);
+                renderizarTabelaAgrupada(todosStatusPermitidos);
             } else {
+                // COM FILTROS: Aplicar filtros normalmente
                 aplicarFiltrosNaTabela();
             }
             
@@ -3002,54 +2993,137 @@
             popularFiltros();
         }
 
+        // ========== RENDERIZAÇÃO COM AGRUPAMENTO POR PLACA ==========
         function renderizarTabela(dados = null) {
+            renderizarTabelaAgrupada(dados);
+        }
+
+        function renderizarTabelaAgrupada(dados = null) {
+            console.log('📋 Renderizando tabela com agrupamento por placa...');
+            
             const dadosParaRender = dados || dadosPatio;
             const tbody = document.getElementById('tabelaBody');
             
-            if (dadosParaRender.length === 0) {
+            // FILTRAR APENAS STATUS DESEJADOS
+            const statusPermitidos = ['TRÂNSITO', 'AGUARDANDO', 'DESOVANDO', 'DESCARREGADO'];
+            const dadosFiltradosPorStatus = dadosParaRender.filter(item => 
+                statusPermitidos.includes(item.status)
+            );
+            
+            console.log(`📊 STATUS FILTRADOS: ${dadosFiltradosPorStatus.length} registros com status permitidos`);
+            console.log(`📋 STATUS ENCONTRADOS:`, [...new Set(dadosFiltradosPorStatus.map(d => d.status))]);
+            
+            if (dadosFiltradosPorStatus.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="30" class="no-data">Nenhum registro encontrado</td></tr>';
                 return;
             }
 
+            // AGRUPAR POR PLACA + STATUS
+            const grupos = {};
+            dadosFiltradosPorStatus.forEach(item => {
+                const chaveGrupo = `${item.placa}_${item.status}`;
+                
+                if (!grupos[chaveGrupo]) {
+                    grupos[chaveGrupo] = {
+                        placa: item.placa,
+                        status: item.status,
+                        dataChegada: item.dataChegada,
+                        dataDescarga: item.dataDescarga,
+                        registros: [],
+                        somaDiarias: 0,
+                        primeiroRegistro: item
+                    };
+                }
+                
+                grupos[chaveGrupo].registros.push(item);
+                grupos[chaveGrupo].somaDiarias += parseInt(item.diaria) || 0;
+            });
+
             let html = '';
-            dadosParaRender.forEach((item) => {
+            Object.values(grupos).forEach((grupo, index) => {
+                const chaveGrupo = `grupo_${index}`;
+                const quantidadeNotas = grupo.registros.length;
+                const primeiroItem = grupo.primeiroRegistro;
+                
+                // LINHA PRINCIPAL DO GRUPO (CLICÁVEL)
                 html += `
-                    <tr>
-                        <td><strong>${item.placa}</strong></td>
-                        <td>${item.container}</td>
-                        <td>${item.dataChegada}</td>
-                        <td>${item.dataDescarga}</td>
-                        <td>${item.diaria}</td>
-                        <td>${item.dedicada}</td>
-                        <td>${item.valorDiaria}</td>
-                        <td>${item.valorTotal}</td>
-                        <td>${item.transportadora}</td>
-                        <td>${item.unidade}</td>
-                        <td>${item.origem}</td>
-                        <td>${item.tipoDescarga}</td>
-                        <td>${item.tipoMercado}</td>
-                        <td><span class="status-badge status-${item.status.toLowerCase()}">${item.status}</span></td>
-                        <td>${item.nfOrigem}</td>
-                        <td>${item.nfeBrasfrigo}</td>
-                        <td>${item.op}</td>
-                        <td>${item.deposito}</td>
-                        <td>${item.statusOp}</td>
-                        <td>${item.pedido}</td>
-                        <td>${item.falta}</td>
-                        <td>${item.sobra}</td>
-                        <td>${item.inversaoRg}</td>
-                        <td>${item.doca}</td>
-                        <td>${item.pbr}</td>
-                        <td>${item.oneWay}</td>
-                        <td>${item.fumigado}</td>
-                        <td>${item.totalPallet}</td>
-                        <td>${item.recFrio}</td>
-                        <td>${item.obs}</td>
+                    <tr class="grupo-header" onclick="toggleGrupo('${chaveGrupo}')">
+                        <td>
+                            <span class="expand-icon" data-icon="${chaveGrupo}">▶</span>
+                            <strong>${grupo.placa}</strong>
+                            <span class="count-badge">${quantidadeNotas}</span>
+                        </td>
+                        <td>-</td>
+                        <td>${grupo.dataChegada}</td>
+                        <td>${grupo.dataDescarga}</td>
+                        <td><strong>${grupo.somaDiarias}</strong></td>
+                        <td>${primeiroItem.dedicada}</td>
+                        <td>${primeiroItem.valorDiaria}</td>
+                        <td><strong>${primeiroItem.valorTotal}</strong></td>
+                        <td>${primeiroItem.transportadora}</td>
+                        <td>${primeiroItem.unidade}</td>
+                        <td>${primeiroItem.origem}</td>
+                        <td>${primeiroItem.tipoDescarga}</td>
+                        <td>${primeiroItem.tipoMercado}</td>
+                        <td><span class="status-badge status-${grupo.status.toLowerCase()}">${grupo.status}</span></td>
+                        <td colspan="16">📋 Clique para ver ${quantidadeNotas} nota(s)</td>
                     </tr>
                 `;
+                
+                // LINHAS DETALHES (EXPANSÍVEIS)
+                grupo.registros.forEach(item => {
+                    html += `
+                        <tr class="grupo-details" data-grupo="${chaveGrupo}">
+                            <td>↳ ${item.placa}</td>
+                            <td>${item.container}</td>
+                            <td>${item.dataChegada}</td>
+                            <td>${item.dataDescarga}</td>
+                            <td>${item.diaria}</td>
+                            <td><span class="${item.dedicada === 'SIM' ? 'dedicada-sim' : 'dedicada-nao'}">${item.dedicada}</span></td>
+                            <td>${item.valorDiaria}</td>
+                            <td>${item.valorTotal}</td>
+                            <td>${item.transportadora}</td>
+                            <td>${item.unidade}</td>
+                            <td>${item.origem}</td>
+                            <td>${item.tipoDescarga}</td>
+                            <td>${item.tipoMercado}</td>
+                            <td><span class="status-badge status-${item.status.toLowerCase()}">${item.status}</span></td>
+                            <td>${item.nfOrigem}</td>
+                            <td>${item.nfeBrasfrigo}</td>
+                            <td>${item.op}</td>
+                            <td>${item.deposito}</td>
+                            <td>${item.statusOp}</td>
+                            <td>${item.pedido}</td>
+                            <td>${item.falta}</td>
+                            <td>${item.sobra}</td>
+                            <td>${item.inversaoRg}</td>
+                            <td>${item.doca}</td>
+                            <td>${item.pbr}</td>
+                            <td>${item.oneWay}</td>
+                            <td>${item.fumigado}</td>
+                            <td>${item.totalPallet}</td>
+                            <td>${item.recFrio}</td>
+                            <td>${item.obs}</td>
+                        </tr>
+                    `;
+                });
             });
             
             tbody.innerHTML = html;
+            console.log(`📋 Tabela renderizada com agrupamento: ${Object.keys(grupos).length} grupos de placas`);
+        }
+
+        function toggleGrupo(chaveGrupo) {
+            const detailsRows = document.querySelectorAll(`[data-grupo="${chaveGrupo}"]`);
+            const icon = document.querySelector(`[data-icon="${chaveGrupo}"]`);
+            
+            detailsRows.forEach(row => {
+                row.classList.toggle('show');
+            });
+            
+            if (icon) {
+                icon.classList.toggle('expanded');
+            }
         }
 
         function popularFiltros() {
@@ -3115,7 +3189,7 @@
         // ========== SISTEMA PRINCIPAL ==========
 
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('👥🔄🛡️ INICIANDO SISTEMA COM PROTEÇÃO DEFINITIVA...');
+            console.log('📋👥🔄🛡️ INICIANDO SISTEMA COM TODOS STATUS VISÍVEIS...');
             inicializarSupabase();
             setTimeout(() => inicializarSistema(), 1000);
         });
@@ -3189,7 +3263,7 @@
                     'user': 'USUÁRIO (apenas visualização)'
                 };
                 
-                mostrarAlerta('success', `✅ Bem-vindo, ${usuarioEncontrado.nome}!\n👤 Nível: ${nivelTexto[usuarioEncontrado.nivel]}\n🛡️ Proteção definitiva ativa\n💾 Dados nunca mais desaparecerão`);
+                mostrarAlerta('success', `✅ Bem-vindo, ${usuarioEncontrado.nome}!\n👤 Nível: ${nivelTexto[usuarioEncontrado.nivel]}\n📋 TODOS os status agrupados visíveis\n🔍 Clique nas linhas para expandir`);
             } else {
                 console.log('❌ FALHA NA AUTENTICAÇÃO');
                 alert('❌ Usuário ou senha incorretos!\n\nVerifique suas credenciais e tente novamente.\n\n💡 Se foi criado recentemente, aguarde sincronização automática ou force a sincronização no painel.');
@@ -3490,7 +3564,7 @@
             });
 
             console.log(`🔍 Aplicando filtros: ${dadosFiltrados.length} registros encontrados de ${dadosPatio.length} totais`);
-            renderizarTabela(dadosFiltrados);
+            renderizarTabelaAgrupada(dadosFiltrados);
             atualizarEstatisticas(dadosFiltrados);
         }
 
@@ -3513,8 +3587,7 @@
             // Executar lógica normal de limpeza
             atualizarInterface();
             
-            const dataAtual = obterDataAtual();
-            mostrarAlerta('info', `📅 Filtros limpos!\n✅ Funcionando normalmente\n📊 Dados do dia atual: ${dataAtual}`);
+            mostrarAlerta('info', `📅 Filtros limpos!\n✅ TODOS os status visíveis\n📋 Agrupamento por placa ativo\n🔍 Clique para expandir detalhes`);
         }
 
         async function limparArquivo() {
@@ -3577,37 +3650,42 @@
         function mostrarDetalhesPolling() {
             const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
             const ultimaSync = ultimaSincronizacaoUsuarios ? new Date(ultimaSincronizacaoUsuarios).toLocaleTimeString('pt-BR') : 'Nunca';
+            const statusPermitidos = ['TRÂNSITO', 'AGUARDANDO', 'DESOVANDO', 'DESCARREGADO'];
+            const dadosPorStatus = statusPermitidos.map(status => {
+                const count = [...new Set(dadosPatio.filter(d => d.status === status).map(d => d.placa))].length;
+                return `${status}: ${count}`;
+            }).join(', ');
             
             const info = `
-🛡️🔄 SISTEMA COM PROTEÇÃO DEFINITIVA
+📋🛡️ SISTEMA COM TODOS STATUS AGRUPADOS
 
-✅ PROBLEMA RESOLVIDO:
-• Dados importados PROTEGIDOS permanentemente
-• Polling BLOQUEADO quando há dados importados
-• Sincronização NÃO interfere mais
-• Cards mantêm valores após importação
+✅ STATUS VISÍVEIS NA TABELA:
+• TRÂNSITO: ${[...new Set(dadosPatio.filter(d => d.status === 'TRÂNSITO').map(d => d.placa))].length} placas
+• AGUARDANDO: ${[...new Set(dadosPatio.filter(d => d.status === 'AGUARDANDO').map(d => d.placa))].length} placas
+• DESOVANDO: ${[...new Set(dadosPatio.filter(d => d.status === 'DESOVANDO').map(d => d.placa))].length} placas
+• DESCARREGADO: ${[...new Set(dadosPatio.filter(d => d.status === 'DESCARREGADO').map(d => d.placa))].length} placas
 
-🛡️ PROTEÇÃO DEFINITIVA ATIVA:
-• Flag: dadosImportadosPermanentes = ${dadosImportadosPermanentes}
-• Timestamp: ${timestampImportacao}
+📊 AGRUPAMENTO:
+• Placas agrupadas por status
+• Múltiplas notas fiscais organizadas
+• Visual limpo sem repetições
+• Clique para expandir detalhes
+
+🛡️ PROTEÇÃO DEFINITIVA:
+• Dados importados protegidos: ${dadosImportadosPermanentes ? 'SIM' : 'NÃO'}
 • Polling bloqueado: ${dadosImportadosPermanentes ? 'SIM' : 'NÃO'}
-• Dados seguros: ✅
 
-👥 SINCRONIZAÇÃO DE USUÁRIOS:
+👥 SINCRONIZAÇÃO:
 • Última sync: ${ultimaSync}
 • Total usuários: ${usuarios.length}
-• Wagner.nunes funcionando: ✅
 
-🔍 FILTROS:
-• Funcionando normalmente: ✅
-• Event listeners ativos: ✅
+📋 CORREÇÃO APLICADA:
+• Removido filtro "apenas dia atual"
+• TODOS os status agora aparecem
+• Dados completos do arquivo importado
+• Agrupamento funcionando perfeitamente
 
-📊 CARDS:
-• Lógica preservada: ✅
-• Valores não zerarão mais: ✅
-• Soma de diárias correta: ✅
-
-✅ SISTEMA PERFEITO E BLINDADO!
+✅ SISTEMA PERFEITO E COMPLETO!
             `;
             
             alert(info);
@@ -3615,7 +3693,7 @@
 
         function toggleSupabaseDetails() {}
         function testarPollingSupabase() {}
-        function atualizarStatusSistema() {}
+        function atualizarStatusSincronizacao() {}
 
         // ========== EVENT LISTENERS CORRIGIDOS ==========
         document.addEventListener('DOMContentLoaded', function() {
@@ -3701,7 +3779,7 @@
             }
         }, 5000); // Verificar a cada 5 segundos
 
-        console.log('🛡️👥🔄 SISTEMA INICIADO - PROTEÇÃO DEFINITIVA + SINCRONIZAÇÃO ROBUSTA!');
+        console.log('📋🛡️👥🔄 SISTEMA INICIADO - TODOS STATUS AGRUPADOS VISÍVEIS!');
     </script>
 </body>
 </html>
