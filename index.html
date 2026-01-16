@@ -1583,7 +1583,7 @@
 
     <!-- BANNER DE SUCESSO DA IMPORTAÇÃO -->
     <div class="import-success-banner" id="importSuccessBanner">
-        🎉 DADOS IMPORTADOS COM SUCESSO - FILTRO DATA DESCARREGADO ATIVO!
+        🎉 DADOS IMPORTADOS COM SUCESSO - FILTROS LIBERADOS!
     </div>
 
     <!-- VISUALIZADOR DE ÚLTIMA ATUALIZAÇÃO -->
@@ -2017,6 +2017,31 @@
             ];
             
             return filtros.some(filtro => filtro && filtro.trim() !== '');
+        }
+
+        function verificarIntervaloData(dataItem, dataDe, dataAte) {
+            if (!dataItem) return false;
+            
+            try {
+                const dataItemISO = converterDataParaISO(dataItem);
+                if (!dataItemISO) return false;
+                
+                let match = true;
+                
+                if (dataDe) {
+                    match = match && (dataItemISO >= dataDe);
+                }
+                
+                if (dataAte) {
+                    match = match && (dataItemISO <= dataAte);
+                }
+                
+                return match;
+                
+            } catch (error) {
+                console.error('Erro ao verificar intervalo de data:', error);
+                return false;
+            }
         }
 
         // ========== FUNÇÃO PARA OBTER VALOR PADRÃO DE PLACAS NÃO DEDICADAS ==========
@@ -2540,7 +2565,7 @@
                 
                 // Banner de sucesso
                 const banner = document.getElementById('importSuccessBanner');
-                banner.textContent = `🎉 ${mensagem} - FILTRO DATA DESCARREGADO ATIVO!`;
+                banner.textContent = `🎉 ${mensagem} - FILTROS FUNCIONANDO NORMALMENTE!`;
                 banner.classList.add('show');
                 
                 setTimeout(() => banner.classList.remove('show'), 10000);
@@ -2550,7 +2575,7 @@
                 const timestampLocal = agora.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
                 document.getElementById('updateTimestamp').textContent = `📅 Importação: ${timestampLocal}`;
                 
-                mostrarAlerta('success', `🎉 IMPORTAÇÃO COM FILTRO PERFEITO!\n\n📊 ${mensagem}\n✅ Filtro de data para DESCARREGADO ativo\n🧮 Soma correta de diárias por placa\n📅 AGUARDANDO/DESOVANDO: sempre contam\n📅 DESCARREGADO: só se data = hoje\n\n🌟 LÓGICA PERFEITA!`);
+                mostrarAlerta('success', `🎉 IMPORTAÇÃO COM FILTROS LIBERADOS!\n\n📊 ${mensagem}\n✅ Dados importados mantidos\n🔍 Filtros funcionando normalmente\n📅 Lógica dos cards preservada\n💰 Soma de diárias mantida\n\n🌟 SISTEMA PERFEITO!`);
             } else {
                 mostrarAlerta('error', `❌ Falha na importação: ${mensagem}`);
             }
@@ -2576,7 +2601,7 @@
             }, 20000); // 20 SEGUNDOS DE PROTEÇÃO
         }
 
-        // ========== ESTATÍSTICAS FINAIS - FILTRO DATA PARA DESCARREGADO ==========
+        // ========== ESTATÍSTICAS FINAIS - FILTRO DATA PARA DESCARREGADO (MANTIDA INTACTA) ==========
         function atualizarEstatisticas(dadosFiltrados = null) {
             console.log('📅 Atualizando estatísticas - FILTRO DATA PARA DESCARREGADO...');
             
@@ -2972,7 +2997,7 @@
         // ========== SISTEMA PRINCIPAL ==========
 
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('📅✅ INICIANDO SISTEMA COM FILTRO DATA DESCARREGADO...');
+            console.log('🔍✅ INICIANDO SISTEMA COM FILTROS LIBERADOS...');
             inicializarSupabase();
             setTimeout(() => inicializarSistema(), 1000);
         });
@@ -3033,7 +3058,7 @@
                 
                 iniciarSistema();
                 
-                mostrarAlerta('success', `✅ Bem-vindo, ${usuarioEncontrado.nome}!\n📅 FILTRO PERFEITO ATIVO:\n• AGUARDANDO: sempre conta\n• DESOVANDO: sempre conta\n• DESCARREGADO: só se dataDescarga = ${obterDataAtual()}\n🧮 Soma correta de diárias por placa\n💰 Valor real das múltiplas notas`);
+                mostrarAlerta('success', `✅ Bem-vindo, ${usuarioEncontrado.nome}!\n🔍 FILTROS LIBERADOS para uso normal\n📅 Lógica dos cards mantida intacta\n💰 Soma de diárias preservada\n✅ DESCARREGADO: só se dataDescarga = hoje`);
             } else {
                 alert('❌ Usuário ou senha incorretos!');
                 localStorage.removeItem('credenciaisLembradas');
@@ -3159,20 +3184,56 @@
             mostrarAlerta('info', '⚠️ Funcionalidade temporariamente simplificada');
         }
 
+        // ========== FILTROS LIBERADOS - CORRIGIDO ==========
         function aplicarFiltros() {
-            console.log('🔍 Aplicando filtros...');
+            console.log('🔍 Aplicando filtros - LIBERADOS PARA USO NORMAL...');
             
-            if (forceShowImported) {
-                console.log('🛡️ Mantendo dados importados visíveis - filtros desabilitados temporariamente');
-                mostrarAlerta('info', '🛡️ Filtros temporariamente desabilitados para proteger dados importados');
-                return;
-            }
+            const searchPlaca = document.getElementById('searchPlaca').value.toUpperCase();
+            const filterStatus = document.getElementById('filterStatus').value;
+            const filterOrigem = document.getElementById('filterOrigem').value;
+            const filterTipoMercado = document.getElementById('filterTipoMercado').value;
+            const filterGerandoDiaria = document.getElementById('filterGerandoDiaria').value;
+            const filterTipoDescarga = document.getElementById('filterTipoDescarga').value;
             
-            atualizarInterface();
+            const filterDataChegadaDe = document.getElementById('filterDataChegadaDe').value;
+            const filterDataChegadaAte = document.getElementById('filterDataChegadaAte').value;
+            const filterDataDescargaDe = document.getElementById('filterDataDescargaDe').value;
+            const filterDataDescargaAte = document.getElementById('filterDataDescargaAte').value;
+
+            let dadosFiltrados = dadosPatio.filter(item => {
+                let matchPlaca = !searchPlaca || item.placa.includes(searchPlaca);
+                let matchStatus = !filterStatus || item.status === filterStatus;
+                let matchOrigem = !filterOrigem || item.origem === filterOrigem;
+                let matchTipoMercado = !filterTipoMercado || item.tipoMercado === filterTipoMercado;
+                
+                let matchGerandoDiaria = true;
+                if (filterGerandoDiaria === 'SIM') {
+                    matchGerandoDiaria = (item.status === 'AGUARDANDO' || item.status === 'DESOVANDO') && parseInt(item.diaria) > 0;
+                } else if (filterGerandoDiaria === 'NAO') {
+                    matchGerandoDiaria = !(item.status === 'AGUARDANDO' || item.status === 'DESOVANDO') || parseInt(item.diaria) === 0;
+                }
+                
+                let matchTipoDescarga = !filterTipoDescarga || item.tipoDescarga === filterTipoDescarga;
+                
+                let matchDataChegada = true;
+                if (filterDataChegadaDe || filterDataChegadaAte) {
+                    matchDataChegada = verificarIntervaloData(item.dataChegada, filterDataChegadaDe, filterDataChegadaAte);
+                }
+                
+                let matchDataDescarga = true;
+                if (filterDataDescargaDe || filterDataDescargaAte) {
+                    matchDataDescarga = verificarIntervaloData(item.dataDescarga, filterDataDescargaDe, filterDataDescargaAte);
+                }
+                
+                return matchPlaca && matchStatus && matchOrigem && matchTipoMercado && matchGerandoDiaria && matchTipoDescarga && matchDataChegada && matchDataDescarga;
+            });
+
+            renderizarTabela(dadosFiltrados);
+            atualizarEstatisticas(dadosFiltrados);
         }
 
         function limparFiltros() {
-            console.log('🔄 Limpando filtros...');
+            console.log('🔄 Limpando filtros - LIBERADO PARA USO NORMAL...');
             
             // Limpar campos
             document.getElementById('searchPlaca').value = '';
@@ -3185,16 +3246,13 @@
             document.getElementById('filterDataChegadaAte').value = '';
             document.getElementById('filterDataDescargaDe').value = '';
             document.getElementById('filterDataDescargaAte').value = '';
+            document.getElementById('totalDiariasInfo').classList.remove('show');
             
-            // Se há dados importados protegidos, mantê-los
-            if (forceShowImported) {
-                forcarRenderizacaoCompleta();
-            } else {
-                atualizarInterface();
-            }
+            // Executar lógica normal de limpeza
+            atualizarInterface();
             
             const dataAtual = obterDataAtual();
-            mostrarAlerta('info', `📅 Filtros limpos!\n✅ FILTRO PERFEITO ATIVO:\n• AGUARDANDO/DESOVANDO: sempre\n• DESCARREGADO: só se data = ${dataAtual}\n🧮 Soma correta por placa`);
+            mostrarAlerta('info', `📅 Filtros limpos e funcionando!\n✅ Filtros liberados para uso normal\n📊 Lógica dos cards preservada\n💰 Data atual: ${dataAtual}`);
         }
 
         async function limparArquivo() {
@@ -3247,54 +3305,35 @@
             const dadosDia = dadosPatio.filter(item => item.dataChegada === dataAtual || item.dataDescarga === dataAtual);
             const valorPadrao = obterValorPadraoNaoDedicada();
             
-            // Contagem com filtro correto
-            const placasUnicasTransito = [...new Set(dadosPatio.filter(d => d.status === 'TRÂNSITO').map(d => d.placa))].length;
-            const placasUnicasAguardando = [...new Set(dadosPatio.filter(d => d.status === 'AGUARDANDO').map(d => d.placa))].length;
-            const placasUnicasDia = [...new Set(dadosDia.map(d => d.placa))].length;
-            
-            // Diárias geradas com filtro correto
-            const placasComFiltroCorreto = dadosPatio.filter(d => {
-                const diariaValida = parseInt(d.diaria) > 0;
-                if (d.status === 'AGUARDANDO' || d.status === 'DESOVANDO') {
-                    return diariaValida;
-                } else if (d.status === 'DESCARREGADO') {
-                    return diariaValida && d.dataDescarga === dataAtual;
-                }
-                return false;
-            });
-            const diariasGeradasFiltro = [...new Set(placasComFiltroCorreto.map(d => d.placa))].length;
-            
             const info = `
-📅✅ SISTEMA FINAL - FILTRO DATA DESCARREGADO PERFEITO
+🔍✅ SISTEMA FINAL - FILTROS LIBERADOS
 
-📈 HISTÓRICO COMPLETO (placas únicas):
-• Em Trânsito: ${placasUnicasTransito} placas únicas
-• Aguardando: ${placasUnicasAguardando} placas únicas
+📊 SITUAÇÃO ATUAL:
+• Total registros: ${dadosPatio.length}
+• Data atual: ${dataAtual}
+• Valor fallback: R$ ${valorPadrao.toFixed(2)}
 
-📅 DIA ATUAL (${dataAtual}):
-• Desovando: ${[...new Set(dadosDia.filter(d => d.status === 'DESOVANDO').map(d => d.placa))].length} placas (dia atual)
-• Descarregado: ${[...new Set(dadosDia.filter(d => d.status === 'DESCARREGADO').map(d => d.placa))].length} placas (dia atual)
-• Movimentação Total: ${placasUnicasDia} placas (dia atual)
+🔍 FILTROS:
+• Status: LIBERADO ✅
+• Busca placa: LIBERADO ✅  
+• Filtros de data: LIBERADO ✅
+• Todos funcionando normalmente
 
-💰 DIÁRIAS GERADAS - FILTRO CORRETO:
-• Total: ${diariasGeradasFiltro} placas únicas
-• AGUARDANDO: sempre conta (se diária > 0)
-• DESOVANDO: sempre conta (se diária > 0)
-• DESCARREGADO: SÓ se dataDescarga = ${dataAtual}
+📅 LÓGICA DOS CARDS MANTIDA:
+• Em Trânsito: histórico completo
+• Aguardando: histórico completo  
+• Desovando: dia atual
+• Diárias Geradas: AGUARDANDO/DESOVANDO sempre + DESCARREGADO só se dataDescarga = hoje
+• Descarregado: dia atual
+• Movimentação Total: dia atual
 
-📋 EXEMPLO FUNCIONANDO:
-• Placa chegou 12/01, descarregada 16/01: CONTA ✅
-• Placa chegou 12/01, descarregada 15/01: NÃO CONTA ❌
-• Placa AGUARDANDO: sempre conta ✅
-• Placa DESOVANDO: sempre conta ✅
-
-🧮 SOMA CORRETA POR PLACA MANTIDA:
-• Agrupa múltiplas notas da mesma placa
+🧮 SOMA DE DIÁRIAS PRESERVADA:
+• Agrupa múltiplas notas por placa
 • Soma todas as diárias da placa
-• Multiplica: SOMA_DIARIAS × valorDiaria
+• Multiplica pela valorDiaria
 • Valor real das múltiplas notas fiscais
 
-✅ SISTEMA PERFEITO E FINALIZADO!
+✅ CORREÇÃO APLICADA: FILTROS FUNCIONANDO!
             `;
             
             alert(info);
@@ -3305,11 +3344,7 @@
         function atualizarStatusSistema() {}
 
         // Event listeners
-        document.getElementById('searchPlaca')?.addEventListener('input', function() {
-            if (!forceShowImported) {
-                aplicarFiltros();
-            }
-        });
+        document.getElementById('searchPlaca')?.addEventListener('input', aplicarFiltros);
 
         // ========== PROTEÇÃO CONTRA RECARREGAMENTO ACIDENTAL ==========
         window.addEventListener('beforeunload', function(e) {
@@ -3332,7 +3367,7 @@
             }
         }, 2000); // Verificar a cada 2 segundos
 
-        console.log('📅✅ SISTEMA INICIADO - FILTRO DATA DESCARREGADO PERFEITO!');
+        console.log('🔍✅ SISTEMA INICIADO - FILTROS LIBERADOS E FUNCIONANDO!');
     </script>
 </body>
 </html>
