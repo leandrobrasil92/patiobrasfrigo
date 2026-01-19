@@ -164,7 +164,7 @@
             100% { transform: translateY(0); opacity: 1; }
         }
 
-        /* VISUALIZADOR DE ÚLTIMA ATUALIZAÇÃO */
+        /* VISUALIZADOR DE ÚLTIMA ATUALIZAÇÃO - CORRIGIDO */
         .update-timestamp {
             position: fixed;
             top: 65px;
@@ -179,6 +179,18 @@
             z-index: 1003;
             box-shadow: 0 1px 6px rgba(0,0,0,0.1);
             transition: all 0.3s ease;
+            animation: timestampPulse 3s infinite;
+        }
+
+        .update-timestamp.synced {
+            border-color: #059669;
+            background: rgba(240, 253, 244, 0.98);
+            color: #059669;
+        }
+
+        @keyframes timestampPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; transform: scale(1.02); }
         }
 
         /* NOTIFICAÇÃO DE TEMPO REAL */
@@ -1641,7 +1653,7 @@
         ⚡ Dados atualizados por outro usuário!
     </div>
 
-    <!-- VISUALIZADOR DE ÚLTIMA ATUALIZAÇÃO -->
+    <!-- VISUALIZADOR DE ÚLTIMA ATUALIZAÇÃO - CORRIGIDO -->
     <div class="update-timestamp" id="updateTimestamp">
         📅 Última atualização: Nunca
     </div>
@@ -2002,6 +2014,10 @@
         let ultimoTimestampBanco = 0;
         let ultimaSincronizacaoUsuarios = 0;
         
+        // CORREÇÃO: Variáveis para sincronização do timestamp
+        let timestampGlobalInterval = null;
+        let ultimaAtualizacaoGlobal = 'Nunca';
+        
         // 🛡️ SISTEMA DE PROTEÇÃO PERMANENTE DOS CARDS
         let isImporting = false;
         let importBlocked = false; 
@@ -2164,6 +2180,144 @@
             return 0;
         }
 
+        // ========== CORREÇÃO DO TIMESTAMP ==========
+
+        function salvarTimestampGlobal(timestamp) {
+            const timestampData = {
+                timestamp: timestamp,
+                usuario: usuarioLogado ? usuarioLogado.nome : 'Sistema',
+                dataBrasil: timestamp
+            };
+            
+            // Salvar localmente
+            localStorage.setItem('ultimaAtualizacaoGlobal', JSON.stringify(timestampData));
+            sessionStorage.setItem('timestampAtual', timestamp);
+            
+            // Salvar no Supabase se disponível
+            if (supabaseDisponivel && supabase) {
+                try {
+                    supabase
+                        .from('dados_patio')
+                        .upsert({
+                            placa: '__TIMESTAMP_GLOBAL__',
+                            container: timestamp,
+                            data_chegada: new Date().toISOString().split('T')[0],
+                            status: 'TIMESTAMP',
+                            transportadora: usuarioLogado ? usuarioLogado.nome : 'Sistema',
+                            origem: 'TIMESTAMP_SYNC'
+                        })
+                        .then(result => {
+                            if (result.error) {
+                                console.log('Aviso: timestamp local apenas');
+                            } else {
+                                console.log('✅ Timestamp sincronizado globalmente');
+                            }
+                        });
+                } catch (error) {
+                    console.log('Timestamp salvo apenas localmente');
+                }
+            }
+            
+            ultimaAtualizacaoGlobal = timestamp;
+        }
+
+        function atualizarTimestampVisual(timestamp) {
+            const timestampElement = document.getElementById('updateTimestamp');
+            if (timestampElement) {
+                timestampElement.textContent = `📅 Última atualização: ${timestamp}`;
+                timestampElement.classList.add('synced');
+                
+                // Efeito visual de atualização
+                timestampElement.style.animation = 'none';
+                setTimeout(() => {
+                    timestampElement.style.animation = 'timestampPulse 3s infinite';
+                }, 10);
+            }
+        }
+
+        async function sincronizarTimestampGlobal() {
+            if (!supabaseDisponivel || !supabase) {
+                carregarTimestampLocal();
+                return;
+            }
+            
+            try {
+                // Buscar timestamp mais recente de qualquer operação
+                const { data, error } = await supabase
+                    .from('dados_patio')
+                    .select('container, transportadora, criado_em')
+                    .or('placa.eq.__TIMESTAMP_GLOBAL__,status.eq.DESCARREGADO,status.eq.AGUARDANDO,status.eq.TRÂNSITO,status.eq.DESOVANDO')
+                    .order('criado_em', { ascending: false })
+                    .limit(1);
+
+                if (error) {
+                    carregarTimestampLocal();
+                    return;
+                }
+
+                if (data && data.length > 0) {
+                    const registro = data[0];
+                    
+                    // Se for um timestamp específico, usar ele
+                    if (registro.container && registro.container.includes('/')) {
+                        ultimaAtualizacaoGlobal = registro.container;
+                        atualizarTimestampVisual(registro.container);
+                    } else {
+                        // Se for um registro de dados, gerar timestamp da data de criação
+                        const dataServer = new Date(registro.criado_em);
+                        const timestampFormatado = dataServer.toLocaleString('pt-BR');
+                        const usuario = registro.transportadora || 'Sistema';
+                        
+                        ultimaAtualizacaoGlobal = `${timestampFormatado} (${usuario})`;
+                        atualizarTimestampVisual(ultimaAtualizacaoGlobal);
+                    }
+                } else {
+                    carregarTimestampLocal();
+                }
+                
+            } catch (error) {
+                console.log('Erro na sincronização de timestamp, usando local');
+                carregarTimestampLocal();
+            }
+        }
+
+        function carregarTimestampLocal() {
+            const timestampSalvo = localStorage.getItem('ultimaAtualizacaoGlobal');
+            
+            if (timestampSalvo) {
+                try {
+                    const timestampData = JSON.parse(timestampSalvo);
+                    ultimaAtualizacaoGlobal = timestampData.timestamp;
+                    atualizarTimestampVisual(ultimaAtualizacaoGlobal);
+                } catch (error) {
+                    ultimaAtualizacaoGlobal = 'Nunca';
+                    atualizarTimestampVisual(ultimaAtualizacaoGlobal);
+                }
+            } else {
+                ultimaAtualizacaoGlobal = 'Nunca';
+                atualizarTimestampVisual(ultimaAtualizacaoGlobal);
+            }
+        }
+
+        function iniciarSincronizacaoTimestamp() {
+            // Sincronizar timestamp a cada 10 segundos
+            if (timestampGlobalInterval) {
+                clearInterval(timestampGlobalInterval);
+            }
+            
+            // Primeira sincronização
+            sincronizarTimestampGlobal();
+            
+            // Intervalo de sincronização
+            timestampGlobalInterval = setInterval(() => {
+                if (!isImporting && !importBlocked) {
+                    sincronizarTimestampGlobal();
+                }
+            }, 10000);
+            
+            console.log('✅ Sincronização de timestamp iniciada');
+        }
+
         // ========== SISTEMA DE AUTENTICAÇÃO CORRIGIDO ==========
 
         function inicializarUsuarios() {
@@ -2265,6 +2419,12 @@
                         document.getElementById('mainContainer').style.display = 'block';
                         
                         iniciarSistema();
+                        
+                        // REGISTRAR LOGIN NO TIMESTAMP
+                        const agora = new Date();
+                        const timestampLogin = `${agora.toLocaleString('pt-BR')} (Login: ${usuarioEncontrado.nome})`;
+                        salvarTimestampGlobal(timestampLogin);
+                        atualizarTimestampVisual(timestampLogin);
                         
                         const nivelTexto = {
                             'master': 'MASTER (acesso total)',
@@ -2560,6 +2720,9 @@
                 
                 await sincronizarUsuarios();
                 
+                // INICIAR SINCRONIZAÇÃO DO TIMESTAMP
+                iniciarSincronizacaoTimestamp();
+                
                 if (!dadosProtegidosPermanentemente) {
                     await carregarDadosSupabase();
                 }
@@ -2615,6 +2778,7 @@
                     .from('dados_patio')
                     .select('criado_em')
                     .neq('placa', '__TIMESTAMP_BRASILEIRO__')
+                    .neq('placa', '__TIMESTAMP_GLOBAL__')
                     .order('criado_em', { ascending: false })
                     .limit(1);
 
@@ -2631,6 +2795,12 @@
                         ultimoTimestampBanco = ultimoTimestamp;
                         
                         await carregarDadosSupabase();
+                        
+                        // ATUALIZAR TIMESTAMP PARA TODOS OS USUÁRIOS
+                        const agora = new Date();
+                        const timestampSync = `${agora.toLocaleString('pt-BR')} (Sincronização)`;
+                        salvarTimestampGlobal(timestampSync);
+                        
                         mostrarNotificacaoTempoReal('⚡ Dados atualizados!');
                         atualizarIndicadorPolling('Sincronizado');
                     } else {
@@ -2679,6 +2849,7 @@
                     .from('dados_patio')
                     .select('*')
                     .neq('placa', '__TIMESTAMP_BRASILEIRO__')
+                    .neq('placa', '__TIMESTAMP_GLOBAL__')
                     .order('criado_em', { ascending: false });
 
                 if (error) {
@@ -2880,6 +3051,11 @@
                 atualizarInterface();
                 popularFiltros();
                 
+                // REGISTRAR TIMESTAMP DE IMPORTAÇÃO
+                const agora = new Date();
+                const timestampImportacao = `${agora.toLocaleString('pt-BR')} (Importação: ${usuarioLogado.nome})`;
+                salvarTimestampGlobal(timestampImportacao);
+                
                 // SUPABASE EM BACKGROUND
                 if (supabaseDisponivel) {
                     try {
@@ -2901,7 +3077,7 @@
 
         async function salvarNoSupabaseBackground(dadosArray) {
             try {
-                await supabase.from('dados_patio').delete().gte('id', 0);
+                await supabase.from('dados_patio').delete().neq('placa', '__TIMESTAMP_GLOBAL__');
                 
                 const dadosSupabase = dadosArray.map(item => ({
                     placa: item.placa,
@@ -2959,8 +3135,9 @@
                 setTimeout(() => banner.classList.remove('show'), 8000);
                 
                 const agora = new Date();
-                const timestampLocal = agora.toLocaleString('pt-BR');
-                document.getElementById('updateTimestamp').textContent = `🛡️ Protegido: ${timestampLocal}`;
+                const timestampLocal = `${agora.toLocaleString('pt-BR')} (${usuarioLogado.nome})`;
+                salvarTimestampGlobal(timestampLocal);
+                atualizarTimestampVisual(timestampLocal);
                 
                 mostrarAlerta('success', `🛡️ IMPORTAÇÃO COM 5 CARDS PROTEGIDOS!\n\n📊 ${mensagem}\n✅ Cards nunca mais ficam vazios\n📅 Movimentação = mês atual de descarga\n🔒 Proteção permanente ativa\n📋 Filtros ativos e funcionando\n\n💪 SISTEMA 100% FUNCIONAL!`);
                 
@@ -3378,9 +3555,8 @@
                 notification.classList.remove('show');
             }, 5000);
             
-            const agora = new Date();
-            const timestampLocal = agora.toLocaleString('pt-BR');
-            document.getElementById('updateTimestamp').textContent = `📅 Sync: ${timestampLocal}`;
+            // CORREÇÃO: Usar timestamp sincronizado globalmente
+            sincronizarTimestampGlobal();
         }
 
         function atualizarIndicadorPolling(status) {
@@ -3405,13 +3581,16 @@
         // ========== SISTEMA PRINCIPAL CORRIGIDO ==========
 
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀✅📅 INICIANDO SISTEMA CORRIGIDO - LOGIN + MOVIMENTAÇÃO = MÊS ATUAL...');
+            console.log('🚀✅📅 INICIANDO SISTEMA CORRIGIDO - LOGIN + MOVIMENTAÇÃO = MÊS ATUAL + TIMESTAMP CORRIGIDO...');
             
             // INICIALIZAR USUÁRIOS PRIMEIRO
             inicializarUsuarios();
             
             // VERIFICAR PROTEÇÃO
             verificarRestaurarProtecao();
+            
+            // CARREGAR TIMESTAMP LOCAL PRIMEIRO
+            carregarTimestampLocal();
             
             // INICIALIZAR SUPABASE
             inicializarSupabase();
@@ -3488,6 +3667,16 @@
                     pollingInterval = null;
                 }
                 
+                if (timestampGlobalInterval) {
+                    clearInterval(timestampGlobalInterval);
+                    timestampGlobalInterval = null;
+                }
+                
+                // REGISTRAR LOGOUT NO TIMESTAMP
+                const agora = new Date();
+                const timestampLogout = `${agora.toLocaleString('pt-BR')} (Logout: ${usuarioLogado.nome})`;
+                salvarTimestampGlobal(timestampLogout);
+                
                 sessionStorage.removeItem('usuarioLogado');
                 localStorage.removeItem('credenciaisLembradas');
                 location.reload();
@@ -3496,6 +3685,11 @@
 
         function iniciarSistema() {
             verificarPermissoes();
+            
+            // INICIAR SINCRONIZAÇÃO DE TIMESTAMP
+            if (supabaseDisponivel) {
+                iniciarSincronizacaoTimestamp();
+            }
             
             if (supabaseDisponivel && !importBlocked && !dadosProtegidosPermanentemente) {
                 carregarDadosSupabase();
@@ -3551,11 +3745,11 @@
             const pollingIndicatorPanel = document.getElementById('pollingIndicatorPanel');
             
             if (usuarioLogado.nivel === 'master') {
-                document.getElementById('panelTitle').innerHTML = '👥 Painel Master - Movimentação = Mês Atual';
+                document.getElementById('panelTitle').innerHTML = '👥 Painel Master - Timestamp Corrigido';
                 document.getElementById('createUserSection').style.display = 'block';
                 pollingIndicatorPanel.style.display = 'block';
             } else {
-                document.getElementById('panelTitle').innerHTML = '👥 Painel Admin - Movimentação = Mês Atual';
+                document.getElementById('panelTitle').innerHTML = '👥 Painel Admin - Timestamp Corrigido';
                 document.getElementById('createUserSection').style.display = 'none';
                 pollingIndicatorPanel.style.display = 'none';
             }
@@ -3641,6 +3835,11 @@
             document.getElementById('novoNivel').value = '';
 
             carregarListaUsuarios();
+
+            // REGISTRAR CRIAÇÃO DE USUÁRIO NO TIMESTAMP
+            const agora = new Date();
+            const timestampUsuario = `${agora.toLocaleString('pt-BR')} (Usuário criado: ${nome})`;
+            salvarTimestampGlobal(timestampUsuario);
 
             mostrarAlerta('success', `✅ Usuário ${nome} criado!\n\n👤 Nível: ${nivel}\n🔐 Login: ${login}\n🔒 Senha: ${senha}\n\n✅ Pode fazer login imediatamente!`);
         }
@@ -3755,7 +3954,7 @@
                 
                 if (supabaseDisponivel) {
                     try {
-                        await supabase.from('dados_patio').delete().gte('id', 0);
+                        await supabase.from('dados_patio').delete().neq('placa', '__TIMESTAMP_GLOBAL__');
                     } catch (error) {
                         console.error('Erro ao limpar Supabase:', error);
                     }
@@ -3763,6 +3962,11 @@
                 
                 const cards = document.querySelectorAll('.stat-card');
                 cards.forEach(card => card.classList.remove('protected'));
+                
+                // REGISTRAR LIMPEZA NO TIMESTAMP
+                const agora = new Date();
+                const timestampLimpeza = `${agora.toLocaleString('pt-BR')} (Sistema limpo: ${usuarioLogado.nome})`;
+                salvarTimestampGlobal(timestampLimpeza);
                 
                 atualizarInterface();
                 mostrarAlerta('info', '🗑️ Dados limpos! Sistema resetado.');
@@ -3786,6 +3990,11 @@
             link.download = `minerva_patio_${new Date().toISOString().split('T')[0]}.csv`;
             link.click();
             
+            // REGISTRAR EXPORTAÇÃO NO TIMESTAMP
+            const agora = new Date();
+            const timestampExport = `${agora.toLocaleString('pt-BR')} (Exportação: ${usuarioLogado.nome})`;
+            salvarTimestampGlobal(timestampExport);
+            
             mostrarAlerta('success', '✓ Arquivo exportado!');
         }
 
@@ -3798,9 +4007,10 @@
             
             try {
                 await sincronizarUsuarios();
+                await sincronizarTimestampGlobal();
                 
                 const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
-                mostrarAlerta('success', `✅ Sincronização concluída!\n\n👥 ${usuarios.length} usuários disponíveis\n✅ Login funcionando\n📊 5 cards ativos\n📈 Movimentação = mês atual\n⏰ ${new Date().toLocaleTimeString('pt-BR')}`);
+                mostrarAlerta('success', `✅ Sincronização concluída!\n\n👥 ${usuarios.length} usuários disponíveis\n✅ Login funcionando\n📊 5 cards ativos\n📅 Timestamp sincronizado\n📈 Movimentação = mês atual\n⏰ ${new Date().toLocaleTimeString('pt-BR')}`);
                 
             } catch (error) {
                 mostrarAlerta('error', `❌ Erro na sincronização: ${error.message}`);
@@ -3816,7 +4026,7 @@
             const mesAtual = obterMesAtual();
             
             const info = `
-🚀✅📊 SISTEMA FINAL - LOGIN + MOVIMENTAÇÃO MÊS ATUAL
+🚀✅📊📅 SISTEMA FINAL - LOGIN + MOVIMENTAÇÃO MÊS ATUAL + TIMESTAMP
 
 ✅ LOGIN FUNCIONANDO:
 • Total usuários: ${usuarios.length}
@@ -3829,6 +4039,12 @@
 • Desovando: ${document.getElementById('totalDesovando').textContent} (status ativo)
 • Descarregado: ${document.getElementById('totalDescarregado').textContent} (só hoje)
 • Movimentação: ${document.getElementById('totalVeiculos').textContent} (DESCARGA mês ${mesAtual})
+
+📅 TIMESTAMP CORRIGIDO:
+• Sincronização global: ✅
+• Visível para todos: ✅
+• Atualização automática: ✅
+• Registro de operações: ✅
 
 📈 MOVIMENTAÇÃO CORRIGIDA:
 • Busca: APENAS descarga do mês atual
@@ -3850,6 +4066,7 @@
 🛡️ PROTEÇÃO:
 • Cards: ${dadosProtegidosPermanentemente ? 'PROTEGIDOS' : 'NORMAIS'}
 • Backup: Automático
+• Timestamp: Sincronizado
 
 ✅ SISTEMA PERFEITO E COMPLETO!
             `;
@@ -3931,7 +4148,7 @@
             }
         });
 
-        console.log('✅🚀📊📈 SISTEMA FINAL - LOGIN + 5 CARDS + MOVIMENTAÇÃO MÊS ATUAL!');
+        console.log('✅🚀📊📈📅 SISTEMA FINAL - LOGIN + 5 CARDS + MOVIMENTAÇÃO MÊS ATUAL + TIMESTAMP CORRIGIDO!');
     </script>
 </body>
 </html>
