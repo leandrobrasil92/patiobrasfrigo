@@ -2618,6 +2618,7 @@
             try {
                 supabase = window.supabase.createClient(supabaseConfig.url, supabaseConfig.anonKey);
                 supabaseDisponivel = true;
+                console.log('✅ Supabase conectado:', supabaseConfig.url);
                 verificarRestaurarProtecao();
                 carregarDadosLocal();
                 return true;
@@ -3173,7 +3174,7 @@
             `).join('');
         }
 
-        // ========== FUNÇÃO CORRIGIDA PARA CRIAR USUÁRIO NO SUPABASE ==========
+        // ========== FUNÇÃO CORRIGIDA PARA SUPABASE COM CAMPOS CORRETOS ==========
         async function criarUsuario(event) {
             event.preventDefault();
             
@@ -3217,48 +3218,51 @@
                 ativo: true
             };
 
+            console.log('📝 CRIANDO USUÁRIO:', novoUsuario);
+
             // ========== SALVAR NO LOCALSTORAGE ==========
             usuarios.push(novoUsuario);
             localStorage.setItem('usuariosSistema', JSON.stringify(usuarios));
 
-            // ========== SALVAR NO SUPABASE ==========
-            if (supabaseDisponivel && supabase) {
+            // ========== TESTAR E SALVAR NO SUPABASE ==========
+            if (!supabaseDisponivel || !supabase) {
+                console.log('⚠️ Supabase não disponível');
+                mostrarAlerta('info', '📱 Usuário criado localmente (servidor indisponível).');
+            } else {
                 try {
-                    console.log('📤 Salvando usuário no Supabase...');
+                    console.log('🔍 TESTANDO SUPABASE...');
                     
-                    // Dados para enviar ao Supabase
+                    // DADOS PARA SUPABASE - USANDO NOMES CORRETOS DAS COLUNAS
                     const dadosSupabase = {
-                        id: novoUsuario.id,
                         nome: novoUsuario.nome,
                         login: novoUsuario.login,
-                        senha: novoUsuario.senha, // Em produção, considere criptografar a senha
+                        senha: novoUsuario.senha,
                         nivel: novoUsuario.nivel,
                         email: novoUsuario.email,
-                        criado_em: novoUsuario.criadoEm,
-                        criado_por: novoUsuario.criadoPor,
+                        criado_em: novoUsuario.criadoEm,  // Usar criado_em como na tabela
+                        criado_por: novoUsuario.criadoPor, // Usar criado_por como na tabela
                         ativo: novoUsuario.ativo
                     };
                     
+                    console.log('📤 DADOS PARA SUPABASE:', dadosSupabase);
+                    
                     const { data, error } = await supabase
-                        .from('usuarios') // Nome da tabela no Supabase
-                        .insert([dadosSupabase]);
+                        .from('usuarios')
+                        .insert([dadosSupabase])
+                        .select();
                     
                     if (error) {
-                        console.error('❌ Erro ao salvar no Supabase:', error);
-                        // Não falha a criação, apenas loga o erro
-                        mostrarAlerta('warning', '⚠️ Usuário criado localmente. Erro ao sincronizar com servidor.');
+                        console.error('❌ ERRO SUPABASE DETALHADO:', error);
+                        mostrarAlerta('warning', `⚠️ Usuário criado localmente. Erro: ${error.message}`);
                     } else {
-                        console.log('✅ Usuário salvo no Supabase:', data);
+                        console.log('✅ SUCESSO SUPABASE:', data);
                         mostrarAlerta('success', `✅ Usuário criado e sincronizado com sucesso!`);
                     }
                     
                 } catch (error) {
-                    console.error('❌ Erro na conexão com Supabase:', error);
-                    mostrarAlerta('warning', '⚠️ Usuário criado localmente. Servidor indisponível.');
+                    console.error('❌ ERRO CONEXÃO SUPABASE:', error);
+                    mostrarAlerta('warning', `⚠️ Usuário criado localmente. Conexão: ${error.message}`);
                 }
-            } else {
-                console.log('📱 Supabase indisponível, salvando apenas localmente');
-                mostrarAlerta('info', '📱 Usuário criado localmente (servidor indisponível).');
             }
 
             // ========== LIMPAR FORMULÁRIO E ATUALIZAR LISTA ==========
@@ -3272,7 +3276,7 @@
             const agora = new Date();
             salvarTimestampGlobal(agora.toLocaleString('pt-BR'));
 
-            console.log(`✅ Usuário criado: ${nome} (${login})`);
+            console.log(`✅ PROCESSO COMPLETO - Usuário: ${nome} (${login})`);
         }
 
         function aplicarFiltros() {
@@ -3414,7 +3418,7 @@
             }
         }
 
-        console.log('✅🚛📊🎨 SISTEMA COM GRÁFICO DESCARREGANDO E CRIAÇÃO AUTOMÁTICA NO SUPABASE IMPLEMENTADO!');
+        console.log('✅🚛📊🎨 SISTEMA COM GRÁFICO DESCARREGANDO E SUPABASE CORRIGIDO!');
     </script>
 </body>
 </html>
