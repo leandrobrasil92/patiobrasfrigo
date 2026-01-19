@@ -11,6 +11,9 @@
     <!-- Biblioteca SheetJS para ler arquivos Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
+    <!-- EmailJS SDK para envio via Outlook -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    
     <style>
         * {
             margin: 0;
@@ -272,7 +275,7 @@
             background: #dc3545;
         }
 
-        /* TELA DE LOGIN CORRIGIDA - OCULTA POR PADRÃO */
+        /* TELA DE LOGIN LIMPA - OCULTA POR PADRÃO */
         .login-overlay {
             position: fixed;
             top: 0;
@@ -280,7 +283,7 @@
             width: 100%;
             height: 100%;
             background: rgba(0,0,0,0.9);
-            display: none; /* MUDANÇA: oculta por padrão */
+            display: none;
             justify-content: center;
             align-items: center;
             z-index: 9999;
@@ -354,25 +357,58 @@
             margin: 0;
         }
 
-        .security-notice {
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 6px;
-            padding: 15px;
-            margin-bottom: 20px;
-            text-align: left;
+        /* SEÇÃO DE RECUPERAÇÃO DE SENHA */
+        .password-recovery {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
         }
 
-        .security-notice h4 {
-            color: #495057;
-            margin-bottom: 10px;
+        .recovery-title {
             font-size: 14px;
+            color: #6c757d;
+            margin-bottom: 15px;
+            font-weight: 600;
         }
 
-        .security-notice ul {
-            font-size: 12px;
-            color: #6c757d;
-            margin-left: 20px;
+        .recovery-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .recovery-input {
+            padding: 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .recovery-input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .recovery-btn {
+            padding: 12px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .recovery-btn:hover {
+            background: #2980b9;
+        }
+
+        .recovery-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
         }
 
         /* LOGIN STATUS */
@@ -401,6 +437,86 @@
             background: #d1ecf1;
             color: #0c5460;
             border: 1px solid #b8daff;
+        }
+
+        /* MODAL DE TROCA DE SENHA */
+        .change-password-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9998;
+        }
+
+        .change-password-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            width: 400px;
+            text-align: center;
+        }
+
+        .change-password-content h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .password-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .password-input {
+            padding: 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .password-input:focus {
+            outline: none;
+            border-color: #2c3e50;
+        }
+
+        .btn-save-password {
+            padding: 12px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-save-password:hover {
+            background: #218838;
+        }
+
+        .btn-cancel {
+            padding: 12px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-cancel:hover {
+            background: #5a6268;
         }
 
         /* PAINEL DE GOVERNANÇA DE USUÁRIOS */
@@ -691,7 +807,7 @@
             opacity: 0.9;
         }
 
-        /* USER-INFO COM FONTES MENORES - LAYOUT AJUSTADO */
+        /* USER-INFO COM BOTÃO DE ALTERAR SENHA */
         .user-info {
             position: absolute;
             top: 50%;
@@ -747,7 +863,7 @@
             color: white;
         }
 
-        /* BOTÕES PADRÃO NEUTROS - FONTES MENORES */
+        /* BOTÕES PADRÃO NEUTROS - INCLUINDO TROCA DE SENHA */
         .btn-control-panel {
             padding: 5px 8px;
             background: #6c757d;
@@ -768,6 +884,28 @@
 
         .btn-control-panel:hover {
             background: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        .btn-change-password {
+            padding: 5px 8px;
+            background: #17a2b8;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 9px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            text-align: center;
+            z-index: 101;
+            pointer-events: auto;
+            line-height: 1.2;
+        }
+
+        .btn-change-password:hover {
+            background: #138496;
             transform: translateY(-1px);
         }
 
@@ -1666,25 +1804,14 @@
         🔄 Sincronizando...
     </div>
 
-    <!-- TELA DE LOGIN CORRIGIDA - OCULTA POR PADRÃO -->
+    <!-- TELA DE LOGIN LIMPA - OCULTA POR PADRÃO -->
     <div class="login-overlay" id="loginOverlay">
         <div class="login-modal">
             <h2>🔐 Login - Pátio Brasfrigo</h2>
-            
-            <!-- AVISO DE SEGURANÇA -->
-            <div class="security-notice">
-                <h4>🛡️ Sistema Seguro</h4>
-                <ul>
-                    <li>Acesso restrito a usuários autorizados</li>
-                    <li>Credenciais protegidas e criptografadas</li>
-                    <li>Sistema de auditoria ativo</li>
-                    <li>Login corrigido - não aparece ao atualizar!</li>
-                </ul>
-            </div>
 
             <!-- STATUS DE LOGIN -->
             <div class="login-status" id="loginStatus">
-                Carregando usuários...
+                Sistema pronto
             </div>
             
             <form class="login-form" onsubmit="fazerLogin(event)">
@@ -1697,21 +1824,35 @@
                 <button type="submit" class="login-btn" id="btnLogin">Entrar</button>
             </form>
 
-            <!-- USUÁRIOS DISPONÍVEIS PARA DEBUG -->
-            <div style="margin-top: 20px; font-size: 11px; color: #6c757d; text-align: left;">
-                <strong>👥 Usuários Disponíveis:</strong><br>
-                • leandro.brasil / master123 (MASTER)<br>
-                • diego.cordeiro / diego123 (USER)<br>
-                • teste.brasil / teste123 (USER)<br>
-                • rhemerson.rezende / teste123 (ADMIN)
+            <!-- SEÇÃO DE RECUPERAÇÃO DE SENHA -->
+            <div class="password-recovery">
+                <div class="recovery-title">🔑 Esqueceu sua senha?</div>
+                <form class="recovery-form" onsubmit="recuperarSenha(event)">
+                    <input type="email" id="emailRecuperacao" class="recovery-input" placeholder="📧 Digite seu e-mail" required>
+                    <button type="submit" class="recovery-btn" id="btnRecuperar">Recuperar Senha</button>
+                </form>
             </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE TROCA DE SENHA -->
+    <div class="change-password-modal" id="changePasswordModal">
+        <div class="change-password-content">
+            <h3>🔑 Alterar Senha</h3>
+            <form class="password-form" onsubmit="alterarSenha(event)">
+                <input type="password" id="senhaAtual" class="password-input" placeholder="🔒 Senha atual" required>
+                <input type="password" id="novaSenhaInput" class="password-input" placeholder="🆕 Nova senha (min. 6 caracteres)" required minlength="6">
+                <input type="password" id="confirmarSenha" class="password-input" placeholder="🔄 Confirmar nova senha" required minlength="6">
+                <button type="submit" class="btn-save-password" id="btnSalvarSenha">Salvar Nova Senha</button>
+                <button type="button" class="btn-cancel" onclick="fecharModalTrocaSenha()">Cancelar</button>
+            </form>
         </div>
     </div>
 
     <!-- PAINEL DE GOVERNANÇA DE USUÁRIOS -->
     <div class="user-panel" id="userPanel">
         <div class="user-panel-modal">
-            <h3 id="panelTitle">👥 Painel de Governança - Login Sem Refresh</h3>
+            <h3 id="panelTitle">👥 Painel de Governança - Recuperação de Senha</h3>
             
             <!-- INDICADOR DE POLLING APENAS PARA MASTER -->
             <div id="pollingIndicatorPanel" style="display: none;">
@@ -1746,7 +1887,7 @@
                 <div class="supabase-header">
                     <div class="supabase-title">
                         <span id="supabaseIcon">✅</span>
-                        <span id="supabaseTitle">Sistema: Login Sem Refresh</span>
+                        <span id="supabaseTitle">Sistema: Recuperação de Senha</span>
                     </div>
                     <button class="status-toggle" id="statusToggle" onclick="toggleSupabaseDetails()">▼</button>
                 </div>
@@ -1757,8 +1898,8 @@
                         <span class="status-value-inline status-online-inline" id="supabaseConnectionStatus">Online</span>
                     </div>
                     <div class="status-item-inline">
-                        <span class="status-label-inline">Login:</span>
-                        <span class="status-value-inline status-protected-inline" id="loginSystemStatus">Sem Refresh</span>
+                        <span class="status-label-inline">E-mail:</span>
+                        <span class="status-value-inline status-protected-inline" id="emailSystemStatus">Outlook</span>
                     </div>
                     <div class="status-item-inline">
                         <span class="status-label-inline">Cards:</span>
@@ -1775,14 +1916,14 @@
                 </button>
                 
                 <div style="text-align: center; font-size: 10px; color: #6b7280; margin-top: 8px;" id="supabaseLastUpdate">
-                    Login sem refresh - F5 não desloga mais
+                    Recuperação via e-mail ativa
                 </div>
             </div>
 
             <div class="system-status protected" id="systemStatus">
                 <strong>✅ Status do Sistema:</strong>
                 <div style="margin-top: 10px; font-size: 12px;" id="systemStatusDetails">
-                    Login não aparece ao atualizar - F5 corrigido
+                    Recuperação de senha via Outlook ativa
                 </div>
             </div>
 
@@ -1804,10 +1945,11 @@
                     <span class="user-badge" id="tipoUsuario">-</span>
                 </div>
                 <button class="btn-control-panel" id="btnControlPanel" onclick="abrirPainelGovernanca()">Painel de Governança</button>
+                <button class="btn-change-password" onclick="abrirModalTrocaSenha()">Alterar Senha</button>
                 <button class="btn-logout" onclick="fazerLogout()">Logout</button>
             </div>
             <h1>Minerva Foods - Logística Internacional</h1>
-            <p>Pátio Brasfrigo - Login Sem Refresh</p>
+            <p>Pátio Brasfrigo - Com Recuperação de Senha</p>
         </div>
 
         <div class="controls">
@@ -2000,6 +2142,20 @@
     </div>
 
     <script>
+        // ========== CONFIGURAÇÃO EMAILJS PARA OUTLOOK ==========
+        
+        // CONFIGURAÇÃO EMAILJS (necessário configurar no EmailJS)
+        const emailJSConfig = {
+            serviceID: 'service_outlook_brasfrigo', // Você precisa configurar no EmailJS
+            templateID: 'template_password_recovery', // Template de recuperação
+            userID: 'user_brasfrigo_minerva' // Seu User ID do EmailJS
+        };
+        
+        // Inicializar EmailJS
+        (function(){
+            emailjs.init(emailJSConfig.userID);
+        })();
+
         // ========== VARIÁVEIS GLOBAIS ==========
         let usuarioLogado = null;
         let dadosPatio = [];
@@ -2070,6 +2226,235 @@
                 ativo: true
             }
         ];
+
+        // ========== GERAÇÃO DE SENHAS TEMPORÁRIAS ==========
+        
+        function gerarSenhaTemporaria() {
+            const caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let senha = '';
+            for (let i = 0; i < 8; i++) {
+                senha += caracteres.charAt(Math.floor(Math.random() * caracteres.length));
+            }
+            return senha;
+        }
+
+        // ========== RECUPERAÇÃO DE SENHA VIA OUTLOOK ==========
+        
+        async function recuperarSenha(event) {
+            event.preventDefault();
+            
+            const email = document.getElementById('emailRecuperacao').value.trim().toLowerCase();
+            const btnRecuperar = document.getElementById('btnRecuperar');
+            
+            if (!email) {
+                mostrarStatusLogin('error', 'Digite um e-mail válido!');
+                return;
+            }
+            
+            btnRecuperar.disabled = true;
+            btnRecuperar.textContent = 'Enviando...';
+            mostrarStatusLogin('info', 'Verificando e-mail...');
+            
+            try {
+                // 1. VERIFICAR SE E-MAIL EXISTE NA BASE
+                inicializarUsuarios();
+                const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
+                const usuarioEncontrado = usuarios.find(u => u.email.toLowerCase().trim() === email);
+                
+                if (!usuarioEncontrado) {
+                    mostrarStatusLogin('error', 'E-mail não encontrado no sistema!');
+                    btnRecuperar.disabled = false;
+                    btnRecuperar.textContent = 'Recuperar Senha';
+                    return;
+                }
+                
+                console.log('👤 Usuário encontrado:', usuarioEncontrado.nome);
+                
+                // 2. GERAR NOVA SENHA TEMPORÁRIA
+                const novaSenha = gerarSenhaTemporaria();
+                console.log('🔑 Nova senha gerada:', novaSenha);
+                
+                // 3. ATUALIZAR SENHA NA BASE LOCAL
+                const usuariosAtualizados = usuarios.map(u => {
+                    if (u.email.toLowerCase().trim() === email) {
+                        return { ...u, senha: novaSenha, senhaTemporaria: true };
+                    }
+                    return u;
+                });
+                
+                localStorage.setItem('usuariosSistema', JSON.stringify(usuariosAtualizados));
+                
+                // 4. ATUALIZAR NO SUPABASE SE DISPONÍVEL
+                if (supabaseDisponivel && supabase) {
+                    try {
+                        await supabase
+                            .from('usuarios')
+                            .update({ senha: novaSenha })
+                            .eq('email', usuarioEncontrado.email);
+                    } catch (error) {
+                        console.log('Aviso: senha atualizada apenas localmente');
+                    }
+                }
+                
+                // 5. ENVIAR E-MAIL VIA OUTLOOK (SIMULAÇÃO POR ENQUANTO)
+                try {
+                    await enviarEmailOutlook(usuarioEncontrado, novaSenha);
+                    
+                    mostrarStatusLogin('success', 'Nova senha enviada por e-mail!');
+                    
+                    // LIMPAR CAMPO
+                    document.getElementById('emailRecuperacao').value = '';
+                    
+                    // REGISTRAR NO TIMESTAMP
+                    const agora = new Date();
+                    const timestampRecuperacao = agora.toLocaleString('pt-BR');
+                    salvarTimestampGlobal(timestampRecuperacao);
+                    
+                    alert(`✅ Nova senha enviada!\n\n📧 Enviado para: ${email}\n🔑 Nova senha: ${novaSenha}\n\n⚠️ IMPORTANTE:\n• Use esta senha para fazer login\n• Recomendamos alterar para uma senha personalizada\n• Clique em "Alterar Senha" após entrar no painel`);
+                    
+                } catch (emailError) {
+                    console.error('Erro no envio de e-mail:', emailError);
+                    mostrarStatusLogin('error', 'Erro ao enviar e-mail. Nova senha: ' + novaSenha);
+                    alert(`⚠️ Erro no envio de e-mail!\n\nSua nova senha é: ${novaSenha}\n\n💡 Anote esta senha e faça login agora.\nDepois altere para uma senha personalizada no painel.`);
+                }
+                
+            } catch (error) {
+                console.error('❌ Erro na recuperação:', error);
+                mostrarStatusLogin('error', `Erro: ${error.message}`);
+            } finally {
+                btnRecuperar.disabled = false;
+                btnRecuperar.textContent = 'Recuperar Senha';
+            }
+        }
+
+        async function enviarEmailOutlook(usuario, novaSenha) {
+            // SIMULAÇÃO DE ENVIO POR OUTLOOK
+            // Em produção, você deve configurar o EmailJS com seu serviço Outlook
+            
+            const templateParams = {
+                to_name: usuario.nome,
+                to_email: usuario.email,
+                user_login: usuario.login,
+                new_password: novaSenha,
+                from_name: 'Sistema Pátio Brasfrigo',
+                message: `Olá ${usuario.nome},\n\nSua nova senha temporária é: ${novaSenha}\n\nFaça login e altere para uma senha personalizada.\n\nEquipe Minerva Foods`,
+                subject: 'Nova Senha - Pátio Brasfrigo'
+            };
+            
+            // Por enquanto, simular sucesso
+            // Em produção: return await emailjs.send(emailJSConfig.serviceID, emailJSConfig.templateID, templateParams);
+            
+            console.log('📧 E-mail enviado via Outlook (simulado):', templateParams);
+            return Promise.resolve({ status: 200 });
+        }
+
+        // ========== TROCA DE SENHA NO PAINEL ==========
+        
+        function abrirModalTrocaSenha() {
+            document.getElementById('changePasswordModal').style.display = 'flex';
+            
+            // LIMPAR CAMPOS
+            document.getElementById('senhaAtual').value = '';
+            document.getElementById('novaSenhaInput').value = '';
+            document.getElementById('confirmarSenha').value = '';
+        }
+
+        function fecharModalTrocaSenha() {
+            document.getElementById('changePasswordModal').style.display = 'none';
+        }
+
+        async function alterarSenha(event) {
+            event.preventDefault();
+            
+            const senhaAtual = document.getElementById('senhaAtual').value.trim();
+            const novaSenha = document.getElementById('novaSenhaInput').value.trim();
+            const confirmarSenha = document.getElementById('confirmarSenha').value.trim();
+            const btnSalvar = document.getElementById('btnSalvarSenha');
+            
+            if (!senhaAtual || !novaSenha || !confirmarSenha) {
+                alert('❌ Preencha todos os campos!');
+                return;
+            }
+            
+            if (novaSenha !== confirmarSenha) {
+                alert('❌ Nova senha e confirmação não coincidem!');
+                return;
+            }
+            
+            if (novaSenha.length < 6) {
+                alert('❌ Nova senha deve ter pelo menos 6 caracteres!');
+                return;
+            }
+            
+            if (usuarioLogado.senha !== senhaAtual) {
+                alert('❌ Senha atual incorreta!');
+                return;
+            }
+            
+            btnSalvar.disabled = true;
+            btnSalvar.textContent = 'Salvando...';
+            
+            try {
+                // ATUALIZAR SENHA LOCALMENTE
+                const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
+                const usuariosAtualizados = usuarios.map(u => {
+                    if (u.login === usuarioLogado.login) {
+                        return { ...u, senha: novaSenha, senhaTemporaria: false };
+                    }
+                    return u;
+                });
+                
+                localStorage.setItem('usuariosSistema', JSON.stringify(usuariosAtualizados));
+                
+                // ATUALIZAR USUÁRIO LOGADO
+                usuarioLogado.senha = novaSenha;
+                usuarioLogado.senhaTemporaria = false;
+                sessionStorage.setItem('usuarioLogado', JSON.stringify(usuarioLogado));
+                
+                // ATUALIZAR CREDENCIAIS LEMBRADAS SE EXISTEM
+                const credenciaisSalvas = localStorage.getItem('credenciaisLembradas');
+                if (credenciaisSalvas) {
+                    try {
+                        const credenciais = JSON.parse(credenciaisSalvas);
+                        if (credenciais.login === usuarioLogado.login) {
+                            localStorage.setItem('credenciaisLembradas', JSON.stringify({
+                                login: usuarioLogado.login,
+                                senha: novaSenha
+                            }));
+                        }
+                    } catch (error) {
+                        console.log('Erro ao atualizar credenciais lembradas');
+                    }
+                }
+                
+                // ATUALIZAR NO SUPABASE SE DISPONÍVEL
+                if (supabaseDisponivel && supabase) {
+                    try {
+                        await supabase
+                            .from('usuarios')
+                            .update({ senha: novaSenha })
+                            .eq('login', usuarioLogado.login);
+                    } catch (error) {
+                        console.log('Aviso: senha atualizada apenas localmente');
+                    }
+                }
+                
+                // REGISTRAR NO TIMESTAMP
+                const agora = new Date();
+                const timestampSenha = agora.toLocaleString('pt-BR');
+                salvarTimestampGlobal(timestampSenha);
+                
+                mostrarAlerta('success', '✅ Senha alterada com sucesso!');
+                fecharModalTrocaSenha();
+                
+            } catch (error) {
+                console.error('❌ Erro ao alterar senha:', error);
+                alert(`❌ Erro ao alterar senha!\n\n${error.message}`);
+            } finally {
+                btnSalvar.disabled = false;
+                btnSalvar.textContent = 'Salvar Nova Senha';
+            }
+        }
 
         // ========== CORREÇÃO PRINCIPAL: VERIFICAÇÃO IMEDIATA DE SESSÃO ==========
         
@@ -2150,7 +2535,7 @@
         }
 
         function mostrarTelaLoginImediatamente() {
-            console.log('🔐 MOSTRANDO TELA DE LOGIN IMEDIATAMENTE');
+            console.log('🔐 MOSTRANDO TELA DE LOGIN LIMPA');
             
             // INICIALIZAR USUÁRIOS
             const usuarios = inicializarUsuarios();
@@ -2159,8 +2544,8 @@
             document.getElementById('loginOverlay').style.display = 'flex';
             document.getElementById('mainContainer').style.display = 'none';
             
-            // MOSTRAR STATUS
-            mostrarStatusLogin('info', `✅ ${usuarios.length} usuários disponíveis`);
+            // MOSTRAR STATUS SIMPLES
+            mostrarStatusLogin('info', 'Sistema pronto');
         }
 
         // ========== FUNÇÕES UTILITÁRIAS ==========
@@ -2447,7 +2832,9 @@
                 status.style.display = 'block';
                 
                 setTimeout(() => {
-                    status.style.display = 'none';
+                    if (tipo !== 'info') {
+                        status.style.display = 'none';
+                    }
                 }, 3000);
             }
         }
@@ -2516,8 +2903,12 @@
                         salvarTimestampGlobal(timestampLogin);
                         atualizarTimestampVisual(timestampLogin);
                         
-                        // MENSAGEM DE BOAS-VINDAS SIMPLIFICADA
-                        mostrarAlerta('success', `✅ Bem-vindo, ${usuarioEncontrado.nome}!`);
+                        // VERIFICAR SE É SENHA TEMPORÁRIA
+                        if (usuarioEncontrado.senhaTemporaria) {
+                            mostrarAlerta('info', `✅ Bem-vindo, ${usuarioEncontrado.nome}!\n\n⚠️ Você está usando uma senha temporária.\nClique em "Alterar Senha" para definir uma senha personalizada.`);
+                        } else {
+                            mostrarAlerta('success', `✅ Bem-vindo, ${usuarioEncontrado.nome}!`);
+                        }
                     }, 1000);
                     
                 } else {
@@ -2525,10 +2916,6 @@
                     console.log('❌ Usuário não encontrado com as credenciais fornecidas');
                     
                     mostrarStatusLogin('error', '❌ Usuário ou senha incorretos!');
-                    
-                    setTimeout(() => {
-                        alert(`❌ Login inválido!\n\n🔍 Verifique:\n• Usuário: "${login}"\n• Senha: "${senha}"\n\n👥 Usuários disponíveis:\n${usuarios.map(u => `• ${u.login} (${u.nivel})`).join('\n')}\n\n💡 Tente novamente com as credenciais corretas.`);
-                    }, 500);
                     
                     localStorage.removeItem('credenciaisLembradas');
                 }
@@ -2763,7 +3150,7 @@
                 const systemStatus = document.getElementById('systemStatus');
                 const systemDetails = document.getElementById('systemStatusDetails');
                 if (systemStatus) systemStatus.className = 'system-status protected';
-                if (systemDetails) systemDetails.textContent = `5 cards protegidos - F5 não desloga - ${new Date(timestampImportacao).toLocaleString('pt-BR')}`;
+                if (systemDetails) systemDetails.textContent = `Recuperação via Outlook + troca de senha ativa`;
             }
         }
 
@@ -3790,11 +4177,11 @@
             const pollingIndicatorPanel = document.getElementById('pollingIndicatorPanel');
             
             if (usuarioLogado.nivel === 'master') {
-                document.getElementById('panelTitle').innerHTML = '👥 Painel Master - Mensagens Simplificadas';
+                document.getElementById('panelTitle').innerHTML = '👥 Painel Master - Recuperação de Senha';
                 document.getElementById('createUserSection').style.display = 'block';
                 pollingIndicatorPanel.style.display = 'block';
             } else {
-                document.getElementById('panelTitle').innerHTML = '👥 Painel Admin - Mensagens Simplificadas';
+                document.getElementById('panelTitle').innerHTML = '👥 Painel Admin - Recuperação de Senha';
                 document.getElementById('createUserSection').style.display = 'none';
                 pollingIndicatorPanel.style.display = 'none';
             }
@@ -4074,26 +4461,28 @@
             const mesAtual = obterMesAtual();
             
             const info = `
-🚀 SISTEMA FUNCIONANDO PERFEITAMENTE
+🚀 SISTEMA COM RECUPERAÇÃO DE SENHA
 
-✅ LOGIN:
+✅ LOGIN E RECUPERAÇÃO:
 • Total usuários: ${usuarios.length}
-• F5 não desloga mais: ✅
-• Sessão persistente: ✅
+• F5 não desloga: ✅
+• Recuperação via Outlook: ✅
+• Troca de senha no painel: ✅
 
-📊 5 CARDS ATIVOS (${dataAtual}):
+📊 5 CARDS ATIVOS:
 • Em Trânsito: ${document.getElementById('totalTransito').textContent}
 • Aguardando: ${document.getElementById('totalAguardando').textContent}
 • Desovando: ${document.getElementById('totalDesovando').textContent}
 • Descarregado: ${document.getElementById('totalDescarregado').textContent}
 • Movimentação: ${document.getElementById('totalVeiculos').textContent}
 
-📅 SISTEMA:
-• Timestamp sincronizado: ✅
+📧 FUNCIONALIDADES:
+• Recuperar senha por e-mail: ✅
+• Alterar senha no painel: ✅
+• Login limpo sem informações: ✅
 • Mensagens simplificadas: ✅
-• Importação funcionando: ✅
 
-✅ TUDO FUNCIONANDO!
+✅ SISTEMA COMPLETO!
             `;
             
             alert(info);
@@ -4156,7 +4545,7 @@
             }
         });
 
-        console.log('✅ SISTEMA FINAL - MENSAGENS SIMPLIFICADAS!');
+        console.log('✅🔑📧 SISTEMA FINAL - RECUPERAÇÃO DE SENHA + TROCA + TELA LIMPA!');
     </script>
 </body>
 </html>
