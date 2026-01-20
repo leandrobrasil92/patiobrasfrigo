@@ -584,6 +584,10 @@
             font-size: 12px;
         }
 
+        .btn-delete:hover {
+            background: #c82333;
+        }
+
         .btn-reset {
             background: #f39c12;
             color: white;
@@ -1469,8 +1473,8 @@
                     </div>
                 </div>
                 
-                <button class="supabase-test-btn" id="supabaseTestBtn" onclick="testarEmailJS()">
-                    📧 Testar E-mail
+                <button class="supabase-test-btn" id="supabaseTestBtn" onclick="testarSupabase()">
+                    🔍 Testar Supabase
                 </button>
                 
                 <div style="text-align: center; font-size: 10px; color: #6b7280; margin-top: 8px;" id="supabaseLastUpdate">
@@ -1791,9 +1795,10 @@
         let backupDadosProtegidos = [];
         let backupCardsProtegidos = {};
 
+        // ========== CONFIGURAÇÃO CORRETA DO SUPABASE ==========
         const supabaseConfig = {
             url: 'https://zhxrxymeuzvnuafvkjjd.supabase.co',
-            anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpoeHJ4eW1ldXp2bnVhZnZramkiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTczNzI5ODE1NSwiZXhwIjoyMDUyODc0MTU1fQ.F_xq6EO5jFjh7nELPjnp2MHJa1ZQNsH4DLRl8HyGhp0'
+            anonKey: 'sb_publishable_GIl_nKo6EmiOzcr-io9JSA_pvQu2bOJ'
         };
 
         // ========== USUÁRIOS PADRÃO ==========
@@ -2135,6 +2140,100 @@
             } catch (error) {
                 console.error('❌ ERRO NO ENVIO:', error);
                 throw error;
+            }
+        }
+
+        // ========== TESTE COMPLETO DO SUPABASE ==========
+        async function testarSupabase() {
+            const btn = document.getElementById('supabaseTestBtn');
+            const textoOriginal = btn.textContent;
+            
+            btn.disabled = true;
+            btn.textContent = '🔍 Testando...';
+            
+            try {
+                console.log('🚀 =========================');
+                console.log('🔍 INICIANDO TESTE COMPLETO DO SUPABASE');
+                console.log('🚀 =========================');
+                console.log('🔗 URL:', supabaseConfig.url);
+                console.log('🔑 KEY:', supabaseConfig.anonKey);
+                
+                // 1. VERIFICAR CONECTIVIDADE
+                console.log('1️⃣ VERIFICANDO CONEXÃO...');
+                if (!supabase) {
+                    throw new Error('Supabase não inicializado');
+                }
+                
+                // 2. TESTAR LEITURA
+                console.log('2️⃣ TESTANDO LEITURA...');
+                const { data: usuarios, error: erroLeitura } = await supabase
+                    .from('usuarios')
+                    .select('*')
+                    .limit(5);
+                
+                if (erroLeitura) {
+                    console.error('❌ ERRO NA LEITURA:', erroLeitura);
+                    throw new Error(`Leitura: ${erroLeitura.message}`);
+                }
+                
+                console.log('✅ LEITURA OK - Usuários encontrados:', usuarios.length);
+                console.log('📋 USUÁRIOS SUPABASE:', usuarios);
+                
+                // 3. TESTAR INSERÇÃO DE TESTE
+                console.log('3️⃣ TESTANDO INSERÇÃO...');
+                const usuarioTeste = {
+                    nome: 'Teste Sistema',
+                    login: 'teste.sistema.debug',
+                    senha: 'teste123',
+                    nivel: 'user',
+                    email: 'teste.debug@minervafoods.com',
+                    criado_por: usuarioLogado ? usuarioLogado.nome : 'Sistema',
+                    ativo: true
+                };
+                
+                console.log('📤 DADOS DE TESTE:', usuarioTeste);
+                
+                const { data: novoUsuario, error: erroInsercao } = await supabase
+                    .from('usuarios')
+                    .insert([usuarioTeste])
+                    .select();
+                
+                if (erroInsercao) {
+                    console.error('❌ ERRO NA INSERÇÃO:', erroInsercao);
+                    throw new Error(`Inserção: ${erroInsercao.message}`);
+                }
+                
+                console.log('✅ INSERÇÃO OK:', novoUsuario);
+                
+                // 4. LIMPAR TESTE
+                console.log('4️⃣ LIMPANDO TESTE...');
+                const { error: erroDelecao } = await supabase
+                    .from('usuarios')
+                    .delete()
+                    .eq('login', 'teste.sistema.debug');
+                
+                if (erroDelecao) {
+                    console.warn('⚠️ Não conseguiu limpar teste:', erroDelecao.message);
+                } else {
+                    console.log('🧹 TESTE LIMPO');
+                }
+                
+                // 5. RESULTADO FINAL
+                console.log('🚀 =========================');
+                console.log('✅ TESTE SUPABASE COMPLETO COM SUCESSO!');
+                console.log('🚀 =========================');
+                
+                mostrarAlerta('success', '✅ Supabase funcionando perfeitamente!');
+                
+            } catch (error) {
+                console.log('🚀 =========================');
+                console.error('❌ TESTE SUPABASE FALHOU:', error.message);
+                console.log('🚀 =========================');
+                
+                mostrarAlerta('error', `❌ Erro no Supabase: ${error.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = textoOriginal;
             }
         }
 
@@ -2616,14 +2715,19 @@
 
         function inicializarSupabase() {
             try {
+                console.log('🚀 INICIALIZANDO SUPABASE COM CHAVE CORRETA...');
+                console.log('🔗 URL:', supabaseConfig.url);
+                console.log('🔑 KEY:', supabaseConfig.anonKey);
+                
                 supabase = window.supabase.createClient(supabaseConfig.url, supabaseConfig.anonKey);
                 supabaseDisponivel = true;
-                console.log('✅ Supabase conectado:', supabaseConfig.url);
+                console.log('✅ Supabase inicializado com sucesso!');
+                
                 verificarRestaurarProtecao();
                 carregarDadosLocal();
                 return true;
             } catch (error) {
-                console.error('❌ Erro Supabase:', error);
+                console.error('❌ Erro ao inicializar Supabase:', error);
                 supabaseDisponivel = false;
                 carregarDadosLocal();
                 return false;
@@ -3154,9 +3258,13 @@
             document.getElementById('userPanel').style.display = 'none';
         }
 
+        // ========== LISTA DE USUÁRIOS COM BOTÕES DE EXCLUSÃO PARA MASTER ==========
         function carregarListaUsuarios() {
             const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
             const lista = document.getElementById('userList');
+            
+            // VERIFICAR SE É MASTER PARA MOSTRAR BOTÕES DE EXCLUSÃO
+            const isMaster = usuarioLogado && usuarioLogado.nivel === 'master';
             
             lista.innerHTML = usuarios.map(user => `
                 <div class="user-item">
@@ -3167,14 +3275,87 @@
                         <small style="color: #6c757d;"><strong>Email:</strong> ${user.email}</small>
                         ${user.senhaTemporaria ? '<br><small style="color: #f39c12;"><strong>📧 Senha temporária</strong></small>' : ''}
                     </div>
-                    <div>
+                    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 5px;">
                         <span class="user-level level-${user.nivel}">${user.nivel}</span>
+                        ${isMaster && user.login !== usuarioLogado.login ? 
+                            `<button class="btn-delete" onclick="excluirUsuario('${user.login}', '${user.nome}')">🗑️ Excluir</button>` : 
+                            ''
+                        }
                     </div>
                 </div>
             `).join('');
         }
 
-        // ========== FUNÇÃO CORRIGIDA PARA SUPABASE COM CAMPOS CORRETOS ==========
+        // ========== FUNÇÃO DE EXCLUSÃO DE USUÁRIO ==========
+        async function excluirUsuario(loginUsuario, nomeUsuario) {
+            // CONFIRMAÇÃO DUPLA PARA EXCLUSÃO
+            if (!confirm(`❌ ATENÇÃO!\n\nDeseja realmente excluir o usuário:\n"${nomeUsuario}" (${loginUsuario})?\n\nEsta ação NÃO pode ser desfeita!`)) {
+                return;
+            }
+            
+            if (!confirm(`🚨 CONFIRMAÇÃO FINAL!\n\nTem certeza absoluta que quer excluir "${nomeUsuario}"?\n\nClique OK para confirmar a exclusão.`)) {
+                return;
+            }
+
+            try {
+                console.log(`🗑️ INICIANDO EXCLUSÃO: ${nomeUsuario} (${loginUsuario})`);
+                
+                // 1. REMOVER DO LOCALSTORAGE
+                let usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
+                const usuarioParaExcluir = usuarios.find(u => u.login === loginUsuario);
+                
+                if (!usuarioParaExcluir) {
+                    mostrarAlerta('error', '❌ Usuário não encontrado!');
+                    return;
+                }
+                
+                // FILTRAR USUÁRIO (REMOVENDO ELE)
+                const usuariosAtualizados = usuarios.filter(u => u.login !== loginUsuario);
+                localStorage.setItem('usuariosSistema', JSON.stringify(usuariosAtualizados));
+                console.log(`✅ ${nomeUsuario} removido do localStorage`);
+                
+                // 2. REMOVER DO SUPABASE
+                if (supabaseDisponivel && supabase) {
+                    try {
+                        console.log(`🌐 Removendo ${nomeUsuario} do Supabase...`);
+                        
+                        const { error } = await supabase
+                            .from('usuarios')
+                            .delete()
+                            .eq('login', loginUsuario);
+                        
+                        if (error) {
+                            console.error('❌ Erro ao excluir do Supabase:', error);
+                            mostrarAlerta('warning', `⚠️ ${nomeUsuario} removido localmente, mas falha no servidor: ${error.message}`);
+                        } else {
+                            console.log(`✅ ${nomeUsuario} removido do Supabase`);
+                            mostrarAlerta('success', `✅ ${nomeUsuario} excluído com sucesso!`);
+                        }
+                    } catch (error) {
+                        console.error('❌ Erro conexão Supabase:', error);
+                        mostrarAlerta('warning', `⚠️ ${nomeUsuario} removido localmente (servidor indisponível)`);
+                    }
+                } else {
+                    console.log('📱 Supabase indisponível, removendo apenas localmente');
+                    mostrarAlerta('info', `📱 ${nomeUsuario} removido localmente (servidor indisponível)`);
+                }
+                
+                // 3. ATUALIZAR LISTA NA TELA
+                carregarListaUsuarios();
+                
+                // 4. SALVAR TIMESTAMP
+                const agora = new Date();
+                salvarTimestampGlobal(agora.toLocaleString('pt-BR'));
+                
+                console.log(`✅ EXCLUSÃO CONCLUÍDA: ${nomeUsuario} (${loginUsuario})`);
+                
+            } catch (error) {
+                console.error('❌ Erro na exclusão:', error);
+                mostrarAlerta('error', `❌ Erro ao excluir ${nomeUsuario}: ${error.message}`);
+            }
+        }
+
+        // ========== FUNÇÃO COM DEBUG COMPLETO PARA SUPABASE ==========
         async function criarUsuario(event) {
             event.preventDefault();
             
@@ -3218,54 +3399,87 @@
                 ativo: true
             };
 
-            console.log('📝 CRIANDO USUÁRIO:', novoUsuario);
+            console.log('🚀 ==================================');
+            console.log('📝 INICIANDO CRIAÇÃO DE USUÁRIO');
+            console.log('🚀 ==================================');
+            console.log('👤 USUÁRIO LOCAL:', novoUsuario);
 
             // ========== SALVAR NO LOCALSTORAGE ==========
             usuarios.push(novoUsuario);
             localStorage.setItem('usuariosSistema', JSON.stringify(usuarios));
+            console.log('✅ USUÁRIO SALVO LOCALMENTE');
 
-            // ========== TESTAR E SALVAR NO SUPABASE ==========
+            // ========== DEBUG E SALVAMENTO NO SUPABASE ==========
             if (!supabaseDisponivel || !supabase) {
-                console.log('⚠️ Supabase não disponível');
+                console.log('⚠️ SUPABASE NÃO DISPONÍVEL');
                 mostrarAlerta('info', '📱 Usuário criado localmente (servidor indisponível).');
             } else {
                 try {
-                    console.log('🔍 TESTANDO SUPABASE...');
+                    console.log('🔍 INICIANDO PROCESSO SUPABASE...');
+                    console.log('🔗 URL SUPABASE:', supabaseConfig.url);
+                    console.log('🔑 CHAVE SUPABASE:', supabaseConfig.anonKey);
                     
-                    // DADOS PARA SUPABASE - USANDO NOMES CORRETOS DAS COLUNAS
+                    // PASSO 1: VERIFICAR CONEXÃO
+                    console.log('1️⃣ VERIFICANDO CONEXÃO SUPABASE...');
+                    const { data: testConnection, error: connectionError } = await supabase
+                        .from('usuarios')
+                        .select('count', { count: 'exact', head: true });
+                    
+                    if (connectionError) {
+                        throw new Error(`Conexão falhou: ${connectionError.message}`);
+                    }
+                    console.log('✅ CONEXÃO OK - Total usuários:', testConnection);
+                    
+                    // PASSO 2: MONTAR DADOS PARA SUPABASE
+                    console.log('2️⃣ MONTANDO DADOS PARA SUPABASE...');
                     const dadosSupabase = {
                         nome: novoUsuario.nome,
                         login: novoUsuario.login,
                         senha: novoUsuario.senha,
                         nivel: novoUsuario.nivel,
                         email: novoUsuario.email,
-                        criado_em: novoUsuario.criadoEm,  // Usar criado_em como na tabela
-                        criado_por: novoUsuario.criadoPor, // Usar criado_por como na tabela
+                        criado_em: novoUsuario.criadoEm,
+                        criado_por: novoUsuario.criadoPor,
                         ativo: novoUsuario.ativo
                     };
                     
-                    console.log('📤 DADOS PARA SUPABASE:', dadosSupabase);
+                    console.log('📤 DADOS PARA INSERÇÃO:', dadosSupabase);
                     
+                    // PASSO 3: INSERIR NO SUPABASE
+                    console.log('3️⃣ INSERINDO NO SUPABASE...');
                     const { data, error } = await supabase
                         .from('usuarios')
                         .insert([dadosSupabase])
                         .select();
                     
                     if (error) {
-                        console.error('❌ ERRO SUPABASE DETALHADO:', error);
-                        mostrarAlerta('warning', `⚠️ Usuário criado localmente. Erro: ${error.message}`);
-                    } else {
-                        console.log('✅ SUCESSO SUPABASE:', data);
-                        mostrarAlerta('success', `✅ Usuário criado e sincronizado com sucesso!`);
+                        console.error('❌ ERRO NA INSERÇÃO:', error);
+                        console.log('📋 DETALHES DO ERRO:');
+                        console.log('• Code:', error.code || 'Sem código');
+                        console.log('• Message:', error.message || 'Sem mensagem');
+                        console.log('• Details:', error.details || 'Sem detalhes');
+                        console.log('• Hint:', error.hint || 'Sem dica');
+                        
+                        throw new Error(`Inserção falhou: ${error.message}`);
                     }
                     
+                    console.log('🚀 ==================================');
+                    console.log('✅ USUÁRIO CRIADO NO SUPABASE COM SUCESSO!');
+                    console.log('📊 DADOS RETORNADOS:', data);
+                    console.log('🚀 ==================================');
+                    
+                    mostrarAlerta('success', `✅ ${nome} criado e sincronizado com sucesso!`);
+                    
                 } catch (error) {
-                    console.error('❌ ERRO CONEXÃO SUPABASE:', error);
-                    mostrarAlerta('warning', `⚠️ Usuário criado localmente. Conexão: ${error.message}`);
+                    console.log('🚀 ==================================');
+                    console.error('❌ ERRO COMPLETO DO SUPABASE:', error.message);
+                    console.log('🚀 ==================================');
+                    
+                    mostrarAlerta('warning', `⚠️ ${nome} criado localmente. Erro servidor: ${error.message}`);
                 }
             }
 
-            // ========== LIMPAR FORMULÁRIO E ATUALIZAR LISTA ==========
+            // ========== FINALIZAR ==========
             document.getElementById('novoNome').value = '';
             document.getElementById('novoLogin').value = '';
             document.getElementById('novaSenha').value = '';
@@ -3276,7 +3490,7 @@
             const agora = new Date();
             salvarTimestampGlobal(agora.toLocaleString('pt-BR'));
 
-            console.log(`✅ PROCESSO COMPLETO - Usuário: ${nome} (${login})`);
+            console.log(`✅ PROCESSO FINALIZADO - Usuário: ${nome} (${login})`);
         }
 
         function aplicarFiltros() {
@@ -3418,7 +3632,7 @@
             }
         }
 
-        console.log('✅🚛📊🎨 SISTEMA COM GRÁFICO DESCARREGANDO E SUPABASE CORRIGIDO!');
+        console.log('✅🚛📊🗑️ SISTEMA COM EXCLUSÃO DE USUÁRIOS IMPLEMENTADO!');
     </script>
 </body>
 </html>
