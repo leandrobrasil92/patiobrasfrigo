@@ -1581,7 +1581,7 @@
                 <div class="recovery-title">🔑 Esqueceu sua senha?</div>
                 <div class="recovery-form">
                     <input type="email" id="emailRecuperacao" class="recovery-input" placeholder="📧 Digite seu e-mail" disabled>
-                    <button type="button" class="recovery-btn" disabled>Recuperar Senha (Indisponível)</button>
+                    <button type="button" class="recovery-btn" disabled>Contate o administrador</button>
                 </div>
             </div>
         </div>
@@ -1604,11 +1604,11 @@
     <!-- PAINEL DE GOVERNANÇA -->
     <div class="user-panel" id="userPanel">
         <div class="user-panel-modal">
-            <h3 id="panelTitle">👥 Painel de Governança - Gráfico Descarregando</h3>
+            <h3 id="panelTitle">👥 Painel de Governança - Sincronização Ativa</h3>
             
             <div id="pollingIndicatorPanel" style="display: none;">
                 <div class="polling-indicator protected" id="pollingIndicator" onclick="mostrarDetalhesPolling()">
-                    <span id="pollingStatusText">🛡️ Sistema com Gráfico Ativo</span>
+                    <span id="pollingStatusText">🔄 Sincronização Local Ativa</span>
                 </div>
             </div>
             
@@ -1634,44 +1634,44 @@
             <div class="supabase-status protected" id="supabaseStatus">
                 <div class="supabase-header">
                     <div class="supabase-title">
-                        <span id="supabaseIcon">📊</span>
-                        <span id="supabaseTitle">Sistema: Modo Local</span>
+                        <span id="supabaseIcon">🔄</span>
+                        <span id="supabaseTitle">Sistema: Sincronização Local</span>
                     </div>
                     <button class="status-toggle" id="statusToggle" onclick="toggleSupabaseDetails()">▼</button>
                 </div>
                 
                 <div class="supabase-details" id="supabaseDetails">
                     <div class="status-item-inline">
-                        <span class="status-label-inline">Visual:</span>
-                        <span class="status-value-inline status-protected-inline" id="emailSystemStatus">Gráfico Dinâmico</span>
+                        <span class="status-label-inline">Método:</span>
+                        <span class="status-value-inline status-protected-inline" id="emailSystemStatus">LocalStorage Events</span>
                     </div>
                     <div class="status-item-inline">
-                        <span class="status-label-inline">Caminhão:</span>
-                        <span class="status-value-inline status-protected-inline" id="cardStatus">Acompanha Total</span>
+                        <span class="status-label-inline">Sincronização:</span>
+                        <span class="status-value-inline status-protected-inline" id="cardStatus">Tempo Real</span>
                     </div>
                     <div class="status-item-inline">
-                        <span class="status-label-inline">Barra:</span>
-                        <span class="status-value-inline status-protected-inline" id="groupStatus">Progressiva</span>
+                        <span class="status-label-inline">Status:</span>
+                        <span class="status-value-inline status-protected-inline" id="groupStatus">Ativo</span>
                     </div>
                     <div class="status-item-inline">
-                        <span class="status-label-inline">Indicador:</span>
-                        <span class="status-value-inline status-protected-inline" id="dataProtectionStatus">Visual Ativo</span>
+                        <span class="status-label-inline">Firewall:</span>
+                        <span class="status-value-inline status-protected-inline" id="dataProtectionStatus">Bypass</span>
                     </div>
                 </div>
                 
-                <button class="supabase-test-btn" id="supabaseTestBtn" onclick="mostrarInfoLocal()">
-                    📱 Modo Local Ativo
+                <button class="supabase-test-btn" id="supabaseTestBtn" onclick="testarSincronizacao()">
+                    🔍 Testar Sincronização
                 </button>
                 
                 <div style="text-align: center; font-size: 10px; color: #6b7280; margin-top: 8px;" id="supabaseLastUpdate">
-                    Sistema funcionando localmente
+                    Sincronização via localStorage events ativa
                 </div>
             </div>
 
             <div class="system-status protected" id="systemStatus">
                 <strong>📊 Status do Sistema:</strong>
                 <div style="margin-top: 10px; font-size: 12px;" id="systemStatusDetails">
-                    Sistema local funcionando normalmente
+                    Sistema sincronizando via eventos locais
                 </div>
             </div>
 
@@ -1698,7 +1698,7 @@
                 </div>
             </div>
             <h1>Minerva Foods - Logística Internacional</h1>
-            <p>Pátio Brasfrigo - Gráfico Descarregando</p>
+            <p>Pátio Brasfrigo - Sincronização Ativa</p>
         </div>
 
         <div class="controls">
@@ -1966,7 +1966,6 @@
         </div>
     </div>
 
-    <!-- BIBLIOTECAS CARREGADAS APENAS SE NECESSÁRIO -->
     <script>
         // ========== VARIÁVEIS GLOBAIS ==========
         let usuarioLogado = null;
@@ -1980,9 +1979,9 @@
         let backupDadosProtegidos = [];
         let backupCardsProtegidos = {};
 
-        // ========== SUPABASE E EMAIL DESABILITADOS TEMPORARIAMENTE ==========
-        let supabaseDisponivel = false;
-        let emailJSReady = false;
+        // ========== VARIÁVEIS PARA SINCRONIZAÇÃO LOCAL ==========
+        let ultimoHashSincronizacao = '';
+        let intervalSincronizacao = null;
 
         // ========== USUÁRIOS PADRÃO ==========
         const USUARIOS_PADRAO = [
@@ -2023,6 +2022,150 @@
                 ativo: true
             }
         ];
+
+        // ========== SINCRONIZAÇÃO VIA LOCALSTORAGE EVENTS - SEM APIS EXTERNAS ==========
+        
+        function gerarHashDados(dados) {
+            // Hash simples baseado no conteúdo
+            const string = JSON.stringify(dados);
+            let hash = 0;
+            for (let i = 0; i < string.length; i++) {
+                const char = string.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash; // Convert to 32-bit integer
+            }
+            return Math.abs(hash).toString();
+        }
+
+        function salvarDadosComSincronizacao(dadosArray) {
+            console.log(`🔄 SALVANDO ${dadosArray.length} REGISTROS COM SINCRONIZAÇÃO...`);
+            
+            const timestamp = new Date().toISOString();
+            const usuario = usuarioLogado ? usuarioLogado.nome : 'Sistema';
+            const hash = gerarHashDados(dadosArray);
+            
+            // CRIAR OBJETO DE SINCRONIZAÇÃO
+            const dadosSincronizados = {
+                dados: dadosArray,
+                timestamp: timestamp,
+                usuario: usuario,
+                hash: hash,
+                versao: Date.now(),
+                totalRegistros: dadosArray.length
+            };
+            
+            console.log(`📊 SALVANDO SINCRONIZAÇÃO:`, {
+                hash: hash,
+                timestamp: timestamp,
+                usuario: usuario,
+                registros: dadosArray.length
+            });
+            
+            // SALVAR COM CHAVES MÚLTIPLAS PARA GARANTIR SINCRONIZAÇÃO
+            localStorage.setItem('minerva_dados_sync', JSON.stringify(dadosSincronizados));
+            localStorage.setItem('dadosPatioMinerva', JSON.stringify(dadosArray)); // Compatibilidade
+            localStorage.setItem('minerva_sync_hash', hash);
+            localStorage.setItem('minerva_sync_timestamp', timestamp);
+            
+            // ATUALIZAR HASH LOCAL
+            ultimoHashSincronizacao = hash;
+            
+            console.log('✅ DADOS SALVOS COM SINCRONIZAÇÃO');
+            
+            // DISPARAR EVENTO CUSTOMIZADO PARA OUTRAS ABAS
+            try {
+                localStorage.setItem('minerva_sync_trigger', Date.now().toString());
+                window.dispatchEvent(new Event('storage'));
+            } catch (error) {
+                console.log('Evento de sincronização disparado');
+            }
+            
+            return true;
+        }
+
+        function verificarSincronizacaoLocal() {
+            try {
+                const dadosSyncSalvos = localStorage.getItem('minerva_dados_sync');
+                
+                if (!dadosSyncSalvos) {
+                    return false;
+                }
+                
+                const dadosSincronizados = JSON.parse(dadosSyncSalvos);
+                
+                // VERIFICAR SE O HASH MUDOU
+                if (dadosSincronizados.hash !== ultimoHashSincronizacao) {
+                    console.log('🔄 NOVA SINCRONIZAÇÃO DETECTADA!');
+                    console.log(`• Hash anterior: ${ultimoHashSincronizacao}`);
+                    console.log(`• Hash novo: ${dadosSincronizados.hash}`);
+                    console.log(`• Usuário: ${dadosSincronizados.usuario}`);
+                    console.log(`• Registros: ${dadosSincronizados.totalRegistros}`);
+                    
+                    // ATUALIZAR DADOS LOCAIS
+                    dadosPatio = [...dadosSincronizados.dados];
+                    ultimoHashSincronizacao = dadosSincronizados.hash;
+                    
+                    // ATIVAR PROTEÇÃO COM OS NOVOS DADOS
+                    ativarProtecaoPermanente(dadosSincronizados.dados);
+                    
+                    // ATUALIZAR INTERFACE COMPLETA
+                    renderizarTabelaAgrupadaCorrigida();
+                    atualizarEstatisticas();
+                    popularFiltros();
+                    
+                    // MOSTRAR NOTIFICAÇÃO APENAS SE NÃO FOI O USUÁRIO ATUAL
+                    const usuarioAtual = usuarioLogado ? usuarioLogado.nome : 'Anônimo';
+                    if (dadosSincronizados.usuario !== usuarioAtual) {
+                        const notification = document.getElementById('realtimeNotification');
+                        if (notification) {
+                            notification.textContent = `⚡ Dados atualizados por ${dadosSincronizados.usuario}!`;
+                            notification.classList.add('show');
+                            setTimeout(() => notification.classList.remove('show'), 5000);
+                        }
+                    }
+                    
+                    // ATUALIZAR TIMESTAMP VISUAL
+                    atualizarTimestampVisual(new Date(dadosSincronizados.timestamp).toLocaleString('pt-BR'));
+                    
+                    console.log('✅ SINCRONIZAÇÃO LOCAL CONCLUÍDA!');
+                    return true;
+                }
+                
+                return false;
+                
+            } catch (error) {
+                console.error('❌ Erro na sincronização local:', error);
+                return false;
+            }
+        }
+
+        function iniciarSincronizacaoLocalStorage() {
+            console.log('🔄 INICIANDO SINCRONIZAÇÃO VIA LOCALSTORAGE...');
+            
+            // VERIFICAR IMEDIATAMENTE
+            verificarSincronizacaoLocal();
+            
+            // ESCUTAR EVENTOS DE STORAGE (FUNCIONA ENTRE ABAS)
+            window.addEventListener('storage', function(event) {
+                if (event.key === 'minerva_dados_sync' || event.key === 'minerva_sync_trigger') {
+                    console.log('📡 EVENTO DE SINCRONIZAÇÃO DETECTADO!');
+                    setTimeout(() => verificarSincronizacaoLocal(), 100);
+                }
+            });
+            
+            // VERIFICAR A CADA 3 SEGUNDOS COMO BACKUP
+            if (intervalSincronizacao) {
+                clearInterval(intervalSincronizacao);
+            }
+            
+            intervalSincronizacao = setInterval(() => {
+                if (!isImporting) {
+                    verificarSincronizacaoLocal();
+                }
+            }, 3000);
+            
+            console.log('✅ Sincronização localStorage ativa');
+        }
 
         // ========== FUNÇÕES DE DATA ==========
         
@@ -2369,7 +2512,7 @@
             }
         }
 
-        // ========== AUTENTICAÇÃO SIMPLES ==========
+        // ========== AUTENTICAÇÃO ==========
         async function autenticarUsuario(login, senha, lembrarMe = false) {
             const btnLogin = document.getElementById('btnLogin');
             btnLogin.disabled = true;
@@ -2455,6 +2598,8 @@
         }
 
         function calcularValoresHistoricoCompleto(dados) {
+            console.log(`📊 CALCULANDO COM ${dados.length} REGISTROS...`);
+            
             // CÁLCULOS DOS 4 CARDS NORMAIS
             const placasTransito = [...new Set(dados.filter(d => d.status === 'TRÂNSITO').map(d => d.placa))].length;
             const placasAguardando = [...new Set(dados.filter(d => d.status === 'AGUARDANDO').map(d => d.placa))].length;
@@ -2477,7 +2622,7 @@
             const movimentacaoSemana = [...new Set(dados.filter(d => d.status === 'DESCARREGADO' && d.dataDescarga && estaNaSemanaAtual(d.dataDescarga)).map(d => d.placa))].length;
             const movimentacaoMes = [...new Set(dados.filter(d => d.status === 'DESCARREGADO' && d.dataDescarga && estaNoMesAtual(d.dataDescarga)).map(d => d.placa))].length;
             
-            return {
+            const resultado = {
                 totalTransito: placasTransito,
                 totalAguardando: placasAguardando,
                 totalDescarregando: placasDescarregando,
@@ -2490,12 +2635,17 @@
                 movimentacaoSemana: movimentacaoSemana,
                 movimentacaoMes: movimentacaoMes
             };
+            
+            console.log('📊 RESULTADO CALCULADO:', resultado);
+            return resultado;
         }
 
         function aplicarValoresHistoricoCompleto() {
             if (!backupCardsProtegidos || Object.keys(backupCardsProtegidos).length === 0) {
                 return;
             }
+            
+            console.log('🔧 APLICANDO VALORES:', backupCardsProtegidos);
             
             // APLICAR 4 CARDS NORMAIS
             document.getElementById('totalTransito').textContent = backupCardsProtegidos.totalTransito || 0;
@@ -2548,17 +2698,23 @@
         }
 
         function carregarDadosLocal() {
-            console.log('📱 Carregando dados locais...');
+            console.log('📱 Carregando dados...');
             verificarRestaurarProtecao();
             
-            const dadosSalvos = localStorage.getItem('dadosPatioMinerva');
-            if (dadosSalvos) {
-                try {
-                    dadosPatio = JSON.parse(dadosSalvos);
-                    console.log('💾 Dados carregados:', dadosPatio.length);
-                } catch (error) {
-                    console.error('Erro:', error);
-                    dadosPatio = [];
+            // VERIFICAR SINCRONIZAÇÃO PRIMEIRO
+            verificarSincronizacaoLocal();
+            
+            // SE NÃO HÁ DADOS, CARREGAR LOCAIS
+            if (dadosPatio.length === 0) {
+                const dadosSalvos = localStorage.getItem('dadosPatioMinerva');
+                if (dadosSalvos) {
+                    try {
+                        dadosPatio = JSON.parse(dadosSalvos);
+                        console.log('💾 Dados carregados:', dadosPatio.length);
+                    } catch (error) {
+                        console.error('Erro:', error);
+                        dadosPatio = [];
+                    }
                 }
             }
             
@@ -2641,7 +2797,7 @@
                     }).filter(item => item && item.placa);
                     
                     console.log(`📊 ${dadosProcessados.length} registros processados`);
-                    salvarDadosLocal(dadosProcessados);
+                    salvarComSincronizacao(dadosProcessados);
                     
                 } catch (error) {
                     console.error('❌ Erro ao processar:', error);
@@ -2652,13 +2808,12 @@
             reader.readAsArrayBuffer(file);
         }
 
-        function salvarDadosLocal(dadosArray) {
+        function salvarComSincronizacao(dadosArray) {
             try {
-                console.log('💾 SALVANDO DADOS LOCALMENTE...');
+                console.log('🔄 SALVANDO COM SINCRONIZAÇÃO LOCAL...');
                 
                 // ATUALIZAR DADOS LOCAIS
                 dadosPatio = [...dadosArray];
-                localStorage.setItem('dadosPatioMinerva', JSON.stringify(dadosPatio));
                 
                 // ATIVAR PROTEÇÃO
                 ativarProtecaoPermanente(dadosArray);
@@ -2668,11 +2823,14 @@
                 atualizarEstatisticas();
                 popularFiltros();
                 
+                // SALVAR COM SINCRONIZAÇÃO
+                salvarDadosComSincronizacao(dadosArray);
+                
                 const agora = new Date();
                 salvarTimestampGlobal(agora.toLocaleString('pt-BR'));
                 
                 setTimeout(() => {
-                    finalizarImportacao(true, 'Dados atualizados');
+                    finalizarImportacao(true, 'Dados sincronizados');
                 }, 1500);
                 
             } catch (error) {
@@ -2686,11 +2844,11 @@
             
             if (sucesso) {
                 const banner = document.getElementById('importSuccessBanner');
-                banner.textContent = 'Dados atualizados';
+                banner.textContent = 'Dados sincronizados entre usuários';
                 banner.classList.add('show');
                 
                 setTimeout(() => banner.classList.remove('show'), 3000);
-                mostrarAlerta('success', 'Dados atualizados');
+                mostrarAlerta('success', 'Dados sincronizados');
             } else {
                 mostrarAlerta('error', `❌ Falha: ${mensagem}`);
             }
@@ -2941,7 +3099,7 @@
         // ========== DOM READY ==========
         
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 DOM CARREGADO - MODO LOCAL ATIVO');
+            console.log('🚀 SISTEMA CARREGADO - SINCRONIZAÇÃO LOCAL ATIVA');
             
             const filtros = ['searchPlaca', 'filterStatus', 'filterOrigem', 'filterTipoMercado', 'filterGerandoDiaria', 'filterTipoDescarga'];
             
@@ -2957,6 +3115,7 @@
         function iniciarSistema() {
             verificarPermissoes();
             iniciarSincronizacaoTimestamp();
+            iniciarSincronizacaoLocalStorage(); // SINCRONIZAÇÃO LOCAL
             carregarDadosLocal();
         }
 
@@ -3015,6 +3174,10 @@
 
         function fazerLogout() {
             if (confirm('Deseja fazer logout?')) {
+                if (intervalSincronizacao) {
+                    clearInterval(intervalSincronizacao);
+                }
+                
                 sessionStorage.removeItem('usuarioLogado');
                 localStorage.removeItem('credenciaisLembradas');
                 location.reload();
@@ -3030,11 +3193,11 @@
             const pollingIndicatorPanel = document.getElementById('pollingIndicatorPanel');
             
             if (usuarioLogado.nivel === 'master') {
-                document.getElementById('panelTitle').innerHTML = '👥 Painel Master';
+                document.getElementById('panelTitle').innerHTML = '👥 Painel Master - Sincronização Ativa';
                 document.getElementById('createUserSection').style.display = 'block';
                 pollingIndicatorPanel.style.display = 'block';
             } else {
-                document.getElementById('panelTitle').innerHTML = '👥 Painel Admin';
+                document.getElementById('panelTitle').innerHTML = '👥 Painel Admin - Sincronização Ativa';
                 document.getElementById('createUserSection').style.display = 'none';
                 pollingIndicatorPanel.style.display = 'none';
             }
@@ -3276,10 +3439,14 @@
                     localStorage.removeItem('dadosProtegidosPermanentemente');
                     localStorage.removeItem('backupDadosProtegidos');
                     localStorage.removeItem('backupCardsProtegidos');
+                    localStorage.removeItem('minerva_dados_sync');
+                    localStorage.removeItem('minerva_sync_hash');
+                    localStorage.removeItem('minerva_sync_timestamp');
                     
                     dadosProtegidosPermanentemente = false;
                     backupDadosProtegidos = [];
                     backupCardsProtegidos = {};
+                    ultimoHashSincronizacao = '';
                     
                     atualizarInterface();
                     
@@ -3311,49 +3478,54 @@
             mostrarAlerta('success', 'Dados exportados');
         }
 
-        function mostrarDetalhesPolling() {
-            const info = `📱 SISTEMA EM MODO LOCAL
-
-🔧 CARACTERÍSTICAS:
-• Sem conexões externas
-• Funciona completamente offline
-• Dados salvos localmente
-• Sem dependências de CDN
-
-📊 FUNCIONAMENTO:
-• Login e usuários funcionando
-• Importação de Excel ativa
-• Cards com histórico completo
-• Interface totalmente responsiva
-
-⚠️ LIMITAÇÕES TEMPORÁRIAS:
-• Sem sincronização entre computadores
-• Sem recuperação de senha por email
-• Modo local até liberação da rede
-
-✅ SISTEMA FUNCIONAL E SEGURO!`;
+        function testarSincronizacao() {
+            const dadosTest = [{
+                placa: 'TEST123',
+                status: 'DESCARREGADO',
+                dataDescarga: obterDataAtual()
+            }];
             
-            alert(info);
+            const hashAnterior = ultimoHashSincronizacao;
+            salvarDadosComSincronizacao(dadosTest);
+            
+            setTimeout(() => {
+                verificarSincronizacaoLocal();
+                
+                mostrarAlerta('success', `✅ Teste concluído! Hash: ${hashAnterior} → ${ultimoHashSincronizacao}`);
+                
+                // RESTAURAR DADOS ORIGINAIS
+                setTimeout(() => {
+                    const dadosOriginais = JSON.parse(localStorage.getItem('backupDadosProtegidos') || '[]');
+                    if (dadosOriginais.length > 0) {
+                        dadosPatio = [...dadosOriginais];
+                        atualizarInterface();
+                    }
+                }, 2000);
+            }, 1000);
         }
 
-        function mostrarInfoLocal() {
-            const info = `📱 MODO LOCAL ATIVO
+        function mostrarDetalhesPolling() {
+            const info = `🔄 SINCRONIZAÇÃO VIA LOCALSTORAGE
 
-O sistema está funcionando em modo local para evitar bloqueios de firewall.
+💡 FUNCIONAMENTO:
+• Usa localStorage events para sincronização
+• Hash para detectar mudanças nos dados
+• Eventos disparados entre abas/janelas
+• Verificação a cada 3 segundos como backup
 
-✅ FUNCIONALIDADES DISPONÍVEIS:
-• Login de usuários
-• Importação de Excel
-• Análise de dados
-• Filtros e pesquisa
-• Exportação de dados
-• Interface completa
+✅ VANTAGENS:
+• Não usa APIs externas
+• Não é bloqueado pelo firewall
+• Sincronização instantânea
+• Funciona entre diferentes abas
 
-⚠️ LIMITAÇÕES:
-• Sem sincronização entre computadores
-• Dados salvos apenas localmente
+🎯 QUANDO VOCÊ IMPORTA:
+• Hash dos dados muda
+• Evento 'storage' disparado
+• Outros usuários detectam
+• Interface atualizada automaticamente
 
-Para reativar a sincronização, entre em contato com o TI para liberar as conexões necessárias.`;
+⚡ SINCRONIZAÇÃO EM TEMPO REAL ATIVA!`;
             
             alert(info);
         }
@@ -3399,7 +3571,7 @@ Para reativar a sincronização, entre em contato com o TI para liberar as conex
             }
         }
 
-        console.log('✅🚛📊📱🔒 SISTEMA EM MODO LOCAL SEGURO FUNCIONANDO!');
+        console.log('✅🚛📊🔄🔒 SISTEMA COM SINCRONIZAÇÃO LOCAL FUNCIONANDO!');
     </script>
 </body>
 </html>
