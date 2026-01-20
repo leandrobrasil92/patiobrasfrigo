@@ -2139,7 +2139,7 @@
             return dataDescarga === obterDataAnterior(diasAtras);
         }
 
-        // ========== SINCRONIZAÇÃO REAL VIA EMAIL COMO HASH ==========
+        // ========== SINCRONIZAÇÃO REAL VIA EMAIL - CORRIGIDA ==========
         
         async function salvarDadosGlobalSupabase(dadosArray) {
             if (!supabaseDisponivel || !supabase) {
@@ -2148,18 +2148,51 @@
             }
 
             try {
-                console.log(`🌐 SALVANDO DADOS PARA SINCRONIZAÇÃO GLOBAL VIA EMAIL...`);
+                console.log(`🌐 SALVANDO DADOS PARA SINCRONIZAÇÃO GLOBAL...`);
 
                 const timestampUnico = new Date().toISOString();
                 const usuarioImportacao = usuarioLogado ? usuarioLogado.nome : 'Sistema';
                 
-                // ATUALIZAR O EMAIL DO USUÁRIO LEANDRO PARA INCLUIR TIMESTAMP + DADOS
-                const emailComDados = `${timestampUnico}|||${JSON.stringify(dadosArray)}|||${usuarioImportacao}`;
+                // COMPRIMIR DADOS PARA CABER NO EMAIL
+                const dadosComprimidos = dadosArray.map(item => ({
+                    p: item.placa,
+                    c: item.container,
+                    dc: item.dataChegada,
+                    dd: item.dataDescarga,
+                    d: item.diaria,
+                    de: item.dedicada,
+                    vd: item.valorDiaria,
+                    vt: item.valorTotal,
+                    t: item.transportadora,
+                    u: item.unidade,
+                    o: item.origem,
+                    td: item.tipoDescarga,
+                    tm: item.tipoMercado,
+                    s: item.status,
+                    no: item.nfOrigem,
+                    nb: item.nfeBrasfrigo,
+                    op: item.op,
+                    dp: item.deposito,
+                    so: item.statusOp,
+                    pe: item.pedido,
+                    f: item.falta,
+                    sb: item.sobra,
+                    ir: item.inversaoRg,
+                    dk: item.doca,
+                    pb: item.pbr,
+                    ow: item.oneWay,
+                    fu: item.fumigado,
+                    tp: item.totalPallet,
+                    rf: item.recFrio,
+                    ob: item.obs
+                }));
                 
-                console.log('📧 ATUALIZANDO EMAIL DO USUÁRIO MASTER PARA SINCRONIZAÇÃO...');
-                console.log(`👤 Usuário importação: ${usuarioImportacao}`);
+                const emailComDados = `${timestampUnico}|${JSON.stringify(dadosComprimidos)}|${usuarioImportacao}`;
+                
+                console.log('📧 ATUALIZANDO EMAIL PARA SINCRONIZAÇÃO...');
+                console.log(`👤 Usuário: ${usuarioImportacao}`);
                 console.log(`⏰ Timestamp: ${timestampUnico}`);
-                console.log(`📊 Total registros: ${dadosArray.length}`);
+                console.log(`📊 Registros: ${dadosArray.length}`);
 
                 const { data, error } = await supabase
                     .from('usuarios')
@@ -2171,13 +2204,11 @@
                     .select();
 
                 if (error) {
-                    console.error('❌ ERRO AO ATUALIZAR EMAIL:', error);
+                    console.error('❌ ERRO AO SALVAR:', error);
                     return false;
                 }
 
-                console.log('✅ EMAIL ATUALIZADO COM SUCESSO PARA SINCRONIZAÇÃO!');
-                console.log('📊 RESPOSTA:', data);
-
+                console.log('✅ DADOS SALVOS PARA SINCRONIZAÇÃO!');
                 ultimoTimestampCheck = timestampUnico;
                 return true;
 
@@ -2193,7 +2224,7 @@
             }
 
             try {
-                console.log('🔍 VERIFICANDO SINCRONIZAÇÃO VIA EMAIL...');
+                console.log('🔍 VERIFICANDO SINCRONIZAÇÃO...');
 
                 const { data, error } = await supabase
                     .from('usuarios')
@@ -2202,56 +2233,92 @@
                     .single();
 
                 if (error) {
-                    console.error('❌ ERRO AO VERIFICAR EMAIL:', error);
+                    console.error('❌ ERRO:', error);
                     return false;
                 }
 
-                if (!data || !data.email) {
-                    console.log('📝 Email não encontrado');
-                    return false;
-                }
-
-                // VERIFICAR SE O EMAIL CONTÉM DADOS DE SINCRONIZAÇÃO
-                if (!data.email.includes('|||')) {
-                    console.log('📧 Email não contém dados de sincronização');
+                if (!data || !data.email || !data.email.includes('|')) {
+                    console.log('📝 Sem dados de sincronização');
                     return false;
                 }
 
                 const timestamp = data.criado_em;
                 
-                // VERIFICAR SE É DIFERENTE DO ÚLTIMO TIMESTAMP
+                // VERIFICAR SE É DIFERENTE
                 if (timestamp !== ultimoTimestampCheck) {
-                    console.log('🔄 NOVA SINCRONIZAÇÃO DETECTADA!');
-                    console.log(`• Timestamp anterior: ${ultimoTimestampCheck}`);
-                    console.log(`• Timestamp novo: ${timestamp}`);
+                    console.log('🚨 NOVA ATUALIZAÇÃO DETECTADA!');
+                    console.log(`• Anterior: ${ultimoTimestampCheck}`);
+                    console.log(`• Novo: ${timestamp}`);
 
                     try {
                         // EXTRAIR DADOS DO EMAIL
-                        const partes = data.email.split('|||');
+                        const partes = data.email.split('|');
                         const timestampDados = partes[0];
                         const dadosJson = partes[1];
                         const usuarioImportacao = partes[2] || 'Sistema';
 
-                        const dadosNovos = JSON.parse(dadosJson);
-                        console.log(`📂 CARREGANDO ${dadosNovos.length} REGISTROS DA SINCRONIZAÇÃO`);
-                        console.log(`👤 DADOS IMPORTADOS POR: ${usuarioImportacao}`);
+                        console.log(`👤 IMPORTADO POR: ${usuarioImportacao}`);
 
-                        // ATUALIZAR DADOS GLOBALMENTE
-                        dadosPatio = [...dadosNovos];
+                        // PROCESSAR DADOS COMPRIMIDOS
+                        const dadosComprimidos = JSON.parse(dadosJson);
+                        
+                        // DESCOMPRIMIR DADOS
+                        const dadosDescomprimidos = dadosComprimidos.map(item => ({
+                            placa: item.p || "",
+                            container: item.c || "",
+                            dataChegada: item.dc || "",
+                            dataDescarga: item.dd || "",
+                            diaria: item.d || 0,
+                            dedicada: item.de || "NÃO",
+                            valorDiaria: item.vd || "R$ 0,00",
+                            valorTotal: item.vt || "R$ 0,00",
+                            transportadora: item.t || "",
+                            unidade: item.u || "",
+                            origem: item.o || "",
+                            tipoDescarga: item.td || "",
+                            tipoMercado: item.tm || "",
+                            status: item.s || "",
+                            nfOrigem: item.no || "",
+                            nfeBrasfrigo: item.nb || "",
+                            op: item.op || "",
+                            deposito: item.dp || "",
+                            statusOp: item.so || "",
+                            pedido: item.pe || "",
+                            falta: item.f || "",
+                            sobra: item.sb || "",
+                            inversaoRg: item.ir || "",
+                            doca: item.dk || "",
+                            pbr: item.pb || "",
+                            oneWay: item.ow || "",
+                            fumigado: item.fu || "",
+                            totalPallet: item.tp || "",
+                            recFrio: item.rf || "",
+                            obs: item.ob || ""
+                        }));
+
+                        console.log(`📂 CARREGANDO ${dadosDescomprimidos.length} REGISTROS`);
+
+                        // ATUALIZAR DADOS GLOBAIS - FORÇAR ATUALIZAÇÃO
+                        dadosPatio = [...dadosDescomprimidos];
                         localStorage.setItem('dadosPatioMinerva', JSON.stringify(dadosPatio));
 
                         // ATUALIZAR TIMESTAMP
                         ultimoTimestampCheck = timestamp;
 
-                        // ATUALIZAR INTERFACE
-                        atualizarInterface();
+                        // FORÇAR ATUALIZAÇÃO DA PROTEÇÃO TAMBÉM
+                        ativarProtecaoPermanente(dadosDescomprimidos);
+
+                        // ATUALIZAR INTERFACE - GARANTIR ATUALIZAÇÃO COMPLETA
+                        renderizarTabelaAgrupadaCorrigida();
+                        atualizarEstatisticas();
+                        popularFiltros();
 
                         // MOSTRAR NOTIFICAÇÃO APENAS PARA OUTROS USUÁRIOS
                         const usuarioAtual = usuarioLogado ? usuarioLogado.nome : 'Anônimo';
                         if (usuarioImportacao !== usuarioAtual) {
                             const notification = document.getElementById('realtimeNotification');
                             if (notification) {
-                                notification.textContent = `⚡ Dados atualizados por ${usuarioImportacao}! ${dadosNovos.length} registros sincronizados`;
+                                notification.textContent = `⚡ Dados atualizados por ${usuarioImportacao}! ${dadosDescomprimidos.length} registros sincronizados`;
                                 notification.classList.add('show');
                                 setTimeout(() => notification.classList.remove('show'), 7000);
                             }
@@ -2260,26 +2327,26 @@
                         // ATUALIZAR TIMESTAMP VISUAL
                         atualizarTimestampVisual(new Date(timestampDados).toLocaleString('pt-BR'));
 
-                        console.log('✅ SINCRONIZAÇÃO CONCLUÍDA VIA EMAIL!');
+                        console.log('✅ SINCRONIZAÇÃO CONCLUÍDA - INTERFACE ATUALIZADA!');
                         return true;
 
                     } catch (parseError) {
-                        console.error('❌ ERRO AO PROCESSAR DADOS DO EMAIL:', parseError);
+                        console.error('❌ ERRO AO PROCESSAR DADOS:', parseError);
                         return false;
                     }
                 } else {
-                    console.log('📊 Dados já sincronizados (mesmo timestamp)');
+                    console.log('📊 Dados já atualizados');
                     return false;
                 }
 
             } catch (error) {
-                console.error('❌ ERRO NA VERIFICAÇÃO VIA EMAIL:', error);
+                console.error('❌ ERRO NA VERIFICAÇÃO:', error);
                 return false;
             }
         }
 
         function iniciarSincronizacaoTempoReal() {
-            console.log('⚡ INICIANDO SINCRONIZAÇÃO EM TEMPO REAL VIA EMAIL...');
+            console.log('⚡ INICIANDO SINCRONIZAÇÃO TEMPO REAL...');
             
             if (intervalSincronizacao) {
                 clearInterval(intervalSincronizacao);
@@ -2288,14 +2355,14 @@
             // VERIFICAR IMEDIATAMENTE
             verificarSincronizacaoViaEmail();
 
-            // VERIFICAR A CADA 2 SEGUNDOS PARA SER MAIS RÁPIDO
+            // VERIFICAR A CADA 2 SEGUNDOS
             intervalSincronizacao = setInterval(() => {
                 if (!isImporting) {
                     verificarSincronizacaoViaEmail();
                 }
             }, 2000);
             
-            console.log('✅ Sincronização tempo real ativa (2s)');
+            console.log('✅ Sincronização ativa (2s)');
         }
 
         // ========== FUNÇÃO DO GRÁFICO DINÂMICO NO CARD DESCARREGANDO ==========
@@ -2799,9 +2866,8 @@
                         
                         if (!error && usuariosSupabase) {
                             usuariosSupabase.forEach(userSupabase => {
-                                // PULAR O USUÁRIO DE SINCRONIZAÇÃO E USUÁRIOS COM EMAIL MODIFICADO
-                                if (userSupabase.login === 'sync_patio_dados' || 
-                                    (userSupabase.email && userSupabase.email.includes('|||'))) {
+                                // PULAR USUÁRIOS COM EMAIL MODIFICADO PARA SINCRONIZAÇÃO
+                                if (userSupabase.email && userSupabase.email.includes('|')) {
                                     return;
                                 }
                                 
@@ -2925,6 +2991,8 @@
         // ========== PROTEÇÃO E CÁLCULOS ==========
         
         function ativarProtecaoPermanente(dados) {
+            console.log(`🛡️ ATIVANDO PROTEÇÃO COM ${dados.length} REGISTROS...`);
+            
             dadosProtegidosPermanentemente = true;
             backupDadosProtegidos = [...dados];
             
@@ -2935,11 +3003,15 @@
             localStorage.setItem('backupDadosProtegidos', JSON.stringify(dados));
             localStorage.setItem('backupCardsProtegidos', JSON.stringify(valoresCards));
             
+            console.log('🔒 PROTEÇÃO ATIVADA:', valoresCards);
+            
             const cards = document.querySelectorAll('.stat-card');
             cards.forEach(card => card.classList.add('protected'));
         }
 
         function calcularValoresHistoricoCompleto(dados) {
+            console.log(`📊 CALCULANDO COM ${dados.length} REGISTROS...`);
+            
             // CÁLCULOS DOS 4 CARDS NORMAIS
             const placasTransito = [...new Set(dados.filter(d => d.status === 'TRÂNSITO').map(d => d.placa))].length;
             const placasAguardando = [...new Set(dados.filter(d => d.status === 'AGUARDANDO').map(d => d.placa))].length;
@@ -2962,7 +3034,7 @@
             const movimentacaoSemana = [...new Set(dados.filter(d => d.status === 'DESCARREGADO' && d.dataDescarga && estaNaSemanaAtual(d.dataDescarga)).map(d => d.placa))].length;
             const movimentacaoMes = [...new Set(dados.filter(d => d.status === 'DESCARREGADO' && d.dataDescarga && estaNoMesAtual(d.dataDescarga)).map(d => d.placa))].length;
             
-            return {
+            const resultado = {
                 totalTransito: placasTransito,
                 totalAguardando: placasAguardando,
                 totalDescarregando: placasDescarregando,
@@ -2975,12 +3047,18 @@
                 movimentacaoSemana: movimentacaoSemana,
                 movimentacaoMes: movimentacaoMes
             };
+            
+            console.log('📊 RESULTADO CALCULADO:', resultado);
+            return resultado;
         }
 
         function aplicarValoresHistoricoCompleto() {
             if (!backupCardsProtegidos || Object.keys(backupCardsProtegidos).length === 0) {
+                console.log('⚠️ Nenhum backup disponível');
                 return;
             }
+            
+            console.log('🔧 APLICANDO VALORES:', backupCardsProtegidos);
             
             // APLICAR 4 CARDS NORMAIS
             document.getElementById('totalTransito').textContent = backupCardsProtegidos.totalTransito || 0;
@@ -3004,6 +3082,8 @@
                 card.classList.add('protected', 'updated');
                 setTimeout(() => card.classList.remove('updated'), 1000);
             });
+            
+            console.log('✅ VALORES APLICADOS NA INTERFACE');
         }
 
         function verificarRestaurarProtecao() {
@@ -3055,7 +3135,7 @@
             console.log('📱 Carregando dados...');
             verificarRestaurarProtecao();
             
-            // VERIFICAR SINCRONIZAÇÃO VIA EMAIL PRIMEIRO
+            // VERIFICAR SINCRONIZAÇÃO PRIMEIRO
             verificarSincronizacaoViaEmail();
             
             // SE NÃO HÁ DADOS, CARREGAR LOCAIS
@@ -3133,7 +3213,7 @@
                     }).filter(item => item && item.placa);
                     
                     console.log(`📊 ${dadosProcessados.length} registros processados`);
-                    salvarComSincronizacaoEmail(dadosProcessados);
+                    salvarComSincronizacaoFinal(dadosProcessados);
                     
                 } catch (error) {
                     console.error('❌ Erro ao processar:', error);
@@ -3145,29 +3225,32 @@
             event.target.value = '';
         }
 
-        // ========== SALVAMENTO COM SINCRONIZAÇÃO VIA EMAIL ==========
-        async function salvarComSincronizacaoEmail(dadosArray) {
+        // ========== SALVAMENTO COM SINCRONIZAÇÃO FINAL ==========
+        async function salvarComSincronizacaoFinal(dadosArray) {
             try {
-                console.log('📧 SALVANDO COM SINCRONIZAÇÃO VIA EMAIL...');
+                console.log('🌐 SALVANDO COM SINCRONIZAÇÃO FINAL...');
                 
-                ativarProtecaoPermanente(dadosArray);
-                
-                // ATUALIZAR DADOS LOCAIS
+                // ATUALIZAR DADOS LOCAIS PRIMEIRO
                 dadosPatio = [...dadosArray];
                 localStorage.setItem('dadosPatioMinerva', JSON.stringify(dadosPatio));
                 
-                // SALVAR NO SUPABASE PARA SINCRONIZAÇÃO VIA EMAIL
-                const sucessoSupabase = await salvarDadosGlobalSupabase(dadosArray);
+                // ATIVAR PROTEÇÃO
+                ativarProtecaoPermanente(dadosArray);
                 
-                atualizarInterface();
+                // ATUALIZAR INTERFACE IMEDIATAMENTE
+                renderizarTabelaAgrupadaCorrigida();
+                atualizarEstatisticas();
                 popularFiltros();
+                
+                // SALVAR NO SUPABASE PARA SINCRONIZAÇÃO
+                const sucessoSupabase = await salvarDadosGlobalSupabase(dadosArray);
                 
                 const agora = new Date();
                 salvarTimestampGlobal(agora.toLocaleString('pt-BR'));
                 
                 setTimeout(() => {
                     const mensagem = sucessoSupabase ? 
-                        `${dadosArray.length} registros sincronizados via email` :
+                        `${dadosArray.length} registros sincronizados para todos os usuários` :
                         `${dadosArray.length} registros salvos (erro na sincronização)`;
                     finalizarImportacao(true, mensagem);
                 }, 1500);
@@ -3183,11 +3266,11 @@
             
             if (sucesso) {
                 const banner = document.getElementById('importSuccessBanner');
-                banner.textContent = 'Dados sincronizados via campo email do Supabase';
+                banner.textContent = 'Dados sincronizados para todos os usuários via Supabase';
                 banner.classList.add('show');
                 
                 setTimeout(() => banner.classList.remove('show'), 4000);
-                mostrarAlerta('success', 'Sincronizado globalmente');
+                mostrarAlerta('success', 'Sincronização global bem-sucedida');
             } else {
                 mostrarAlerta('error', `❌ Falha: ${mensagem}`);
             }
@@ -3195,12 +3278,11 @@
             document.getElementById('importIndicator').classList.remove('show');
         }
 
-        // ========== ESTATÍSTICAS ==========
+        // ========== ESTATÍSTICAS FORÇADAS ==========
         function atualizarEstatisticas() {
-            if (dadosProtegidosPermanentemente && backupCardsProtegidos && Object.keys(backupCardsProtegidos).length > 0) {
-                aplicarValoresHistoricoCompleto();
-                return;
-            }
+            console.log(`📊 ATUALIZANDO ESTATÍSTICAS COM ${dadosPatio.length} REGISTROS...`);
+            
+            // SEMPRE RECALCULAR EM TEMPO REAL PARA GARANTIR
             
             // CÁLCULOS DOS 4 CARDS NORMAIS
             const placasTransito = [...new Set(dadosPatio.filter(d => d.status === 'TRÂNSITO').map(d => d.placa))].length;
@@ -3224,13 +3306,27 @@
             const movimentacaoSemana = [...new Set(dadosPatio.filter(d => d.status === 'DESCARREGADO' && d.dataDescarga && estaNaSemanaAtual(d.dataDescarga)).map(d => d.placa))].length;
             const movimentacaoMes = [...new Set(dadosPatio.filter(d => d.status === 'DESCARREGADO' && d.dataDescarga && estaNoMesAtual(d.dataDescarga)).map(d => d.placa))].length;
             
-            // ATUALIZAR CARDS NA TELA
+            console.log('📈 VALORES CALCULADOS:', {
+                transito: placasTransito,
+                aguardando: placasAguardando,
+                descarregando: placasDescarregando,
+                descarregado: placasDescarregado,
+                d0: movimentacaoD0,
+                d1: movimentacaoD1,
+                d2: movimentacaoD2,
+                d3: movimentacaoD3,
+                d4: movimentacaoD4,
+                semana: movimentacaoSemana,
+                mes: movimentacaoMes
+            });
+            
+            // ATUALIZAR CARDS NA TELA - FORÇAR ATUALIZAÇÃO
             document.getElementById('totalTransito').textContent = placasTransito;
             document.getElementById('totalAguardando').textContent = placasAguardando;
             document.getElementById('totalDescarregando').textContent = placasDescarregando;
             document.getElementById('totalDescarregado').textContent = placasDescarregado;
             
-            // ATUALIZAR HISTÓRICO COMPLETO
+            // ATUALIZAR HISTÓRICO COMPLETO - FORÇAR ATUALIZAÇÃO
             document.getElementById('movimentacaoD0').textContent = movimentacaoD0;
             document.getElementById('movimentacaoD1').textContent = movimentacaoD1;
             document.getElementById('movimentacaoD2').textContent = movimentacaoD2;
@@ -3244,19 +3340,25 @@
             const cards = document.querySelectorAll('.stat-card');
             cards.forEach(card => {
                 card.classList.add('updated');
-                if (dadosProtegidosPermanentemente) {
-                    card.classList.add('protected');
-                }
                 setTimeout(() => card.classList.remove('updated'), 1000);
             });
+            
+            console.log('✅ INTERFACE ATUALIZADA COM SUCESSO!');
         }
 
         function atualizarInterface() {
+            console.log('🔄 ATUALIZANDO INTERFACE COMPLETA...');
+            
             const statusPermitidos = ['TRÂNSITO', 'AGUARDANDO', 'DESCARREGANDO', 'DESCARREGADO'];
             const dados = dadosPatio.filter(item => statusPermitidos.includes(item.status));
+            
+            console.log(`📊 Dados filtrados: ${dados.length} de ${dadosPatio.length}`);
+            
             renderizarTabelaAgrupadaCorrigida(dados);
             atualizarEstatisticas();
             popularFiltros();
+            
+            console.log('✅ INTERFACE ATUALIZADA COMPLETAMENTE');
         }
 
         // ========== RENDERIZAÇÃO DE TABELA ==========
@@ -3364,6 +3466,7 @@
             });
             
             tbody.innerHTML = html;
+            console.log('✅ Tabela renderizada');
         }
 
         function toggleGrupoCorrigido(chaveGrupo) {
@@ -3465,7 +3568,7 @@
         function iniciarSistema() {
             verificarPermissoes();
             iniciarSincronizacaoTimestamp();
-            iniciarSincronizacaoTempoReal(); // SINCRONIZAÇÃO EM TEMPO REAL VIA EMAIL
+            iniciarSincronizacaoTempoReal(); // SINCRONIZAÇÃO EM TEMPO REAL
             carregarDadosLocal();
         }
 
@@ -3750,21 +3853,21 @@
         }
 
         function mostrarDetalhesPolling() {
-            const info = `📧 SINCRONIZAÇÃO VIA CAMPO EMAIL
+            const info = `📧 SINCRONIZAÇÃO VIA EMAIL - CORRIGIDA
 
-💡 SOLUÇÃO IMPLEMENTADA:
-• Usa campo 'email' do usuário Leandro
-• Armazena: timestamp|||dados|||usuario
-• Todos verificam o email a cada 2s
-• Detecta mudanças por timestamp
+🔧 CORREÇÕES IMPLEMENTADAS:
+• Dados comprimidos para caber no email
+• Separador "|" (mais simples que "|||")
+• Atualização forçada da interface
+• Recálculo imediato das estatísticas
 
 🔄 FUNCIONAMENTO:
-• Você importa → Atualiza email do Leandro
+• Você importa → Email atualizado no Supabase
 • Rhemerson → Verifica email a cada 2s
-• Timestamp diferente → Carrega dados novos
-• Interface → Atualizada automaticamente
+• Timestamp mudou → Carrega + aplica dados
+• Interface → Atualizada completamente
 
-✅ SINCRONIZAÇÃO REAL ENTRE COMPUTADORES!`;
+✅ PROBLEMA DA INTERFACE CORRIGIDO!`;
             
             alert(info);
         }
@@ -3810,7 +3913,7 @@
             }
         }
 
-        console.log('✅🚛📊📧⚡ SISTEMA COM SINCRONIZAÇÃO VIA EMAIL EM TEMPO REAL!');
+        console.log('✅🚛📊📧🔧 SISTEMA COM SINCRONIZAÇÃO E ATUALIZAÇÃO DE INTERFACE CORRIGIDAS!');
     </script>
 </body>
 </html>
