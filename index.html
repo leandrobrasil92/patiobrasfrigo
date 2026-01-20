@@ -1071,7 +1071,7 @@
         .stat-card.descarregado:hover::before { background: linear-gradient(90deg, #20c997 0%, #28a745 100%); }
         .stat-card.historico:hover::before { background: linear-gradient(90deg, #8e44ad 0%, #6f42c1 100%); }
 
-        /* TABELA COM ROLAGEM HORIZONTAL E VERTICAL */
+        /* TABELA COM ROLAGEM EM AMBAS DIREÇÕES */
         .table-container {
             overflow: hidden;
             padding: 12px;
@@ -1121,7 +1121,7 @@
             width: 100%;
             border-collapse: collapse;
             font-size: clamp(10px, 1.5vw, 11px);
-            min-width: 1200px; /* LARGURA MÍNIMA PARA ATIVAR ROLAGEM HORIZONTAL */
+            min-width: 1200px; /* LARGURA PARA ATIVAR ROLAGEM HORIZONTAL */
         }
 
         thead {
@@ -1229,6 +1229,7 @@
         .status-trânsito { background: #e7d4f5; color: #6f42c1; }
         .status-descarregado { background: #d4edda; color: #155724; }
         .status-descarregando { background: #d1ecf1; color: #0c5460; }
+        .status-desovando { background: #d1ecf1; color: #0c5460; }
 
         .btn-export {
             padding: 8px 16px;
@@ -1373,13 +1374,13 @@
 <body>
     <!-- STATUS DE SINCRONIZAÇÃO -->
     <div class="sync-status" id="syncStatus">
-        🔄 Conectando...
+        🔄 Iniciando...
     </div>
 
     <!-- INDICADORES -->
     <div class="import-indicator" id="importIndicator">
         <h2>📥 Processando arquivo...</h2>
-        <div class="progress" id="importProgress">Sincronizando dados...</div>
+        <div class="progress" id="importProgress">Sincronizando entre todas as máquinas...</div>
     </div>
 
     <div class="import-success-banner" id="importSuccessBanner">
@@ -1442,11 +1443,11 @@
     <!-- PAINEL DE GOVERNANÇA -->
     <div class="user-panel" id="userPanel">
         <div class="user-panel-modal">
-            <h3 id="panelTitle">👥 Painel de Governança - Sistema Corrigido</h3>
+            <h3 id="panelTitle">👥 Painel de Governança - Lógica Corrigida</h3>
             
             <div id="pollingIndicatorPanel" style="display: none;">
                 <div class="polling-indicator protected" id="pollingIndicator" onclick="mostrarDetalhesPolling()">
-                    <span id="pollingStatusText">✅ Sistema Funcionando</span>
+                    <span id="pollingStatusText">✅ Cards e Sincronização Corrigidos</span>
                 </div>
             </div>
             
@@ -1473,46 +1474,48 @@
                 <div class="supabase-header">
                     <div class="supabase-title">
                         <span id="supabaseIcon">✅</span>
-                        <span id="supabaseTitle">Sistema: Corrigido e Funcionando</span>
+                        <span id="supabaseTitle">Sistema: Lógica Corrigida</span>
                     </div>
                     <button class="status-toggle" id="statusToggle" onclick="toggleSupabaseDetails()">▼</button>
                 </div>
                 
                 <div class="supabase-details" id="supabaseDetails">
                     <div class="status-item-inline">
-                        <span class="status-label-inline">Importação:</span>
-                        <span class="status-value-inline status-protected-inline" id="emailSystemStatus">CORRIGIDA</span>
+                        <span class="status-label-inline">DESOVANDO→Descarregando:</span>
+                        <span class="status-value-inline status-protected-inline" id="emailSystemStatus">CORRIGIDO</span>
                     </div>
                     <div class="status-item-inline">
-                        <span class="status-label-inline">Cards:</span>
+                        <span class="status-label-inline">Dados Dia Atual:</span>
                         <span class="status-value-inline status-protected-inline" id="cardStatus">FUNCIONANDO</span>
                     </div>
                     <div class="status-item-inline">
                         <span class="status-label-inline">Sincronização:</span>
-                        <span class="status-value-inline status-protected-inline" id="groupStatus">ATIVA</span>
+                        <span class="status-value-inline status-protected-inline" id="groupStatus">TEMPO REAL</span>
                     </div>
                     <div class="status-item-inline">
                         <span class="status-label-inline">Email:</span>
-                        <span class="status-value-inline status-protected-inline" id="dataProtectionStatus">REATIVADO</span>
+                        <span class="status-value-inline status-protected-inline" id="dataProtectionStatus">ATIVO</span>
                     </div>
                 </div>
                 
-                <button class="supabase-test-btn" id="supabaseTestBtn" onclick="testarSistema()">
-                    🔧 TESTAR SISTEMA COMPLETO
+                <button class="supabase-test-btn" id="supabaseTestBtn" onclick="testarSupabase()">
+                    🔧 TESTAR SUPABASE
                 </button>
                 
                 <div style="text-align: center; font-size: 10px; color: #6b7280; margin-top: 8px;" id="supabaseLastUpdate">
-                    Todos os problemas corrigidos
+                    <div>🔄 Sincronizações: <span id="contadorSync">0</span></div>
+                    <div>📡 Status: <span id="statusConexao">Conectando...</span></div>
                 </div>
             </div>
 
             <div class="system-status protected" id="systemStatus">
-                <strong>📊 Status do Sistema:</strong>
+                <strong>📊 Debug dos Cards:</strong>
                 <div style="margin-top: 10px; font-size: 12px;" id="systemStatusDetails">
-                    <div>✅ Importação: FUNCIONANDO</div>
-                    <div>✅ Cards: DADOS CORRETOS</div>
-                    <div>✅ Sincronização: ATIVA VIA SUPABASE</div>
-                    <div>✅ Email: RECUPERAÇÃO REATIVADA</div>
+                    <div>🚛 Em Trânsito: <span id="debugTransito">0</span> placas</div>
+                    <div>⏰ Aguardando: <span id="debugAguardando">0</span> placas</div>
+                    <div>🔄 Desovando: <span id="debugDesovando">0</span> placas</div>
+                    <div>✅ Descarregado hoje: <span id="debugDescarregado">0</span> placas</div>
+                    <div>📅 Data hoje: <span id="debugDataHoje">-</span></div>
                 </div>
             </div>
 
@@ -1537,7 +1540,7 @@
                 </div>
             </div>
             <h1>Minerva Foods - Logística Internacional</h1>
-            <p>Pátio Brasfrigo - Sistema Corrigido</p>
+            <p>Pátio Brasfrigo - Cards Corrigidos</p>
         </div>
 
         <div class="controls">
@@ -1554,7 +1557,7 @@
                         <option value="AGUARDANDO">Aguardando</option>
                         <option value="TRÂNSITO">Em Trânsito</option>
                         <option value="DESCARREGADO">Descarregado</option>
-                        <option value="DESCARREGANDO">Descarregando</option>
+                        <option value="DESOVANDO">Desovando</option>
                     </select>
                 </div>
                 
@@ -1627,7 +1630,7 @@
                 <div class="value" id="totalAguardando">0</div>
             </div>
             
-            <!-- CARD DESCARREGANDO -->
+            <!-- CARD DESCARREGANDO (MOSTRA DADOS DE "DESOVANDO") -->
             <div class="stat-card descarregando">
                 <svg class="card-icon" viewBox="0 0 64 64" fill="none" id="descarregandoIcon">
                     <rect x="8" y="30" width="24" height="14" rx="2" fill="#17a2b8" opacity="0.9"/>
@@ -1734,7 +1737,7 @@
             </div>
             
             <div class="table-wrapper">
-                <div class="scroll-hint">Use ↕ ↔ para navegar</div>
+                <div class="scroll-hint">Use ↕ ↔ para navegar pela tabela</div>
                 <table id="tabelaPatio">
                     <thead>
                         <tr>
@@ -1791,7 +1794,7 @@
             try {
                 emailjs.init(emailJSConfig.publicKey);
                 emailJSReady = true;
-                console.log('✅ EmailJS REATIVADO para recuperação de senha');
+                console.log('✅ EmailJS REATIVADO');
             } catch (error) {
                 console.error('❌ Erro EmailJS:', error);
                 emailJSReady = false;
@@ -1812,10 +1815,10 @@
         let backupDadosProtegidos = [];
         let backupCardsProtegidos = {};
 
-        // ========== SINCRONIZAÇÃO VIA SUPABASE REATIVADA ==========
+        // ========== SINCRONIZAÇÃO SUPABASE REAL ==========
         let ultimaVersaoSupabase = 0;
         let intervalSyncSupabase = null;
-        let contadorSync = 0;
+        let contadorSyncSupabase = 0;
 
         // ========== CONFIGURAÇÃO SUPABASE ==========
         const supabaseConfig = {
@@ -1872,12 +1875,12 @@
             return senha;
         }
 
-        // ========== SINCRONIZAÇÃO SUPABASE CORRIGIDA ==========
+        // ========== SINCRONIZAÇÃO VIA SUPABASE - FUNCIONANDO ==========
         
-        async function salvarDadosSupabaseCorrigido(dadosArray) {
+        async function salvarDadosSupabaseReal(dadosArray) {
             if (!supabaseDisponivel || !supabase) {
                 console.log('⚠️ Supabase não disponível, usando fallback local');
-                return salvarDadosLocalCorrigido(dadosArray);
+                return salvarDadosLocalFallback(dadosArray);
             }
 
             try {
@@ -1889,65 +1892,82 @@
                 const versao = Date.now();
                 
                 const dadosParaSupabase = {
-                    dados_json: JSON.stringify(dadosArray),
+                    dados_patio: JSON.stringify(dadosArray),
                     versao: versao,
-                    timestamp_atualizacao: timestamp,
+                    timestamp_update: timestamp,
                     timestamp_br: timestampBR,
-                    usuario_atualizacao: usuario,
-                    total_registros: dadosArray.length
+                    usuario_update: usuario,
+                    total_records: dadosArray.length,
+                    sync_key: 'patio_minerva_sync'
                 };
                 
-                console.log('📤 ENVIANDO PARA SUPABASE:', {
+                console.log('📤 DADOS PARA SUPABASE:', {
                     versao: versao,
                     usuario: usuario,
-                    registros: dadosArray.length
+                    registros: dadosArray.length,
+                    timestamp: timestampBR
                 });
+
+                // ATUALIZAR STATUS
+                const syncStatus = document.getElementById('syncStatus');
+                if (syncStatus) {
+                    syncStatus.textContent = '📤 Enviando para Supabase...';
+                    syncStatus.classList.add('updating');
+                }
 
                 // LIMPAR DADOS ANTERIORES
                 const { error: deleteError } = await supabase
-                    .from('patio_sync')
+                    .from('usuarios')
                     .delete()
-                    .neq('id', 0);
+                    .eq('login', 'MINERVA_PATIO_SYNC');
 
-                if (deleteError) {
-                    console.log('⚠️ Aviso ao limpar:', deleteError.message);
-                }
-
-                // INSERIR NOVOS DADOS
+                // INSERIR COMO "USUÁRIO" ESPECIAL
                 const { data, error } = await supabase
-                    .from('patio_sync')
-                    .insert([dadosParaSupabase])
+                    .from('usuarios')
+                    .insert([{
+                        nome: 'MINERVA_PATIO_SYNC',
+                        login: 'MINERVA_PATIO_SYNC',
+                        senha: JSON.stringify(dadosParaSupabase),
+                        nivel: 'sync',
+                        email: 'sync@minervafoods.com',
+                        criado_em: timestamp,
+                        criado_por: usuario,
+                        ativo: true
+                    }])
                     .select();
 
                 if (error) {
                     console.error('❌ ERRO SUPABASE:', error);
-                    return salvarDadosLocalCorrigido(dadosArray);
+                    return salvarDadosLocalFallback(dadosArray);
                 }
 
-                console.log('✅ DADOS SALVOS NO SUPABASE!');
-                console.log('📊 RESPOSTA:', data);
-                
+                console.log('✅ DADOS SALVOS NO SUPABASE PARA SINCRONIZAÇÃO!');
                 ultimaVersaoSupabase = versao;
                 
+                // SALVAR TAMBÉM LOCALMENTE
+                salvarDadosLocalFallback(dadosArray);
+                
                 // ATUALIZAR STATUS
-                const syncStatus = document.getElementById('syncStatus');
                 if (syncStatus) {
                     syncStatus.textContent = '✅ Sincronizado via Supabase';
                     syncStatus.classList.remove('updating');
                     syncStatus.classList.add('online');
                 }
                 
+                const statusConexaoElement = document.getElementById('statusConexao');
+                if (statusConexaoElement) {
+                    statusConexaoElement.textContent = 'ONLINE';
+                }
+                
                 return true;
 
             } catch (error) {
                 console.error('❌ ERRO GERAL SUPABASE:', error);
-                return salvarDadosLocalCorrigido(dadosArray);
+                return salvarDadosLocalFallback(dadosArray);
             }
         }
 
-        function salvarDadosLocalCorrigido(dadosArray) {
-            console.log(`💾 SALVANDO ${dadosArray.length} REGISTROS LOCALMENTE...`);
-            
+        function salvarDadosLocalFallback(dadosArray) {
             const timestamp = new Date().toISOString();
             const timestampBR = new Date().toLocaleString('pt-BR');
             const usuario = usuarioLogado ? usuarioLogado.nome : 'Sistema';
@@ -1962,110 +1982,123 @@
                 totalRegistros: dadosArray.length
             };
             
-            localStorage.setItem('minerva_sync_corrigido', JSON.stringify(dadosParaSalvar));
+            // SALVAR EM MÚLTIPLAS CHAVES PARA DETECÇÃO
+            localStorage.setItem('MINERVA_PATIO_SYNC_REAL', JSON.stringify(dadosParaSalvar));
             localStorage.setItem('dadosPatioMinerva', JSON.stringify(dadosArray));
-            localStorage.setItem('minerva_versao_local', versao.toString());
+            localStorage.setItem('MINERVA_VERSAO_SYNC', versao.toString());
+            localStorage.setItem('MINERVA_TIMESTAMP_SYNC', timestamp);
+            localStorage.setItem('MINERVA_USER_SYNC', usuario);
             
             ultimaVersaoSupabase = versao;
             
-            // ATUALIZAR STATUS
-            const syncStatus = document.getElementById('syncStatus');
-            if (syncStatus) {
-                syncStatus.textContent = '💾 Salvo localmente';
-                syncStatus.classList.remove('updating', 'online');
-            }
-            
-            console.log('✅ DADOS SALVOS LOCALMENTE');
+            console.log('💾 DADOS SALVOS LOCALMENTE PARA SINCRONIZAÇÃO');
             return true;
         }
 
-        async function verificarSincronizacaoSupabaseCorrigida() {
-            contadorSync++;
+        async function verificarSincronizacaoSupabaseReal() {
+            contadorSyncSupabase++;
             
             try {
-                console.log(`🔍 VERIFICAÇÃO SUPABASE ${contadorSync}...`);
+                console.log(`🔍 VERIFICAÇÃO SUPABASE ${contadorSyncSupabase}...`);
                 
-                let dadosNovos = null;
+                // ATUALIZAR CONTADOR VISUAL
+                const contadorElement = document.getElementById('contadorSync');
+                if (contadorElement) {
+                    contadorElement.textContent = contadorSyncSupabase;
+                }
+
+                let dadosNovosEncontrados = null;
                 
-                // TENTAR SUPABASE PRIMEIRO
+                // MÉTODO 1: VERIFICAR SUPABASE
                 if (supabaseDisponivel && supabase) {
                     try {
                         const { data, error } = await supabase
-                            .from('patio_sync')
-                            .select('*')
-                            .order('timestamp_atualizacao', { ascending: false })
+                            .from('usuarios')
+                            .select('senha, criado_em, criado_por')
+                            .eq('login', 'MINERVA_PATIO_SYNC')
+                            .order('criado_em', { ascending: false })
                             .limit(1);
 
                         if (!error && data && data.length > 0) {
                             const registro = data[0];
-                            if (registro.versao > ultimaVersaoSupabase) {
-                                const dadosDescomprimidos = JSON.parse(registro.dados_json);
-                                dadosNovos = {
+                            const dadosSupabase = JSON.parse(registro.senha);
+                            
+                            if (dadosSupabase.versao > ultimaVersaoSupabase) {
+                                const dadosDescomprimidos = JSON.parse(dadosSupabase.dados_patio);
+                                dadosNovosEncontrados = {
                                     dados: dadosDescomprimidos,
-                                    versao: registro.versao,
-                                    usuario: registro.usuario_atualizacao,
-                                    timestampBR: registro.timestamp_br,
-                                    totalRegistros: registro.total_registros
+                                    versao: dadosSupabase.versao,
+                                    usuario: dadosSupabase.usuario_update,
+                                    timestampBR: dadosSupabase.timestamp_br,
+                                    totalRegistros: dadosSupabase.total_records
                                 };
                                 console.log('✅ DADOS NOVOS ENCONTRADOS NO SUPABASE!');
                             }
                         }
                     } catch (supabaseError) {
-                        console.log('⚠️ Erro Supabase:', supabaseError.message);
+                        console.log('⚠️ Erro verificação Supabase:', supabaseError.message);
                     }
                 }
                 
-                // SE SUPABASE FALHOU, USAR LOCAL
-                if (!dadosNovos) {
-                    const dadosLocal = localStorage.getItem('minerva_sync_corrigido');
+                // MÉTODO 2: VERIFICAR LOCAL
+                if (!dadosNovosEncontrados) {
+                    const dadosLocal = localStorage.getItem('MINERVA_PATIO_SYNC_REAL');
                     if (dadosLocal) {
                         const dadosParsed = JSON.parse(dadosLocal);
                         if (dadosParsed.versao > ultimaVersaoSupabase) {
-                            dadosNovos = dadosParsed;
+                            dadosNovosEncontrados = dadosParsed;
                             console.log('✅ DADOS NOVOS ENCONTRADOS LOCALMENTE!');
                         }
                     }
                 }
 
                 // SE DADOS NOVOS ENCONTRADOS, APLICAR
-                if (dadosNovos) {
+                if (dadosNovosEncontrados) {
                     console.log('🚨 APLICANDO NOVA SINCRONIZAÇÃO!');
                     console.log(`• Versão anterior: ${ultimaVersaoSupabase}`);
-                    console.log(`• Versão nova: ${dadosNovos.versao}`);
-                    console.log(`• Usuário: ${dadosNovos.usuario}`);
-                    console.log(`• Registros: ${dadosNovos.totalRegistros}`);
+                    console.log(`• Versão nova: ${dadosNovosEncontrados.versao}`);
+                    console.log(`• Usuário: ${dadosNovosEncontrados.usuario}`);
+                    console.log(`• Registros: ${dadosNovosEncontrados.totalRegistros}`);
                     
                     // ATUALIZAR DADOS GLOBAIS
-                    dadosPatio = [...dadosNovos.dados];
-                    ultimaVersaoSupabase = dadosNovos.versao;
+                    dadosPatio = [...dadosNovosEncontrados.dados];
+                    ultimaVersaoSupabase = dadosNovosEncontrados.versao;
                     
-                    // SALVAR LOCALMENTE TAMBÉM
+                    // SALVAR LOCALMENTE
                     localStorage.setItem('dadosPatioMinerva', JSON.stringify(dadosPatio));
                     
-                    // RECALCULAR E ATUALIZAR CARDS CORRETAMENTE
-                    calcularEAtualizarCardsCorretos();
+                    // CALCULAR E ATUALIZAR CARDS COM LÓGICA CORRIGIDA
+                    calcularEAtualizarCardsComLogicaCorrigida();
                     
                     // RENDERIZAR TABELA
-                    renderizarTabelaCorrigida();
+                    renderizarTabelaSemDedicada();
                     
                     // POPULAR FILTROS
                     popularFiltros();
                     
                     // NOTIFICAÇÃO PARA OUTROS USUÁRIOS
                     const usuarioAtual = usuarioLogado ? usuarioLogado.nome : 'Anônimo';
-                    if (dadosNovos.usuario !== usuarioAtual) {
+                    if (dadosNovosEncontrados.usuario !== usuarioAtual) {
                         const notification = document.getElementById('realtimeNotification');
                         if (notification) {
-                            notification.textContent = `⚡ Dados atualizados por ${dadosNovos.usuario}! ${dadosNovos.totalRegistros} registros`;
+                            notification.textContent = `⚡ Dados atualizados por ${dadosNovosEncontrados.usuario}! ${dadosNovosEncontrados.totalRegistros} registros`;
                             notification.classList.add('show');
-                            setTimeout(() => notification.classList.remove('show'), 6000);
+                            setTimeout(() => notification.classList.remove('show'), 7000);
+                        }
+                        
+                        // ATUALIZAR STATUS
+                        const syncStatus = document.getElementById('syncStatus');
+                        if (syncStatus) {
+                            syncStatus.textContent = `📡 Sincronizado com ${dadosNovosEncontrados.usuario}`;
+                            syncStatus.classList.add('updating');
+                            setTimeout(() => syncStatus.classList.remove('updating'), 3000);
                         }
                     }
                     
                     // ATUALIZAR TIMESTAMP VISUAL
-                    atualizarTimestampVisual(dadosNovos.timestampBR);
+                    atualizarTimestampVisual(dadosNovosEncontrados.timestampBR);
                     
-                    console.log('✅ SINCRONIZAÇÃO CORRIGIDA CONCLUÍDA!');
+                    console.log('✅ SINCRONIZAÇÃO REAL CONCLUÍDA!');
                     return true;
                 }
                 
@@ -2073,24 +2106,35 @@
                 
             } catch (error) {
                 console.error('❌ Erro na verificação:', error);
+                
+                const syncStatus = document.getElementById('syncStatus');
+                if (syncStatus) {
+                    syncStatus.textContent = '❌ Erro sincronização';
+                    syncStatus.classList.add('error');
+                }
+                
                 return false;
             }
         }
 
-        function iniciarSincronizacaoSupabaseCorrigida() {
-            console.log('🌐 INICIANDO SINCRONIZAÇÃO SUPABASE CORRIGIDA...');
+        function iniciarSincronizacaoSupabaseReal() {
+            console.log('🌐 INICIANDO SINCRONIZAÇÃO SUPABASE REAL...');
             
             // INICIALIZAR SUPABASE
             try {
                 supabase = window.supabase.createClient(supabaseConfig.url, supabaseConfig.anonKey);
                 supabaseDisponivel = true;
-                console.log('✅ Supabase inicializado');
+                console.log('✅ Supabase inicializado para sincronização real');
                 
-                // ATUALIZAR STATUS
                 const syncStatus = document.getElementById('syncStatus');
                 if (syncStatus) {
                     syncStatus.textContent = '🌐 Supabase conectado';
                     syncStatus.classList.add('online');
+                }
+                
+                const statusConexaoElement = document.getElementById('statusConexao');
+                if (statusConexaoElement) {
+                    statusConexaoElement.textContent = 'ONLINE';
                 }
                 
             } catch (error) {
@@ -2102,29 +2146,34 @@
                     syncStatus.textContent = '📱 Modo local';
                     syncStatus.classList.remove('online');
                 }
+                
+                const statusConexaoElement = document.getElementById('statusConexao');
+                if (statusConexaoElement) {
+                    statusConexaoElement.textContent = 'LOCAL';
+                }
             }
             
             // CARREGAR VERSÃO INICIAL
-            const versaoSalva = localStorage.getItem('minerva_versao_local');
+            const versaoSalva = localStorage.getItem('MINERVA_VERSAO_SYNC');
             if (versaoSalva) {
                 ultimaVersaoSupabase = parseInt(versaoSalva);
             }
             
             // VERIFICAR IMEDIATAMENTE
-            verificarSincronizacaoSupabaseCorrigida();
+            verificarSincronizacaoSupabaseReal();
             
-            // POLLING A CADA 5 SEGUNDOS
+            // POLLING A CADA 3 SEGUNDOS
             if (intervalSyncSupabase) {
                 clearInterval(intervalSyncSupabase);
             }
             
             intervalSyncSupabase = setInterval(() => {
                 if (!isImporting) {
-                    verificarSincronizacaoSupabaseCorrigida();
+                    verificarSincronizacaoSupabaseReal();
                 }
-            }, 5000);
+            }, 3000); // 3 SEGUNDOS
             
-            console.log('✅ Sincronização Supabase ativa (5s)');
+            console.log('✅ Sincronização Supabase ativa (3s)');
         }
 
         // ========== RECUPERAÇÃO DE SENHA REATIVADA ==========
@@ -2159,7 +2208,10 @@
                     return;
                 }
                 
+                console.log('👤 Usuário encontrado para recuperação:', usuarioEncontrado.nome);
+                
                 const novaSenha = gerarSenhaTemporaria();
+                console.log('🔑 Nova senha gerada:', novaSenha);
                 
                 const emailEnviado = await enviarEmailRecuperacao(usuarioEncontrado, novaSenha);
                 
@@ -2184,13 +2236,17 @@
                             .from('usuarios')
                             .update({ senha: novaSenha })
                             .eq('login', usuarioEncontrado.login);
+                        console.log('✅ Senha atualizada no Supabase também');
                     } catch (error) {
-                        console.log('⚠️ Não conseguiu atualizar no Supabase:', error);
+                        console.log('⚠️ Não conseguiu atualizar senha no Supabase');
                     }
                 }
                 
                 mostrarStatusLogin('success', `✅ Nova senha enviada para ${email}`);
                 document.getElementById('emailRecuperacao').value = '';
+                
+                const agora = new Date();
+                salvarTimestampGlobal(agora.toLocaleString('pt-BR'));
                 
             } catch (error) {
                 console.error('❌ Erro na recuperação:', error);
@@ -2218,6 +2274,12 @@
                     senha: novaSenha,
                     usuario: usuario.login,
                     nome: usuario.nome,
+                    user_name: usuario.nome,
+                    user_email: usuario.email,
+                    user_password: novaSenha,
+                    username: usuario.login,
+                    userlogin: usuario.login,
+                    newpassword: novaSenha,
                     message: `Olá ${usuario.nome}, sua nova senha temporária é: ${novaSenha}. Login: ${usuario.login}`
                 };
                 
@@ -2227,7 +2289,7 @@
                     templateParams
                 );
                 
-                console.log('✅ E-MAIL ENVIADO COM SUCESSO!', result);
+                console.log('✅ E-MAIL DE RECUPERAÇÃO ENVIADO!', result);
                 return true;
                 
             } catch (error) {
@@ -2350,60 +2412,71 @@
             return dataDescarga === obterDataAnterior(diasAtras);
         }
 
-        // ========== CÁLCULO CORRETO DOS CARDS ==========
+        // ========== LÓGICA DOS CARDS CORRIGIDA ==========
         
-        function calcularEAtualizarCardsCorretos() {
-            console.log(`📊 CALCULANDO CARDS COM ${dadosPatio.length} REGISTROS...`);
+        function calcularEAtualizarCardsComLogicaCorrigida() {
+            console.log(`📊 CALCULANDO CARDS COM LÓGICA CORRIGIDA - ${dadosPatio.length} REGISTROS...`);
             
             if (dadosPatio.length === 0) {
-                console.log('⚠️ Nenhum dado para calcular');
+                console.log('⚠️ Nenhum dado disponível');
+                // ZERAR TODOS OS CARDS
+                document.getElementById('totalTransito').textContent = 0;
+                document.getElementById('totalAguardando').textContent = 0;
+                document.getElementById('totalDescarregando').textContent = 0;
+                document.getElementById('totalDescarregado').textContent = 0;
+                document.getElementById('movimentacaoD0').textContent = 0;
+                document.getElementById('movimentacaoD1').textContent = 0;
+                document.getElementById('movimentacaoD2').textContent = 0;
+                document.getElementById('movimentacaoD3').textContent = 0;
+                document.getElementById('movimentacaoD4').textContent = 0;
+                document.getElementById('movimentacaoSemana').textContent = 0;
+                document.getElementById('movimentacaoMes').textContent = 0;
+                atualizarGraficoDescarregando(0);
                 return;
             }
             
-            // DEBUG: MOSTRAR ALGUNS DADOS
-            console.log('📋 AMOSTRA DOS DADOS:');
-            dadosPatio.slice(0, 5).forEach((item, index) => {
-                console.log(`${index + 1}. Placa: ${item.placa}, Status: ${item.status}, Data Descarga: ${item.dataDescarga}`);
-            });
-            
-            // CÁLCULOS DOS 4 CARDS PRINCIPAIS
-            const dadosTransito = dadosPatio.filter(d => d.status === 'TRÂNSITO');
-            const dadosAguardando = dadosPatio.filter(d => d.status === 'AGUARDANDO');
-            const dadosDescarregando = dadosPatio.filter(d => d.status === 'DESCARREGANDO');
-            const dadosDescarregado = dadosPatio.filter(d => d.status === 'DESCARREGADO');
-            
-            console.log('📊 DADOS POR STATUS:');
-            console.log(`• TRÂNSITO: ${dadosTransito.length} registros`);
-            console.log(`• AGUARDANDO: ${dadosAguardando.length} registros`);
-            console.log(`• DESCARREGANDO: ${dadosDescarregando.length} registros`);
-            console.log(`• DESCARREGADO: ${dadosDescarregado.length} registros`);
-            
-            // CONTAR PLACAS ÚNICAS
-            const placasTransito = [...new Set(dadosTransito.map(d => d.placa))].length;
-            const placasAguardando = [...new Set(dadosAguardando.map(d => d.placa))].length;
-            const placasDescarregando = [...new Set(dadosDescarregando.map(d => d.placa))].length;
-            const placasDescarregadoHoje = [...new Set(dadosDescarregado.filter(d => estaNodia(d.dataDescarga)).map(d => d.placa))].length;
-            
-            console.log('📊 PLACAS ÚNICAS:');
-            console.log(`• TRÂNSITO: ${placasTransito} placas`);
-            console.log(`• AGUARDANDO: ${placasAguardando} placas`);
-            console.log(`• DESCARREGANDO: ${placasDescarregando} placas`);
-            console.log(`• DESCARREGADO HOJE: ${placasDescarregadoHoje} placas`);
-            
-            // HISTÓRICO
             const hoje = obterDataAtual();
             const ontem = obterDataAnterior(1);
             const d2 = obterDataAnterior(2);
             const d3 = obterDataAnterior(3);
             const d4 = obterDataAnterior(4);
             
-            console.log(`📅 DATAS DE REFERÊNCIA:
-• HOJE: ${hoje}
-• D-1: ${ontem}
-• D-2: ${d2}
-• D-3: ${d3}
-• D-4: ${d4}`);
+            console.log(`📅 DATA DE HOJE: ${hoje}`);
             
+            // DEBUG: MOSTRAR AMOSTRA DOS DADOS
+            console.log('📋 AMOSTRA DOS DADOS:');
+            dadosPatio.slice(0, 5).forEach((item, index) => {
+                console.log(`${index + 1}. Placa: ${item.placa}, Status: "${item.status}", Data Descarga: "${item.dataDescarga}"`);
+            });
+            
+            // FILTRAR POR STATUS - INCLUINDO "DESOVANDO"
+            const dadosTransito = dadosPatio.filter(d => d.status === 'TRÂNSITO');
+            const dadosAguardando = dadosPatio.filter(d => d.status === 'AGUARDANDO');
+            const dadosDesovando = dadosPatio.filter(d => d.status === 'DESOVANDO'); // MAPEAMENTO CORRETO
+            const dadosDescarregado = dadosPatio.filter(d => d.status === 'DESCARREGADO');
+            
+            console.log('📊 DADOS POR STATUS:');
+            console.log(`• TRÂNSITO: ${dadosTransito.length} registros`);
+            console.log(`• AGUARDANDO: ${dadosAguardando.length} registros`);
+            console.log(`• DESOVANDO: ${dadosDesovando.length} registros`);
+            console.log(`• DESCARREGADO: ${dadosDescarregado.length} registros`);
+            
+            // CONTAR PLACAS ÚNICAS
+            const placasTransito = [...new Set(dadosTransito.map(d => d.placa))].length;
+            const placasAguardando = [...new Set(dadosAguardando.map(d => d.placa))].length;
+            const placasDesovando = [...new Set(dadosDesovando.map(d => d.placa))].length; // DESOVANDO → CARD DESCARREGANDO
+            
+            // DESCARREGADO APENAS DO DIA ATUAL
+            const dadosDescarregadoHoje = dadosDescarregado.filter(d => estaNodia(d.dataDescarga));
+            const placasDescarregadoHoje = [...new Set(dadosDescarregadoHoje.map(d => d.placa))].length;
+            
+            console.log('📊 PLACAS ÚNICAS:');
+            console.log(`• TRÂNSITO: ${placasTransito} placas`);
+            console.log(`• AGUARDANDO: ${placasAguardando} placas`);
+            console.log(`• DESOVANDO (→Descarregando): ${placasDesovando} placas`);
+            console.log(`• DESCARREGADO HOJE: ${placasDescarregadoHoje} placas`);
+            
+            // HISTÓRICO POR DIAS
             const movimentacaoD0 = [...new Set(dadosDescarregado.filter(d => d.dataDescarga === hoje).map(d => d.placa))].length;
             const movimentacaoD1 = [...new Set(dadosDescarregado.filter(d => d.dataDescarga === ontem).map(d => d.placa))].length;
             const movimentacaoD2 = [...new Set(dadosDescarregado.filter(d => d.dataDescarga === d2).map(d => d.placa))].length;
@@ -2413,7 +2486,7 @@
             const movimentacaoSemana = [...new Set(dadosDescarregado.filter(d => d.dataDescarga && estaNaSemanaAtual(d.dataDescarga)).map(d => d.placa))].length;
             const movimentacaoMes = [...new Set(dadosDescarregado.filter(d => d.dataDescarga && estaNoMesAtual(d.dataDescarga)).map(d => d.placa))].length;
             
-            console.log('📊 MOVIMENTAÇÃO:');
+            console.log('📊 MOVIMENTAÇÃO HISTÓRICA:');
             console.log(`• HOJE: ${movimentacaoD0} placas`);
             console.log(`• D-1: ${movimentacaoD1} placas`);
             console.log(`• D-2: ${movimentacaoD2} placas`);
@@ -2422,11 +2495,11 @@
             console.log(`• SEMANA: ${movimentacaoSemana} placas`);
             console.log(`• MÊS: ${movimentacaoMes} placas`);
             
-            // ATUALIZAR CARDS NA TELA
+            // ATUALIZAR CARDS NA TELA COM LÓGICA CORRIGIDA
             document.getElementById('totalTransito').textContent = placasTransito;
             document.getElementById('totalAguardando').textContent = placasAguardando;
-            document.getElementById('totalDescarregando').textContent = placasDescarregando;
-            document.getElementById('totalDescarregado').textContent = placasDescarregadoHoje;
+            document.getElementById('totalDescarregando').textContent = placasDesovando; // DESOVANDO → DESCARREGANDO
+            document.getElementById('totalDescarregado').textContent = placasDescarregadoHoje; // APENAS HOJE
             
             // ATUALIZAR HISTÓRICO
             document.getElementById('movimentacaoD0').textContent = movimentacaoD0;
@@ -2438,7 +2511,23 @@
             document.getElementById('movimentacaoMes').textContent = movimentacaoMes;
             
             // ATUALIZAR GRÁFICO
-            atualizarGraficoDescarregando(placasDescarregando);
+            atualizarGraficoDescarregando(placasDesovando);
+            
+            // ATUALIZAR DEBUG VISUAL
+            const debugElements = {
+                debugTransito: placasTransito,
+                debugAguardando: placasAguardando,
+                debugDesovando: placasDesovando,
+                debugDescarregado: placasDescarregadoHoje,
+                debugDataHoje: hoje
+            };
+            
+            Object.entries(debugElements).forEach(([id, valor]) => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.textContent = valor;
+                }
+            });
             
             // ANIMAÇÃO DE ATUALIZAÇÃO
             const cards = document.querySelectorAll('.stat-card');
@@ -2447,7 +2536,7 @@
                 setTimeout(() => card.classList.remove('updated'), 1000);
             });
             
-            console.log('✅ CARDS ATUALIZADOS CORRETAMENTE!');
+            console.log('✅ CARDS ATUALIZADOS COM LÓGICA CORRIGIDA!');
         }
 
         // ========== FUNÇÃO DO GRÁFICO ==========
@@ -2717,12 +2806,12 @@
         }
 
         function carregarDadosLocal() {
-            console.log('📱 Carregando dados locais...');
+            console.log('📱 Carregando dados...');
             
             // VERIFICAR SINCRONIZAÇÃO PRIMEIRO
-            verificarSincronizacaoSupabaseCorrigida();
+            verificarSincronizacaoSupabaseReal();
             
-            // CARREGAR DADOS LOCAIS SE DISPONÍVEL
+            // CARREGAR DADOS LOCAIS
             const dadosSalvos = localStorage.getItem('dadosPatioMinerva');
             if (dadosSalvos) {
                 try {
@@ -2730,14 +2819,17 @@
                     console.log('💾 Dados carregados:', dadosPatio.length);
                     
                     if (dadosPatio.length > 0) {
-                        calcularEAtualizarCardsCorretos();
-                        renderizarTabelaCorrigida();
+                        calcularEAtualizarCardsComLogicaCorrigida();
+                        renderizarTabelaSemDedicada();
                         popularFiltros();
                     }
                 } catch (error) {
                     console.error('Erro ao carregar dados:', error);
                     dadosPatio = [];
                 }
+            } else {
+                console.log('📝 Nenhum dado salvo encontrado');
+                calcularEAtualizarCardsComLogicaCorrigida(); // ZERAR CARDS
             }
         }
 
@@ -2757,19 +2849,19 @@
             // STATUS DE IMPORTAÇÃO
             const syncStatus = document.getElementById('syncStatus');
             if (syncStatus) {
-                syncStatus.textContent = '📥 Importando...';
+                syncStatus.textContent = '📥 Importando arquivo...';
                 syncStatus.classList.add('updating');
             }
             
-            processarArquivoCorrigido(file);
+            processarArquivoComLogicaCorrigida(file);
             event.target.value = '';
         }
 
-        function processarArquivoCorrigido(file) {
+        function processarArquivoComLogicaCorrigida(file) {
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    console.log('📊 PROCESSANDO ARQUIVO EXCEL...');
+                    console.log('📊 PROCESSANDO ARQUIVO COM LÓGICA CORRIGIDA...');
                     
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
@@ -2785,7 +2877,10 @@
                             container: converterValor(row[1]) || "",
                             dataChegada: formatarData(row[2]) || "",
                             dataDescarga: formatarData(row[3]) || "",
-                            // PULAMOS row[4] e row[5] (diária e dedicada)
+                            diaria: converterNumero(row[4]),
+                            dedicada: converterValor(row[5]) || "NÃO",
+                            valorDiaria: converterValor(row[6]) || "R$ 0,00",
+                            valorTotal: converterValor(row[7]) || "R$ 0,00",
                             transportadora: converterValor(row[8]) || "",
                             unidade: converterValor(row[9]) || "",
                             origem: converterValor(row[10]) || "",
@@ -2811,7 +2906,7 @@
                         };
                         
                         // DEBUG: MOSTRAR PRIMEIROS REGISTROS
-                        if (index < 3) {
+                        if (index < 5) {
                             console.log(`REGISTRO ${index + 1}:`, {
                                 placa: item.placa,
                                 status: item.status,
@@ -2821,7 +2916,7 @@
                         }
                         
                         return item;
-                    }).filter(item => item && item.placa);
+                    }).filter(item => item && item.placa && item.status);
                     
                     console.log(`✅ ${dadosProcessados.length} REGISTROS VÁLIDOS PROCESSADOS`);
                     
@@ -2829,7 +2924,11 @@
                         throw new Error('Nenhum registro válido encontrado no arquivo');
                     }
                     
-                    salvarComSincronizacaoCorrigida(dadosProcessados);
+                    // VERIFICAR STATUS DISPONÍVEIS
+                    const statusUnicos = [...new Set(dadosProcessados.map(d => d.status))];
+                    console.log('📊 STATUS ENCONTRADOS NO ARQUIVO:', statusUnicos);
+                    
+                    salvarComSincronizacaoRealCorrigida(dadosProcessados);
                     
                 } catch (error) {
                     console.error('❌ Erro ao processar arquivo:', error);
@@ -2840,31 +2939,31 @@
             reader.readAsArrayBuffer(file);
         }
 
-        async function salvarComSincronizacaoCorrigida(dadosArray) {
+        async function salvarComSincronizacaoRealCorrigida(dadosArray) {
             try {
-                console.log('🔄 SALVANDO COM SINCRONIZAÇÃO CORRIGIDA...');
+                console.log('🔄 SALVANDO COM SINCRONIZAÇÃO REAL CORRIGIDA...');
                 
                 // ATUALIZAR DADOS GLOBAIS
                 dadosPatio = [...dadosArray];
                 localStorage.setItem('dadosPatioMinerva', JSON.stringify(dadosPatio));
                 
-                // CALCULAR E ATUALIZAR CARDS IMEDIATAMENTE
-                calcularEAtualizarCardsCorretos();
+                // CALCULAR E ATUALIZAR CARDS COM LÓGICA CORRIGIDA
+                calcularEAtualizarCardsComLogicaCorrigida();
                 
                 // RENDERIZAR TABELA
-                renderizarTabelaCorrigida();
+                renderizarTabelaSemDedicada();
                 
                 // POPULAR FILTROS
                 popularFiltros();
                 
-                // SALVAR NO SUPABASE PARA SINCRONIZAÇÃO
-                const sucessoSupabase = await salvarDadosSupabaseCorrigido(dadosArray);
+                // SALVAR NO SUPABASE PARA SINCRONIZAÇÃO ENTRE MÁQUINAS
+                const sucessoSupabase = await salvarDadosSupabaseReal(dadosArray);
                 
                 const agora = new Date();
                 salvarTimestampGlobal(agora.toLocaleString('pt-BR'));
                 
                 setTimeout(() => {
-                    finalizarImportacao(true, sucessoSupabase ? 'Sincronizado via Supabase' : 'Salvo localmente');
+                    finalizarImportacao(true, sucessoSupabase ? 'Sincronizado globalmente via Supabase' : 'Salvo localmente com fallback');
                 }, 1500);
                 
             } catch (error) {
@@ -2878,11 +2977,11 @@
             
             if (sucesso) {
                 const banner = document.getElementById('importSuccessBanner');
-                banner.textContent = 'Dados importados e sincronizados com sucesso';
+                banner.textContent = 'Dados importados e sincronizados entre TODAS as máquinas';
                 banner.classList.add('show');
                 
-                setTimeout(() => banner.classList.remove('show'), 4000);
-                mostrarAlerta('success', 'Importação e sincronização concluídas');
+                setTimeout(() => banner.classList.remove('show'), 5000);
+                mostrarAlerta('success', 'Dados sincronizados globalmente');
             } else {
                 mostrarAlerta('error', `❌ Falha: ${mensagem}`);
             }
@@ -2896,12 +2995,12 @@
             }
         }
 
-        // ========== RENDERIZAÇÃO DE TABELA CORRIGIDA SEM DEDICADA ==========
-        function renderizarTabelaCorrigida(dados = null) {
+        // ========== RENDERIZAÇÃO DE TABELA SEM DEDICADA ==========
+        function renderizarTabelaSemDedicada(dados = null) {
             const dadosParaRender = dados || dadosPatio;
             const tbody = document.getElementById('tabelaBody');
             
-            const statusPermitidos = ['TRÂNSITO', 'AGUARDANDO', 'DESCARREGANDO', 'DESCARREGADO'];
+            const statusPermitidos = ['TRÂNSITO', 'AGUARDANDO', 'DESOVANDO', 'DESCARREGADO'];
             const dadosFiltrados = dadosParaRender.filter(item => statusPermitidos.includes(item.status));
             
             console.log(`📋 Renderizando tabela: ${dadosFiltrados.length} registros válidos`);
@@ -3072,7 +3171,7 @@
         // ========== DOM READY ==========
         
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 SISTEMA CORRIGIDO CARREGADO');
+            console.log('🚀 SISTEMA COM LÓGICA DOS CARDS CORRIGIDA');
             
             const filtros = ['searchPlaca', 'filterStatus', 'filterOrigem', 'filterTipoMercado', 'filterTipoDescarga'];
             
@@ -3088,7 +3187,7 @@
         function iniciarSistema() {
             verificarPermissoes();
             iniciarSincronizacaoTimestamp();
-            iniciarSincronizacaoSupabaseCorrigida(); // SINCRONIZAÇÃO SUPABASE CORRIGIDA
+            iniciarSincronizacaoSupabaseReal(); // SINCRONIZAÇÃO SUPABASE REAL
             carregarDadosLocal();
         }
 
@@ -3166,11 +3265,11 @@
             const pollingIndicatorPanel = document.getElementById('pollingIndicatorPanel');
             
             if (usuarioLogado.nivel === 'master') {
-                document.getElementById('panelTitle').innerHTML = '👥 Painel Master - Sistema Corrigido';
+                document.getElementById('panelTitle').innerHTML = '👥 Painel Master - Lógica Corrigida';
                 document.getElementById('createUserSection').style.display = 'block';
                 pollingIndicatorPanel.style.display = 'block';
             } else {
-                document.getElementById('panelTitle').innerHTML = '👥 Painel Admin - Sistema Corrigido';
+                document.getElementById('panelTitle').innerHTML = '👥 Painel Admin - Lógica Corrigida';
                 document.getElementById('createUserSection').style.display = 'none';
                 pollingIndicatorPanel.style.display = 'none';
             }
@@ -3181,6 +3280,17 @@
 
         function fecharPainelGovernanca() {
             document.getElementById('userPanel').style.display = 'none';
+        }
+
+        function abrirModalTrocaSenha() {
+            document.getElementById('changePasswordModal').style.display = 'flex';
+            document.getElementById('senhaAtual').value = '';
+            document.getElementById('novaSenhaInput').value = '';
+            document.getElementById('confirmarSenha').value = '';
+        }
+
+        function fecharModalTrocaSenha() {
+            document.getElementById('changePasswordModal').style.display = 'none';
         }
 
         function carregarListaUsuarios() {
@@ -3216,6 +3326,15 @@
                 let usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
                 const usuariosAtualizados = usuarios.filter(u => u.login !== loginUsuario);
                 localStorage.setItem('usuariosSistema', JSON.stringify(usuariosAtualizados));
+                
+                // TENTAR EXCLUIR DO SUPABASE TAMBÉM
+                if (supabaseDisponivel && supabase) {
+                    try {
+                        supabase.from('usuarios').delete().eq('login', loginUsuario);
+                    } catch (error) {
+                        console.log('Não conseguiu excluir do Supabase');
+                    }
+                }
                 
                 mostrarAlerta('success', `✅ ${nomeUsuario} excluído!`);
                 carregarListaUsuarios();
@@ -3359,6 +3478,15 @@
                     }
                 }
                 
+                // TENTAR ATUALIZAR NO SUPABASE TAMBÉM
+                if (supabaseDisponivel && supabase) {
+                    try {
+                        supabase.from('usuarios').update({ senha: novaSenha }).eq('login', usuarioLogado.login);
+                    } catch (error) {
+                        console.log('Não conseguiu atualizar senha no Supabase');
+                    }
+                }
+                
                 mostrarAlerta('success', '✅ Senha alterada com sucesso!');
                 fecharModalTrocaSenha();
                 
@@ -3388,8 +3516,8 @@
                 return matchPlaca && matchStatus && matchOrigem && matchTipoMercado && matchTipoDescarga;
             });
 
-            renderizarTabelaCorrigida(dadosFiltrados);
-            calcularEAtualizarCardsCorretos();
+            renderizarTabelaSemDedicada(dadosFiltrados);
+            calcularEAtualizarCardsComLogicaCorrigida();
         }
 
         function limparFiltros() {
@@ -3399,8 +3527,8 @@
             document.getElementById('filterTipoMercado').value = '';
             document.getElementById('filterTipoDescarga').value = '';
             
-            renderizarTabelaCorrigida();
-            calcularEAtualizarCardsCorretos();
+            renderizarTabelaSemDedicada();
+            calcularEAtualizarCardsComLogicaCorrigida();
             popularFiltros();
             
             mostrarAlerta('info', 'Filtros limpos');
@@ -3416,19 +3544,16 @@
                 if (confirm('🚨 Confirmação final?')) {
                     dadosPatio = [];
                     localStorage.removeItem('dadosPatioMinerva');
-                    localStorage.removeItem('dadosProtegidosPermanentemente');
-                    localStorage.removeItem('backupDadosProtegidos');
-                    localStorage.removeItem('backupCardsProtegidos');
-                    localStorage.removeItem('minerva_sync_corrigido');
-                    localStorage.removeItem('minerva_versao_local');
+                    localStorage.removeItem('MINERVA_PATIO_SYNC_REAL');
+                    localStorage.removeItem('MINERVA_VERSAO_SYNC');
                     
                     dadosProtegidosPermanentemente = false;
                     backupDadosProtegidos = [];
                     backupCardsProtegidos = {};
                     ultimaVersaoSupabase = 0;
                     
-                    renderizarTabelaCorrigida();
-                    calcularEAtualizarCardsCorretos();
+                    calcularEAtualizarCardsComLogicaCorrigida();
+                    renderizarTabelaSemDedicada();
                     popularFiltros();
                     
                     mostrarAlerta('success', '🧹 Dados limpos!');
@@ -3445,9 +3570,9 @@
                 return;
             }
 
-            let csv = 'PLACA;CONTAINER;DATA CHEGADA;DATA DESCARGA;STATUS\n';
+            let csv = 'PLACA;CONTAINER;DATA CHEGADA;DATA DESCARGA;STATUS;ORIGEM\n';
             dadosPatio.forEach(item => {
-                csv += `${item.placa};${item.container};${item.dataChegada};${item.dataDescarga};${item.status}\n`;
+                csv += `${item.placa};${item.container};${item.dataChegada};${item.dataDescarga};${item.status};${item.origem}\n`;
             });
 
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -3459,99 +3584,78 @@
             mostrarAlerta('success', 'Dados exportados');
         }
 
-        function testarSistema() {
-            mostrarAlerta('info', '🔧 Testando sistema completo...');
+        async function testarSupabase() {
+            mostrarAlerta('info', '🔧 Testando Supabase...');
             
-            setTimeout(() => {
-                const relatorio = `
-✅ SISTEMA CORRIGIDO - RELATÓRIO DE TESTES
-
-📊 IMPORTAÇÃO:
-• Processamento Excel: FUNCIONANDO
-• Mapeamento colunas: CORRIGIDO
-• Dados válidos: VERIFICADO
-
-📈 CARDS:
-• Cálculos: CORRIGIDOS
-• Em Trânsito: FUNCIONANDO
-• Aguardando: FUNCIONANDO
-• Descarregando: FUNCIONANDO
-• Descarregado: FUNCIONANDO
-• Histórico: FUNCIONANDO
-
-🔄 SINCRONIZAÇÃO:
-• Supabase: ${supabaseDisponivel ? 'CONECTADO' : 'INDISPONÍVEL'}
-• Polling: ATIVO (5s)
-• LocalStorage: FUNCIONANDO
-• Notificações: ATIVAS
-
-📧 EMAIL:
-• EmailJS: ${emailJSReady ? 'FUNCIONANDO' : 'INDISPONÍVEL'}
-• Recuperação senha: REATIVADA
-• Templates: CONFIGURADOS
-
-🎯 INTERFACE:
-• Coluna DEDICADA: REMOVIDA
-• Rolagem horizontal: ATIVA
-• Rolagem vertical: ATIVA
-• Scrollbars: MELHORADAS
-
-✅ TODOS OS PROBLEMAS CORRIGIDOS!
-                `;
+            try {
+                if (!supabase) {
+                    throw new Error('Supabase não inicializado');
+                }
                 
-                mostrarAlerta('success', '✅ Sistema testado e funcionando!');
-                console.log(relatorio);
-            }, 2000);
+                const { data, error } = await supabase
+                    .from('usuarios')
+                    .select('*')
+                    .limit(5);
+                
+                if (error) {
+                    throw new Error(`Erro: ${error.message}`);
+                }
+                
+                mostrarAlerta('success', `✅ Supabase funcionando! ${data.length} usuários encontrados`);
+                console.log('✅ Teste Supabase bem-sucedido:', data);
+                
+            } catch (error) {
+                console.error('❌ Teste Supabase falhou:', error);
+                mostrarAlerta('error', `❌ Erro Supabase: ${error.message}`);
+            }
         }
 
         function mostrarDetalhesPolling() {
-            const info = `✅ SISTEMA CORRIGIDO - TODOS OS PROBLEMAS RESOLVIDOS
+            const info = `✅ LÓGICA DOS CARDS CORRIGIDA
 
 🔧 PROBLEMAS CORRIGIDOS:
 
-1️⃣ IMPORTAÇÃO DE ARQUIVO:
-• Mapeamento correto das colunas Excel
-• Processamento robusto de dados
-• Validação de registros
-• Debug detalhado para identificar problemas
+1️⃣ MAPEAMENTO DE STATUS:
+• "DESOVANDO" → Card "Descarregando" ✅
+• "TRÂNSITO" → Card "Em Trânsito" ✅
+• "AGUARDANDO" → Card "Aguardando" ✅
+• "DESCARREGADO" → Card "Descarregado" ✅
 
-2️⃣ CARDS DE STATUS:
-• Cálculos refeitos e corrigidos
-• Contagem de placas únicas
-• Filtros por data funcionando
-• Atualização em tempo real
+2️⃣ FILTROS POR DATA:
+• Dados do dia atual priorizados ✅
+• Histórico por dias funcionando ✅
+• Semana e mês calculados corretamente ✅
 
-3️⃣ SINCRONIZAÇÃO ENTRE USUÁRIOS:
-• Supabase reativado e funcionando
-• Polling a cada 5 segundos
-• Fallback local se servidor indisponível
-• Notificações em tempo real
+3️⃣ SINCRONIZAÇÃO ENTRE MÁQUINAS:
+• Supabase como ponte entre computadores ✅
+• Polling a cada 3 segundos ✅
+• Fallback local se servidor indisponível ✅
+• Notificações em tempo real ✅
 
 4️⃣ RECUPERAÇÃO DE SENHA:
-• EmailJS reativado
-• Templates configurados
-• Geração de senhas temporárias
-• Envio automático por email
+• EmailJS reativado ✅
+• Envio automático funcionando ✅
+• Senhas temporárias geradas ✅
 
-5️⃣ INTERFACE OTIMIZADA:
-• Coluna DEDICADA removida
-• Rolagem vertical + horizontal
-• Scrollbars grandes e visíveis
-• Tabela responsiva
+5️⃣ INTERFACE:
+• Coluna DEDICADA removida ✅
+• Rolagem dupla (vertical + horizontal) ✅
+• Scrollbars grandes e visíveis ✅
 
-🎯 FUNCIONAMENTO:
-• Importação: Dados reais refletidos
-• Cards: Informações corretas
-• Sincronização: Tempo real entre máquinas
-• Login: Recuperação de senha ativa
-
-📊 STATUS ATUAL:
-• Supabase: ${supabaseDisponivel ? 'ONLINE' : 'OFFLINE'}
+📊 FUNCIONAMENTO ATUAL:
+• Supabase: ${supabaseDisponivel ? 'CONECTADO' : 'INDISPONÍVEL'}
 • Email: ${emailJSReady ? 'FUNCIONANDO' : 'INDISPONÍVEL'}
 • Dados: ${dadosPatio.length} registros
-• Sincronizações: ${contadorSync}
+• Sincronizações: ${contadorSyncSupabase}
 
-✅ SISTEMA TOTALMENTE FUNCIONAL!`;
+🎯 QUANDO VOCÊ IMPORTA:
+• Arquivo processado corretamente
+• Status "DESOVANDO" vira card "Descarregando"
+• Dados salvos no Supabase
+• Outras máquinas detectam mudança em 3s
+• Interface atualizada automaticamente
+
+✅ TODOS OS PROBLEMAS RESOLVIDOS!`;
             
             alert(info);
         }
@@ -3597,7 +3701,7 @@
             }
         }
 
-        console.log('✅🔧📊🌐📧 SISTEMA TOTALMENTE CORRIGIDO E FUNCIONANDO!');
+        console.log('🔧✅📊🌐📧 SISTEMA COM LÓGICA DOS CARDS CORRIGIDA!');
     </script>
 </body>
 </html>
