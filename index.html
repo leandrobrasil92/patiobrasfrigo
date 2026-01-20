@@ -160,22 +160,24 @@
             100% { transform: translateY(0); opacity: 1; }
         }
 
-        /* VISUALIZADOR DE ÚLTIMA ATUALIZAÇÃO */
+        /* PAINEL DE ÚLTIMA ATUALIZAÇÃO - MOVIDO PARA CANTO SUPERIOR ESQUERDO */
         .update-timestamp {
             position: fixed;
-            top: 65px;
+            top: 20px;
             left: 20px;
             background: rgba(255,255,255,0.95);
-            border: 1px solid #10b981;
+            border: 2px solid #10b981;
             color: #065f46;
-            padding: 4px 8px;
-            border-radius: 8px;
-            font-size: 9px;
-            font-weight: 600;
+            padding: 8px 14px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 700;
             z-index: 1003;
-            box-shadow: 0 1px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 3px 12px rgba(0,0,0,0.15);
             transition: all 0.3s ease;
             animation: timestampPulse 3s infinite;
+            min-width: 200px;
+            text-align: center;
         }
 
         .update-timestamp.synced {
@@ -186,13 +188,13 @@
 
         @keyframes timestampPulse {
             0%, 100% { opacity: 1; }
-            50% { opacity: 0.8; transform: scale(1.02); }
+            50% { opacity: 0.9; transform: scale(1.02); }
         }
 
         /* NOTIFICAÇÕES */
         .realtime-notification {
             position: fixed;
-            top: 20px;
+            top: 80px;
             left: 50%;
             transform: translateX(-50%);
             background: #10b981;
@@ -218,7 +220,7 @@
 
         .update-notification {
             position: fixed;
-            top: 100px;
+            top: 80px;
             left: 20px;
             background: #059669;
             color: white;
@@ -747,40 +749,48 @@
             opacity: 0.9;
         }
 
-        /* USER-INFO COM BOTÕES */
+        /* USER-INFO COM FONTES MENORES */
         .user-info {
             position: absolute;
             top: 50%;
             right: 20px;
             transform: translateY(-50%);
-            font-size: 10px;
             background: rgba(255,255,255,0.1);
-            padding: 8px;
+            padding: 10px; /* REDUZIDO DE 12px PARA 10px */
             border-radius: 12px;
             backdrop-filter: blur(10px);
             display: flex;
-            flex-direction: column;
             align-items: center;
-            gap: 6px;
-            text-align: center;
-            width: 160px;
-            box-sizing: border-box;
+            gap: 12px; /* REDUZIDO DE 15px PARA 12px */
             z-index: 100;
             pointer-events: auto;
+            min-width: 360px; /* REDUZIDO DE 400px PARA 360px */
         }
 
-        .user-info div {
-            font-size: 9px;
+        /* ÁREA DO NOME E BADGE À ESQUERDA - CENTRALIZADA */
+        .user-name-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px; /* REDUZIDO DE 4px PARA 3px */
+            flex: 0 0 auto;
+        }
+
+        .user-name-section .user-name {
+            font-size: 12px; /* REDUZIDO DE 14px PARA 12px */
+            font-weight: 700;
+            color: white;
             line-height: 1.2;
+            text-align: center;
         }
 
         .user-badge {
             display: inline-block;
-            padding: 2px 6px;
+            padding: 2px 6px; /* REDUZIDO DE 3px 8px PARA 2px 6px */
             border-radius: 8px;
-            font-size: 8px;
+            font-size: 9px; /* REDUZIDO DE 10px PARA 9px */
             font-weight: bold;
-            margin: 0;
+            text-transform: uppercase;
         }
 
         .user-master { background: #e74c3c; color: white; }
@@ -788,19 +798,26 @@
         .user-importador { background: #17a2b8; color: white; }
         .user-normal { background: #95a5a6; color: white; }
 
+        /* ÁREA DOS BOTÕES À DIREITA */
+        .user-buttons-section {
+            display: flex;
+            flex-direction: column;
+            gap: 5px; /* REDUZIDO DE 6px PARA 5px */
+            flex: 1;
+            min-width: 0;
+        }
+
         .btn-control-panel, .btn-change-password, .btn-logout {
-            padding: 5px 8px;
+            padding: 5px 10px; /* REDUZIDO DE 6px 12px PARA 5px 10px */
             color: white;
             border: none;
             border-radius: 6px;
-            font-size: 9px;
+            font-size: 9px; /* REDUZIDO DE 10px PARA 9px */
             font-weight: 500;
             cursor: pointer;
             transition: all 0.3s;
-            width: 100%;
+            white-space: nowrap;
             text-align: center;
-            z-index: 101;
-            pointer-events: auto;
             line-height: 1.2;
         }
 
@@ -833,6 +850,7 @@
             background: #f8f9fa;
             border-bottom: 2px solid #dee2e6;
             overflow-x: auto;
+            position: relative;
         }
 
         .controls-content {
@@ -997,7 +1015,7 @@
         .stat-card.aguardando::before { background: linear-gradient(90deg, #f39c12 0%, #ff8c00 100%); }
         .stat-card.descarregando::before { background: linear-gradient(90deg, #17a2b8 0%, #20c997 100%); }
         .stat-card.descarregado::before { background: linear-gradient(90deg, #28a745 0%, #20c997 100%); }
-        .stat-card.movimentacao::before { background: linear-gradient(90deg, #007bff 0%, #4dabf7 100%); }
+        .stat-card.historico::before { background: linear-gradient(90deg, #6f42c1 0%, #8e44ad 100%); }
 
         /* ÍCONES DOS CARDS */
         .card-icon {
@@ -1033,42 +1051,58 @@
             text-align: center; /* CENTRALIZADO */
         }
 
-        /* CARD ESPECIAL DE MOVIMENTAÇÃO - SEM TÍTULO E COMPACTO */
-        .stat-card.movimentacao {
-            padding: 8px 10px;
-            text-align: left; /* MANTÉM ALINHADO À ESQUERDA PARA TABELA */
+        /* CARD ESPECIAL DE HISTÓRICO COM SEMANA E MÊS */
+        .stat-card.historico {
+            padding: 6px 8px;
+            text-align: left;
         }
 
-        .stat-card.movimentacao .movimentacao-content {
+        .stat-card.historico .historico-content {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 2px;
             position: relative;
             z-index: 2;
         }
 
-        .stat-card.movimentacao .movimentacao-item {
+        .stat-card.historico .historico-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 3px 0;
+            padding: 1px 0;
         }
 
-        .stat-card.movimentacao .movimentacao-item:not(:last-child) {
+        .stat-card.historico .historico-item:not(:last-child) {
             border-bottom: 1px solid #f0f0f0;
-            padding-bottom: 5px;
+            padding-bottom: 2px;
         }
 
-        .stat-card.movimentacao .movimentacao-label {
-            font-size: 11px; /* AUMENTADO DE 9px PARA 11px */
+        .stat-card.historico .historico-label {
+            font-size: 9px;
             color: #6c757d;
             font-weight: 600;
         }
 
-        .stat-card.movimentacao .movimentacao-valor {
-            font-size: 18px; /* AUMENTADO DE 14px PARA 18px */
+        .stat-card.historico .historico-valor {
+            font-size: 14px;
             font-weight: 700;
+            color: #6f42c1;
+        }
+
+        .stat-card.historico .historico-hoje {
+            color: #28a745;
+        }
+
+        .stat-card.historico .historico-ontem {
+            color: #17a2b8;
+        }
+
+        .stat-card.historico .historico-semana {
             color: #007bff;
+        }
+
+        .stat-card.historico .historico-mes {
+            color: #dc3545;
         }
 
         /* HOVER EFFECTS */
@@ -1076,7 +1110,7 @@
         .stat-card.aguardando:hover::before { background: linear-gradient(90deg, #ff8c00 0%, #f39c12 100%); }
         .stat-card.descarregando:hover::before { background: linear-gradient(90deg, #20c997 0%, #17a2b8 100%); }
         .stat-card.descarregado:hover::before { background: linear-gradient(90deg, #20c997 0%, #28a745 100%); }
-        .stat-card.movimentacao:hover::before { background: linear-gradient(90deg, #4dabf7 0%, #007bff 100%); }
+        .stat-card.historico:hover::before { background: linear-gradient(90deg, #8e44ad 0%, #6f42c1 100%); }
 
         .table-container {
             overflow: hidden;
@@ -1309,12 +1343,35 @@
                 position: static;
                 transform: none;
                 margin: 0 auto 15px auto;
-                width: 180px;
+                min-width: 280px; /* REDUZIDO PARA MOBILE */
+                flex-direction: column;
+                gap: 6px;
+                text-align: center;
+            }
+
+            .user-name-section {
+                align-items: center;
+            }
+
+            .user-buttons-section {
+                flex-direction: row;
+                justify-content: center;
+                flex-wrap: wrap;
+                gap: 4px; /* MENOR EM MOBILE */
             }
             
             .header h1 {
                 font-size: 20px;
                 margin-right: 0;
+            }
+
+            /* PAINEL PARA MOBILE */
+            .update-timestamp {
+                top: 10px;
+                left: 10px;
+                font-size: 10px;
+                padding: 6px 10px;
+                min-width: 160px;
             }
         }
 
@@ -1333,14 +1390,24 @@
                 font-size: 22px; /* AUMENTADO PARA MOBILE TAMBÉM */
             }
             
-            .stat-card.movimentacao .movimentacao-valor {
-                font-size: 16px; /* AUMENTADO PARA MOBILE TAMBÉM */
+            .stat-card.historico .historico-valor {
+                font-size: 12px; /* MENOR EM MOBILE */
             }
 
             .card-icon {
                 width: 28px;
                 height: 28px;
                 margin-bottom: 6px;
+            }
+
+            .user-info {
+                min-width: 240px;
+            }
+
+            .update-timestamp {
+                font-size: 9px;
+                padding: 5px 8px;
+                min-width: 140px;
             }
         }
     </style>
@@ -1360,6 +1427,7 @@
         ⚡ Dados atualizados por outro usuário!
     </div>
 
+    <!-- PAINEL DE ÚLTIMA ATUALIZAÇÃO MOVIDO PARA SUPERIOR ESQUERDO -->
     <div class="update-timestamp" id="updateTimestamp">
         📅 Última atualização: Nunca
     </div>
@@ -1498,13 +1566,18 @@
     <div class="container" id="mainContainer">
         <div class="header">
             <div class="user-info">
-                <div>
-                    <span id="nomeUsuario">-</span>
+                <!-- SEÇÃO DO NOME À ESQUERDA - CENTRALIZADA -->
+                <div class="user-name-section">
+                    <span class="user-name" id="nomeUsuario">-</span>
                     <span class="user-badge" id="tipoUsuario">-</span>
                 </div>
-                <button class="btn-control-panel" id="btnControlPanel" onclick="abrirPainelGovernanca()">Painel de Governança</button>
-                <button class="btn-change-password" onclick="abrirModalTrocaSenha()">Alterar Senha</button>
-                <button class="btn-logout" onclick="fazerLogout()">Logout</button>
+                
+                <!-- SEÇÃO DOS BOTÕES À DIREITA -->
+                <div class="user-buttons-section">
+                    <button class="btn-control-panel" id="btnControlPanel" onclick="abrirPainelGovernanca()">Painel de Governança</button>
+                    <button class="btn-change-password" onclick="abrirModalTrocaSenha()">Alterar Senha</button>
+                    <button class="btn-logout" onclick="fazerLogout()">Logout</button>
+                </div>
             </div>
             <h1>Minerva Foods - Logística Internacional</h1>
             <p>Pátio Brasfrigo - Gráfico Descarregando</p>
@@ -1672,20 +1745,36 @@
                 <div class="value" id="totalDescarregado">0</div>
             </div>
             
-            <!-- CARD DE MOVIMENTAÇÃO SEM ÍCONE (CONFORME SOLICITADO) -->
-            <div class="stat-card movimentacao">
-                <div class="movimentacao-content">
-                    <div class="movimentacao-item">
-                        <span class="movimentacao-label">Movimentação dia:</span>
-                        <span class="movimentacao-valor" id="movimentacaoDia">0</span>
+            <!-- CARD DE HISTÓRICO COMPLETO - ATUALIZADO -->
+            <div class="stat-card historico">
+                <div class="historico-content">
+                    <div class="historico-item">
+                        <span class="historico-label">Movimentação dia:</span>
+                        <span class="historico-valor historico-hoje" id="movimentacaoD0">0</span>
                     </div>
-                    <div class="movimentacao-item">
-                        <span class="movimentacao-label">Movimentação semana:</span>
-                        <span class="movimentacao-valor" id="movimentacaoSemana">0</span>
+                    <div class="historico-item">
+                        <span class="historico-label">Movimentação D-1:</span>
+                        <span class="historico-valor historico-ontem" id="movimentacaoD1">0</span>
                     </div>
-                    <div class="movimentacao-item">
-                        <span class="movimentacao-label">Movimentação mês:</span>
-                        <span class="movimentacao-valor" id="movimentacaoMes">0</span>
+                    <div class="historico-item">
+                        <span class="historico-label">Movimentação D-2:</span>
+                        <span class="historico-valor" id="movimentacaoD2">0</span>
+                    </div>
+                    <div class="historico-item">
+                        <span class="historico-label">Movimentação D-3:</span>
+                        <span class="historico-valor" id="movimentacaoD3">0</span>
+                    </div>
+                    <div class="historico-item">
+                        <span class="historico-label">Movimentação D-4:</span>
+                        <span class="historico-valor" id="movimentacaoD4">0</span>
+                    </div>
+                    <div class="historico-item">
+                        <span class="historico-label">Movimentação semana:</span>
+                        <span class="historico-valor historico-semana" id="movimentacaoSemana">0</span>
+                    </div>
+                    <div class="historico-item">
+                        <span class="historico-label">Movimentação mês:</span>
+                        <span class="historico-valor historico-mes" id="movimentacaoMes">0</span>
                     </div>
                 </div>
             </div>
@@ -1850,13 +1939,25 @@
             return senha;
         }
 
-        // ========== CÁLCULOS DE PERÍODO CORRIGIDOS ==========
+        // ========== CÁLCULOS DE PERÍODO CORRIGIDOS - FUNÇÕES REVISADAS ==========
         
         function obterDataAtual() {
             const hoje = new Date();
             const dia = hoje.getDate().toString().padStart(2, '0');
             const mes = (hoje.getMonth() + 1).toString().padStart(2, '0');
             const ano = hoje.getFullYear();
+            return `${dia}/${mes}/${ano}`;
+        }
+
+        function obterDataAnterior(diasAtras) {
+            const hoje = new Date();
+            const dataAnterior = new Date(hoje);
+            dataAnterior.setDate(hoje.getDate() - diasAtras);
+            
+            const dia = dataAnterior.getDate().toString().padStart(2, '0');
+            const mes = (dataAnterior.getMonth() + 1).toString().padStart(2, '0');
+            const ano = dataAnterior.getFullYear();
+            
             return `${dia}/${mes}/${ano}`;
         }
 
@@ -1891,24 +1992,22 @@
             };
         }
 
+        // ========== FUNÇÕES CORRIGIDAS PARA VERIFICAÇÃO DE DATAS ==========
+        
         function estaNoMesAtual(dataDescarga) {
             if (!dataDescarga) return false;
             
             try {
-                console.log(`🔍 Verificando mês para data: ${dataDescarga}`);
-                
                 const partes = dataDescarga.split('/');
                 if (partes.length !== 3) return false;
                 
-                const mesData = partes[1]; // mm
-                const anoData = partes[2]; // yyyy
+                const mesData = partes[1];
+                const anoData = partes[2];
                 const mesAnoData = `${mesData}/${anoData}`;
                 
                 const mesAtual = obterMesAtual();
                 
-                const resultado = mesAnoData === mesAtual;
-                console.log(`📅 Comparando: ${mesAnoData} === ${mesAtual} → ${resultado}`);
-                return resultado;
+                return mesAnoData === mesAtual;
                 
             } catch (error) {
                 console.error('Erro ao verificar mês:', error);
@@ -1920,17 +2019,11 @@
             if (!dataDescarga) return false;
             
             try {
-                console.log(`🔍 Verificando semana para data: ${dataDescarga}`);
-                
-                // Converter data descarga para Date
                 const partes = dataDescarga.split('/');
                 if (partes.length !== 3) return false;
                 
                 const dataDesc = new Date(parseInt(partes[2]), parseInt(partes[1]) - 1, parseInt(partes[0]));
-                
-                // Obter intervalo da semana atual
                 const semana = obterSemanaAtual();
-                console.log(`📅 Semana atual: ${semana.inicio} até ${semana.fim}`);
                 
                 const partesInicio = semana.inicio.split('/');
                 const partesFim = semana.fim.split('/');
@@ -1938,9 +2031,7 @@
                 const inicioSemana = new Date(parseInt(partesInicio[2]), parseInt(partesInicio[1]) - 1, parseInt(partesInicio[0]));
                 const fimSemana = new Date(parseInt(partesFim[2]), parseInt(partesFim[1]) - 1, parseInt(partesFim[0]));
                 
-                const resultado = dataDesc >= inicioSemana && dataDesc <= fimSemana;
-                console.log(`📅 Data ${dataDescarga} na semana? ${resultado}`);
-                return resultado;
+                return dataDesc >= inicioSemana && dataDesc <= fimSemana;
                 
             } catch (error) {
                 console.error('Erro ao verificar semana:', error);
@@ -1950,11 +2041,12 @@
 
         function estaNodia(dataDescarga) {
             if (!dataDescarga) return false;
-            
-            const dataAtual = obterDataAtual();
-            const resultado = dataDescarga === dataAtual;
-            console.log(`📅 Data ${dataDescarga} é hoje (${dataAtual})? ${resultado}`);
-            return resultado;
+            return dataDescarga === obterDataAtual();
+        }
+
+        function estaNoDiaEspecifico(dataDescarga, diasAtras) {
+            if (!dataDescarga) return false;
+            return dataDescarga === obterDataAnterior(diasAtras);
         }
 
         // ========== FUNÇÃO DO GRÁFICO DINÂMICO NO CARD DESCARREGANDO ==========
@@ -2678,12 +2770,12 @@
         // ========== PROTEÇÃO E CÁLCULOS CORRIGIDOS ==========
         
         function ativarProtecaoPermanente(dados) {
-            console.log('🛡️ ATIVANDO PROTEÇÃO COM DESCARREGANDO...');
+            console.log('🛡️ ATIVANDO PROTEÇÃO COM HISTÓRICO COMPLETO...');
             
             dadosProtegidosPermanentemente = true;
             backupDadosProtegidos = [...dados];
             
-            const valoresCards = calcularValores5CardsCorrigido(dados);
+            const valoresCards = calcularValoresHistoricoCompleto(dados);
             backupCardsProtegidos = { ...valoresCards };
             
             localStorage.setItem('dadosProtegidosPermanentemente', 'true');
@@ -2696,63 +2788,75 @@
             cards.forEach(card => card.classList.add('protected'));
         }
 
-        function calcularValores5CardsCorrigido(dados) {
-            const dataAtual = obterDataAtual();
-            const mesAtual = obterMesAtual();
-            const semanaAtual = obterSemanaAtual();
+        // ========== CÁLCULO CORRIGIDO COM HISTÓRICO COMPLETO ==========
+        function calcularValoresHistoricoCompleto(dados) {
+            console.log(`📅 CALCULANDO HISTÓRICO COMPLETO COM ${dados.length} REGISTROS`);
             
-            console.log(`📅 CALCULANDO CARDS COM DESCARREGANDO:`, {
-                dataAtual: dataAtual,
-                mesAtual: mesAtual,
-                semanaAtual: semanaAtual,
-                totalDados: dados.length
-            });
+            // FILTRAR APENAS DESCARREGADOS PARA DEBUG
+            const descarregados = dados.filter(d => d.status === 'DESCARREGADO');
+            console.log(`🔍 REGISTROS DESCARREGADOS ENCONTRADOS: ${descarregados.length}`);
             
-            // DEBUG: Verificar dados descarregados
-            const dadosDescarregados = dados.filter(d => d.status === 'DESCARREGADO');
-            console.log(`📊 DADOS DESCARREGADOS: ${dadosDescarregados.length}`);
+            if (descarregados.length > 0) {
+                console.log('📋 AMOSTRAS DE DATAS DE DESCARGA:');
+                descarregados.slice(0, 5).forEach(d => {
+                    console.log(`• Placa ${d.placa}: Data descarga = "${d.dataDescarga}"`);
+                });
+            }
             
-            // CÁLCULOS DOS 4 CARDS NORMAIS - MUDANÇA: DESOVANDO → DESCARREGANDO
+            // CÁLCULOS DOS 4 CARDS NORMAIS
             const placasTransito = [...new Set(dados.filter(d => d.status === 'TRÂNSITO').map(d => d.placa))].length;
             const placasAguardando = [...new Set(dados.filter(d => d.status === 'AGUARDANDO').map(d => d.placa))].length;
             const placasDescarregando = [...new Set(dados.filter(d => d.status === 'DESCARREGANDO').map(d => d.placa))].length;
             const placasDescarregado = [...new Set(dados.filter(d => d.status === 'DESCARREGADO' && estaNodia(d.dataDescarga)).map(d => d.placa))].length;
             
-            // ========== MOVIMENTAÇÃO DIA/SEMANA/MÊS ==========
+            // ========== HISTÓRICO COMPLETO ==========
             
-            const registrosDia = dados.filter(d => d.status === 'DESCARREGADO' && estaNodia(d.dataDescarga));
-            const movimentacaoDia = [...new Set(registrosDia.map(d => d.placa))].length;
+            // HOJE (D+0)
+            const movimentacaoD0 = [...new Set(dados.filter(d => d.status === 'DESCARREGADO' && estaNoDiaEspecifico(d.dataDescarga, 0)).map(d => d.placa))].length;
             
-            const registrosSemana = dados.filter(d => d.status === 'DESCARREGADO' && d.dataDescarga && estaNaSemanaAtual(d.dataDescarga));
-            const movimentacaoSemana = [...new Set(registrosSemana.map(d => d.placa))].length;
+            // ONTEM (D-1)  
+            const movimentacaoD1 = [...new Set(dados.filter(d => d.status === 'DESCARREGADO' && estaNoDiaEspecifico(d.dataDescarga, 1)).map(d => d.placa))].length;
             
-            const registrosMes = dados.filter(d => d.status === 'DESCARREGADO' && d.dataDescarga && estaNoMesAtual(d.dataDescarga));
-            const movimentacaoMes = [...new Set(registrosMes.map(d => d.placa))].length;
+            // ANTEONTEM (D-2)
+            const movimentacaoD2 = [...new Set(dados.filter(d => d.status === 'DESCARREGADO' && estaNoDiaEspecifico(d.dataDescarga, 2)).map(d => d.placa))].length;
+            
+            // 3 DIAS ATRÁS (D-3)
+            const movimentacaoD3 = [...new Set(dados.filter(d => d.status === 'DESCARREGADO' && estaNoDiaEspecifico(d.dataDescarga, 3)).map(d => d.placa))].length;
+            
+            // 4 DIAS ATRÁS (D-4)
+            const movimentacaoD4 = [...new Set(dados.filter(d => d.status === 'DESCARREGADO' && estaNoDiaEspecifico(d.dataDescarga, 4)).map(d => d.placa))].length;
+            
+            // SEMANA ATUAL
+            const movimentacaoSemana = [...new Set(dados.filter(d => d.status === 'DESCARREGADO' && d.dataDescarga && estaNaSemanaAtual(d.dataDescarga)).map(d => d.placa))].length;
+            
+            // MÊS ATUAL
+            const movimentacaoMes = [...new Set(dados.filter(d => d.status === 'DESCARREGADO' && d.dataDescarga && estaNoMesAtual(d.dataDescarga)).map(d => d.placa))].length;
             
             const resultado = {
                 totalTransito: placasTransito,
                 totalAguardando: placasAguardando,
                 totalDescarregando: placasDescarregando,
                 totalDescarregado: placasDescarregado,
-                movimentacaoDia: movimentacaoDia,
+                movimentacaoD0: movimentacaoD0,
+                movimentacaoD1: movimentacaoD1,
+                movimentacaoD2: movimentacaoD2,
+                movimentacaoD3: movimentacaoD3,
+                movimentacaoD4: movimentacaoD4,
                 movimentacaoSemana: movimentacaoSemana,
-                movimentacaoMes: movimentacaoMes,
-                dataCalculo: dataAtual,
-                mesCalculo: mesAtual,
-                semanaCalculo: semanaAtual
+                movimentacaoMes: movimentacaoMes
             };
             
-            console.log('📊 RESULTADO COM DESCARREGANDO:', resultado);
+            console.log('📊 RESULTADO HISTÓRICO COMPLETO:', resultado);
             return resultado;
         }
 
-        function aplicarValores5CardsProtegidos() {
+        function aplicarValoresHistoricoCompleto() {
             if (!backupCardsProtegidos || Object.keys(backupCardsProtegidos).length === 0) {
                 console.log('⚠️ Nenhum backup de cards disponível');
                 return;
             }
             
-            console.log('🔧 APLICANDO VALORES PROTEGIDOS:', backupCardsProtegidos);
+            console.log('🔧 APLICANDO VALORES HISTÓRICO COMPLETO:', backupCardsProtegidos);
             
             // APLICAR 4 CARDS NORMAIS
             document.getElementById('totalTransito').textContent = backupCardsProtegidos.totalTransito || 0;
@@ -2760,8 +2864,12 @@
             document.getElementById('totalDescarregando').textContent = backupCardsProtegidos.totalDescarregando || 0;
             document.getElementById('totalDescarregado').textContent = backupCardsProtegidos.totalDescarregado || 0;
             
-            // APLICAR CARD ESPECIAL DE MOVIMENTAÇÃO
-            document.getElementById('movimentacaoDia').textContent = backupCardsProtegidos.movimentacaoDia || 0;
+            // APLICAR HISTÓRICO COMPLETO
+            document.getElementById('movimentacaoD0').textContent = backupCardsProtegidos.movimentacaoD0 || 0;
+            document.getElementById('movimentacaoD1').textContent = backupCardsProtegidos.movimentacaoD1 || 0;
+            document.getElementById('movimentacaoD2').textContent = backupCardsProtegidos.movimentacaoD2 || 0;
+            document.getElementById('movimentacaoD3').textContent = backupCardsProtegidos.movimentacaoD3 || 0;
+            document.getElementById('movimentacaoD4').textContent = backupCardsProtegidos.movimentacaoD4 || 0;
             document.getElementById('movimentacaoSemana').textContent = backupCardsProtegidos.movimentacaoSemana || 0;
             document.getElementById('movimentacaoMes').textContent = backupCardsProtegidos.movimentacaoMes || 0;
             
@@ -2792,7 +2900,7 @@
                     }
                     
                     if (Object.keys(backupCardsProtegidos).length > 0) {
-                        aplicarValores5CardsProtegidos();
+                        aplicarValoresHistoricoCompleto();
                     }
                     
                 } catch (error) {
@@ -2898,7 +3006,7 @@
                     }).filter(item => item && item.placa);
                     
                     console.log(`📊 ${dadosProcessados.length} registros processados`);
-                    salvarDadosComProtecao5Cards(dadosProcessados);
+                    salvarDadosComProtecaoCompleta(dadosProcessados);
                     
                 } catch (error) {
                     console.error('❌ Erro ao processar:', error);
@@ -2910,7 +3018,7 @@
             event.target.value = '';
         }
 
-        async function salvarDadosComProtecao5Cards(dadosArray) {
+        async function salvarDadosComProtecaoCompleta(dadosArray) {
             try {
                 ativarProtecaoPermanente(dadosArray);
                 
@@ -2948,42 +3056,64 @@
             document.getElementById('importIndicator').classList.remove('show');
         }
 
-        // ========== ESTATÍSTICAS COM DESCARREGANDO ==========
+        // ========== ESTATÍSTICAS COM HISTÓRICO COMPLETO CORRIGIDA ==========
         function atualizarEstatisticas() {
-            console.log('📅 ATUALIZANDO 5 CARDS COM DESCARREGANDO...');
+            console.log('📅 ATUALIZANDO CARDS COM HISTÓRICO COMPLETO...');
             
             if (dadosProtegidosPermanentemente && backupCardsProtegidos && Object.keys(backupCardsProtegidos).length > 0) {
                 console.log('🛡️ USANDO VALORES PROTEGIDOS');
-                aplicarValores5CardsProtegidos();
+                aplicarValoresHistoricoCompleto();
                 return;
             }
             
-            const dataAtual = obterDataAtual();
-            const mesAtual = obterMesAtual();
-            const semanaAtual = obterSemanaAtual();
+            console.log(`📋 CALCULANDO EM TEMPO REAL COM ${dadosPatio.length} REGISTROS`);
             
-            console.log(`📅 CÁLCULO EM TEMPO REAL:`, {
-                dataHoje: dataAtual,
-                mesAtual: mesAtual,
-                semanaAtual: semanaAtual,
-                totalDados: dadosPatio.length
-            });
+            // FILTRAR APENAS DESCARREGADOS PARA DEBUG
+            const descarregados = dadosPatio.filter(d => d.status === 'DESCARREGADO');
+            console.log(`🔍 TOTAL DESCARREGADOS DISPONÍVEIS: ${descarregados.length}`);
             
-            // CÁLCULOS DOS 4 CARDS NORMAIS - MUDANÇA: DESOVANDO → DESCARREGANDO
+            // CÁLCULOS DOS 4 CARDS NORMAIS
             const placasTransito = [...new Set(dadosPatio.filter(d => d.status === 'TRÂNSITO').map(d => d.placa))].length;
             const placasAguardando = [...new Set(dadosPatio.filter(d => d.status === 'AGUARDANDO').map(d => d.placa))].length;
             const placasDescarregando = [...new Set(dadosPatio.filter(d => d.status === 'DESCARREGANDO').map(d => d.placa))].length;
             const placasDescarregado = [...new Set(dadosPatio.filter(d => d.status === 'DESCARREGADO' && estaNodia(d.dataDescarga)).map(d => d.placa))].length;
             
-            // MOVIMENTAÇÃO DIA/SEMANA/MÊS
-            const registrosDia = dadosPatio.filter(d => d.status === 'DESCARREGADO' && estaNodia(d.dataDescarga));
-            const movimentacaoDia = [...new Set(registrosDia.map(d => d.placa))].length;
+            // ========== HISTÓRICO COMPLETO COM DEBUG ==========
             
+            // HOJE (D+0)
+            const registrosD0 = dadosPatio.filter(d => d.status === 'DESCARREGADO' && estaNoDiaEspecifico(d.dataDescarga, 0));
+            const movimentacaoD0 = [...new Set(registrosD0.map(d => d.placa))].length;
+            console.log(`📅 D+0 (HOJE): ${movimentacaoD0} placas`);
+            
+            // ONTEM (D-1)
+            const registrosD1 = dadosPatio.filter(d => d.status === 'DESCARREGADO' && estaNoDiaEspecifico(d.dataDescarga, 1));
+            const movimentacaoD1 = [...new Set(registrosD1.map(d => d.placa))].length;
+            console.log(`📅 D-1 (ONTEM): ${movimentacaoD1} placas`);
+            
+            // ANTEONTEM (D-2)
+            const registrosD2 = dadosPatio.filter(d => d.status === 'DESCARREGADO' && estaNoDiaEspecifico(d.dataDescarga, 2));
+            const movimentacaoD2 = [...new Set(registrosD2.map(d => d.placa))].length;
+            console.log(`📅 D-2 (ANTEONTEM): ${movimentacaoD2} placas`);
+            
+            // 3 DIAS ATRÁS (D-3)
+            const registrosD3 = dadosPatio.filter(d => d.status === 'DESCARREGADO' && estaNoDiaEspecifico(d.dataDescarga, 3));
+            const movimentacaoD3 = [...new Set(registrosD3.map(d => d.placa))].length;
+            console.log(`📅 D-3: ${movimentacaoD3} placas`);
+            
+            // 4 DIAS ATRÁS (D-4)
+            const registrosD4 = dadosPatio.filter(d => d.status === 'DESCARREGADO' && estaNoDiaEspecifico(d.dataDescarga, 4));
+            const movimentacaoD4 = [...new Set(registrosD4.map(d => d.placa))].length;
+            console.log(`📅 D-4: ${movimentacaoD4} placas`);
+            
+            // SEMANA ATUAL
             const registrosSemana = dadosPatio.filter(d => d.status === 'DESCARREGADO' && d.dataDescarga && estaNaSemanaAtual(d.dataDescarga));
             const movimentacaoSemana = [...new Set(registrosSemana.map(d => d.placa))].length;
+            console.log(`📅 SEMANA ATUAL: ${movimentacaoSemana} placas`);
             
+            // MÊS ATUAL
             const registrosMes = dadosPatio.filter(d => d.status === 'DESCARREGADO' && d.dataDescarga && estaNoMesAtual(d.dataDescarga));
             const movimentacaoMes = [...new Set(registrosMes.map(d => d.placa))].length;
+            console.log(`📅 MÊS ATUAL: ${movimentacaoMes} placas`);
             
             // ATUALIZAR CARDS NA TELA
             document.getElementById('totalTransito').textContent = placasTransito;
@@ -2991,7 +3121,12 @@
             document.getElementById('totalDescarregando').textContent = placasDescarregando;
             document.getElementById('totalDescarregado').textContent = placasDescarregado;
             
-            document.getElementById('movimentacaoDia').textContent = movimentacaoDia;
+            // ATUALIZAR HISTÓRICO COMPLETO
+            document.getElementById('movimentacaoD0').textContent = movimentacaoD0;
+            document.getElementById('movimentacaoD1').textContent = movimentacaoD1;
+            document.getElementById('movimentacaoD2').textContent = movimentacaoD2;
+            document.getElementById('movimentacaoD3').textContent = movimentacaoD3;
+            document.getElementById('movimentacaoD4').textContent = movimentacaoD4;
             document.getElementById('movimentacaoSemana').textContent = movimentacaoSemana;
             document.getElementById('movimentacaoMes').textContent = movimentacaoMes;
             
@@ -3005,12 +3140,13 @@
                     totalAguardando: placasAguardando,
                     totalDescarregando: placasDescarregando,
                     totalDescarregado: placasDescarregado,
-                    movimentacaoDia: movimentacaoDia,
+                    movimentacaoD0: movimentacaoD0,
+                    movimentacaoD1: movimentacaoD1,
+                    movimentacaoD2: movimentacaoD2,
+                    movimentacaoD3: movimentacaoD3,
+                    movimentacaoD4: movimentacaoD4,
                     movimentacaoSemana: movimentacaoSemana,
-                    movimentacaoMes: movimentacaoMes,
-                    dataCalculo: dataAtual,
-                    mesCalculo: mesAtual,
-                    semanaCalculo: semanaAtual
+                    movimentacaoMes: movimentacaoMes
                 };
                 
                 backupCardsProtegidos = { ...novosValores };
@@ -3652,12 +3788,9 @@
 
         function mostrarDetalhesPolling() {
             const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
-            const dataAtual = obterDataAtual();
-            const mesAtual = obterMesAtual();
-            const semanaAtual = obterSemanaAtual();
             
             const info = `
-🚀 SISTEMA COM GRÁFICO ATIVO
+🚀 SISTEMA COM HISTÓRICO COMPLETO
 
 📊 CAMINHÃO GRÁFICO:
 • Visual dinâmico no card "Descarregando"
@@ -3666,20 +3799,16 @@
 • Empilhadeira animada com movimento
 • Setas indicando atividade intensa
 
-🎨 ELEMENTOS VISUAIS:
-• Número no topo do caminhão
-• Cores que mudam conforme intensidade
-• Empilhadeira pulsa quando há movimento
-• Setas aparecem com alta atividade (≥3)
+📈 HISTÓRICO COMPLETO:
+• Movimentação dia: Hoje (D+0)
+• Movimentação D-1: Ontem
+• Movimentação D-2: Anteontem
+• Movimentação D-3: 3 dias atrás
+• Movimentação D-4: 4 dias atrás
+• Movimentação semana: Semana atual
+• Movimentação mês: Mês atual
 
-📈 FUNCIONAMENTO:
-• Acompanha soma: Descarregados + Aguardando
-• Barra cresce até 16px (máximo)
-• 5 blocos de carga se acendem
-• Verde para alta atividade (≥5)
-• Verde médio para atividade normal (≥2)
-
-✅ GRÁFICO IMPLEMENTADO COM SUCESSO!
+✅ SISTEMA COMPLETO COM DEBUG ATIVO!
             `;
             
             alert(info);
@@ -3726,7 +3855,7 @@
             }
         }
 
-        console.log('✅🚛📊🔐 SISTEMA COM LOGIN CORRIGIDO PARA NOVOS USUÁRIOS!');
+        console.log('✅🚛📊📅📍 SISTEMA COM HISTÓRICO COMPLETO E DEBUG CORRIGIDO!');
     </script>
 </body>
 </html>
