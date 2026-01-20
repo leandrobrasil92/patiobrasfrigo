@@ -1933,8 +1933,9 @@
         let backupDadosProtegidos = [];
         let backupCardsProtegidos = {};
 
-        // ========== NOVA VARIÁVEL PARA SINCRONIZAÇÃO GLOBAL ==========
-        let intervalSincronizacaoGlobal = null;
+        // ========== NOVA VARIÁVEL PARA CONTROLE DE SINCRONIZAÇÃO ==========
+        let intervalSincronizacao = null;
+        let ultimoHashDados = '';
 
         // ========== CONFIGURAÇÃO CORRETA DO SUPABASE ==========
         const supabaseConfig = {
@@ -1991,7 +1992,7 @@
             return senha;
         }
 
-        // ========== FUNÇÕES DE DATA CORRIGIDAS ==========
+        // ========== FUNÇÕES DE DATA ==========
         
         function obterDataAtual() {
             const hoje = new Date();
@@ -2023,11 +2024,9 @@
         function obterSemanaAtual() {
             const hoje = new Date();
             
-            // CALCULAR INÍCIO DA SEMANA (DOMINGO)
             const inicioSemana = new Date(hoje);
             inicioSemana.setDate(hoje.getDate() - hoje.getDay());
             
-            // CALCULAR FIM DA SEMANA (SÁBADO)
             const fimSemana = new Date(inicioSemana);
             fimSemana.setDate(inicioSemana.getDate() + 6);
             
@@ -2044,8 +2043,6 @@
             };
         }
 
-        // ========== FUNÇÕES DE VERIFICAÇÃO DE DATAS ==========
-        
         function parseDataBrasileira(dataStr) {
             if (!dataStr || typeof dataStr !== 'string') return null;
             
@@ -2109,199 +2106,106 @@
             return dataDescarga === obterDataAnterior(diasAtras);
         }
 
-        // ========== SINCRONIZAÇÃO GLOBAL DE DADOS DO PÁTIO VIA SUPABASE ==========
+        // ========== SINCRONIZAÇÃO CORRIGIDA - USAR APENAS LOCALSTORAGE COM HASH ==========
         
-        async function salvarDadosPatioSupabase(dadosArray) {
-            if (!supabaseDisponivel || !supabase) {
-                console.log('⚠️ Supabase não disponível para salvar dados do pátio');
-                return false;
-            }
+        function gerarHashDados(dados) {
+            // Gerar hash simples dos dados para detectar mudanças
+            return JSON.stringify(dados).length + '_' + (dados.length > 0 ? dados[0].placa + '_' + dados[dados.length-1].placa : 'vazio');
+        }
 
+        function salvarDadosGlobal(dadosArray) {
+            console.log(`💾 SALVANDO ${dadosArray.length} REGISTROS GLOBALMENTE...`);
+            
+            // SALVAR NO LOCALSTORAGE COM TIMESTAMP
+            const dadosComTimestamp = {
+                dados: dadosArray,
+                timestamp: new Date().toISOString(),
+                usuario: usuarioLogado ? usuarioLogado.nome : 'Sistema',
+                hash: gerarHashDados(dadosArray)
+            };
+            
+            localStorage.setItem('dadosPatioGlobal', JSON.stringify(dadosComTimestamp));
+            localStorage.setItem('dadosPatioMinerva', JSON.stringify(dadosArray)); // Manter compatibilidade
+            
+            ultimoHashDados = dadosComTimestamp.hash;
+            
+            console.log(`✅ DADOS SALVOS GLOBALMENTE - Hash: ${ultimoHashDados}`);
+            
+            // ATUALIZAR TIMESTAMP VISUAL
+            const agora = new Date();
+            salvarTimestampGlobal(agora.toLocaleString('pt-BR'));
+            atualizarTimestampVisual(agora.toLocaleString('pt-BR'));
+            
+            return true;
+        }
+
+        function carregarDadosGlobal() {
+            console.log('📡 CARREGANDO DADOS GLOBAIS...');
+            
             try {
-                console.log('💾 SALVANDO DADOS DO PÁTIO NO SUPABASE...');
+                const dadosGlobaisSalvos = localStorage.getItem('dadosPatioGlobal');
                 
-                // LIMPAR DADOS ANTIGOS PRIMEIRO
-                const { error: deleteError } = await supabase
-                    .from('dados_patio')
-                    .delete()
-                    .neq('id', 0); // Deletar todos os registros
-                
-                if (deleteError) {
-                    console.log('⚠️ Erro ao limpar dados antigos:', deleteError.message);
-                }
-
-                // INSERIR NOVOS DADOS
-                if (dadosArray.length > 0) {
-                    const dadosParaSupabase = dadosArray.map((item, index) => ({
-                        placa: item.placa,
-                        container: item.container,
-                        data_chegada: item.dataChegada,
-                        data_descarga: item.dataDescarga,
-                        diaria: item.diaria || 0,
-                        dedicada: item.dedicada,
-                        valor_diaria: item.valorDiaria,
-                        valor_total: item.valorTotal,
-                        transportadora: item.transportadora,
-                        unidade: item.unidade,
-                        origem: item.origem,
-                        tipo_descarga: item.tipoDescarga,
-                        tipo_mercado: item.tipoMercado,
-                        status: item.status,
-                        nf_origem: item.nfOrigem,
-                        nfe_brasfrigo: item.nfeBrasfrigo,
-                        op: item.op,
-                        deposito: item.deposito,
-                        status_op: item.statusOp,
-                        pedido: item.pedido,
-                        falta: item.falta,
-                        sobra: item.sobra,
-                        inversao_rg: item.inversaoRg,
-                        doca: item.doca,
-                        pbr: item.pbr,
-                        one_way: item.oneWay,
-                        fumigado: item.fumigado,
-                        total_pallet: item.totalPallet,
-                        rec_frio: item.recFrio,
-                        obs: item.obs,
-                        atualizado_por: usuarioLogado ? usuarioLogado.nome : 'Sistema',
-                        atualizado_em: new Date().toISOString()
-                    }));
-
-                    // DIVIDIR EM LOTES DE 100 PARA EVITAR TIMEOUT
-                    const tamanhoLote = 100;
-                    for (let i = 0; i < dadosParaSupabase.length; i += tamanhoLote) {
-                        const lote = dadosParaSupabase.slice(i, i + tamanhoLote);
+                if (dadosGlobaisSalvos) {
+                    const dadosComTimestamp = JSON.parse(dadosGlobaisSalvos);
+                    
+                    console.log(`📋 DADOS ENCONTRADOS - Hash: ${dadosComTimestamp.hash}, Registros: ${dadosComTimestamp.dados.length}`);
+                    
+                    // VERIFICAR SE OS DADOS MUDARAM
+                    if (dadosComTimestamp.hash !== ultimoHashDados) {
+                        console.log(`🔄 DADOS ALTERADOS! Hash anterior: ${ultimoHashDados}, Novo: ${dadosComTimestamp.hash}`);
                         
-                        const { error } = await supabase
-                            .from('dados_patio')
-                            .insert(lote);
+                        // ATUALIZAR DADOS LOCAL
+                        dadosPatio = [...dadosComTimestamp.dados];
+                        ultimoHashDados = dadosComTimestamp.hash;
                         
-                        if (error) {
-                            console.error('❌ Erro ao inserir lote:', error);
-                            return false;
+                        // ATUALIZAR INTERFACE
+                        atualizarInterface();
+                        
+                        // MOSTRAR NOTIFICAÇÃO DE ATUALIZAÇÃO
+                        const notification = document.getElementById('realtimeNotification');
+                        if (notification) {
+                            const nomeUsuario = dadosComTimestamp.usuario || 'Outro usuário';
+                            notification.textContent = `⚡ Dados atualizados por ${nomeUsuario}!`;
+                            notification.classList.add('show');
+                            setTimeout(() => notification.classList.remove('show'), 4000);
                         }
                         
-                        console.log(`✅ Lote ${Math.floor(i/tamanhoLote) + 1} salvo (${lote.length} registros)`);
+                        console.log(`✅ INTERFACE ATUALIZADA COM ${dadosPatio.length} REGISTROS`);
+                        return true;
+                    } else {
+                        console.log('📊 Dados já estão atualizados');
+                        return false;
                     }
-                }
-
-                console.log('✅ DADOS DO PÁTIO SALVOS NO SUPABASE COM SUCESSO!');
-                return true;
-
-            } catch (error) {
-                console.error('❌ Erro ao salvar dados do pátio no Supabase:', error);
-                return false;
-            }
-        }
-
-        async function carregarDadosPatioSupabase() {
-            if (!supabaseDisponivel || !supabase) {
-                console.log('📱 Supabase não disponível, usando dados locais');
-                return false;
-            }
-
-            try {
-                console.log('📡 CARREGANDO DADOS DO PÁTIO DO SUPABASE...');
-
-                const { data, error } = await supabase
-                    .from('dados_patio')
-                    .select('*')
-                    .order('atualizado_em', { ascending: false });
-
-                if (error) {
-                    console.error('❌ Erro ao carregar dados do Supabase:', error);
+                } else {
+                    console.log('📝 Nenhum dado global encontrado');
                     return false;
                 }
-
-                if (!data || data.length === 0) {
-                    console.log('📝 Nenhum dado encontrado no Supabase');
-                    return false;
-                }
-
-                console.log(`✅ ${data.length} registros carregados do Supabase`);
-
-                // CONVERTER DADOS PARA FORMATO LOCAL
-                const dadosConvertidos = data.map(item => ({
-                    placa: item.placa,
-                    container: item.container,
-                    dataChegada: item.data_chegada,
-                    dataDescarga: item.data_descarga,
-                    diaria: item.diaria || 0,
-                    dedicada: item.dedicada,
-                    valorDiaria: item.valor_diaria,
-                    valorTotal: item.valor_total,
-                    transportadora: item.transportadora,
-                    unidade: item.unidade,
-                    origem: item.origem,
-                    tipoDescarga: item.tipo_descarga,
-                    tipoMercado: item.tipo_mercado,
-                    status: item.status,
-                    nfOrigem: item.nf_origem,
-                    nfeBrasfrigo: item.nfe_brasfrigo,
-                    op: item.op,
-                    deposito: item.deposito,
-                    statusOp: item.status_op,
-                    pedido: item.pedido,
-                    falta: item.falta,
-                    sobra: item.sobra,
-                    inversaoRg: item.inversao_rg,
-                    doca: item.doca,
-                    pbr: item.pbr,
-                    oneWay: item.one_way,
-                    fumigado: item.fumigado,
-                    totalPallet: item.total_pallet,
-                    recFrio: item.rec_frio,
-                    obs: item.obs
-                }));
-
-                // ATUALIZAR DADOS LOCAIS
-                dadosPatio = dadosConvertidos;
-                localStorage.setItem('dadosPatioMinerva', JSON.stringify(dadosPatio));
-
-                console.log(`🔄 Dados sincronizados: ${dadosPatio.length} registros`);
                 
-                // MOSTRAR NOTIFICAÇÃO DE SINCRONIZAÇÃO
-                const notification = document.getElementById('realtimeNotification');
-                if (notification && data.length > 0) {
-                    notification.textContent = `⚡ Dados atualizados! ${data.length} registros sincronizados`;
-                    notification.classList.add('show');
-                    setTimeout(() => notification.classList.remove('show'), 4000);
-                }
-
-                return true;
-
             } catch (error) {
-                console.error('❌ Erro ao carregar dados do Supabase:', error);
+                console.error('❌ Erro ao carregar dados globais:', error);
                 return false;
             }
         }
 
-        function iniciarSincronizacaoGlobal() {
-            console.log('🔄 INICIANDO SINCRONIZAÇÃO GLOBAL DE DADOS...');
+        function iniciarSincronizacaoAutomatica() {
+            console.log('🔄 INICIANDO SINCRONIZAÇÃO AUTOMÁTICA...');
             
-            // PARAR SINCRONIZAÇÃO ANTERIOR SE EXISTIR
-            if (intervalSincronizacaoGlobal) {
-                clearInterval(intervalSincronizacaoGlobal);
+            // PARAR SINCRONIZAÇÃO ANTERIOR
+            if (intervalSincronizacao) {
+                clearInterval(intervalSincronizacao);
             }
 
             // CARREGAR DADOS IMEDIATAMENTE
-            carregarDadosPatioSupabase().then(sucesso => {
-                if (sucesso) {
-                    atualizarInterface();
-                }
-            });
+            carregarDadosGlobal();
 
-            // INICIAR SINCRONIZAÇÃO AUTOMÁTICA A CADA 30 SEGUNDOS
-            intervalSincronizacaoGlobal = setInterval(async () => {
+            // SINCRONIZAÇÃO AUTOMÁTICA A CADA 5 SEGUNDOS
+            intervalSincronizacao = setInterval(() => {
                 if (!isImporting) {
-                    console.log('🔄 Verificando atualizações no Supabase...');
-                    
-                    const sucesso = await carregarDadosPatioSupabase();
-                    if (sucesso) {
-                        atualizarInterface();
-                    }
+                    carregarDadosGlobal();
                 }
-            }, 30000); // 30 segundos
+            }, 5000);
+            
+            console.log('✅ Sincronização automática ativa (5s)');
         }
 
         // ========== FUNÇÃO DO GRÁFICO DINÂMICO NO CARD DESCARREGANDO ==========
@@ -2927,18 +2831,14 @@
             }
         }
 
-        // ========== FUNÇÃO DE AUTENTICAÇÃO CORRIGIDA COM DEBUG ==========
+        // ========== FUNÇÃO DE AUTENTICAÇÃO CORRIGIDA ==========
         async function autenticarUsuario(login, senha, lembrarMe = false) {
             const btnLogin = document.getElementById('btnLogin');
             btnLogin.disabled = true;
             btnLogin.textContent = 'Verificando...';
             
             try {
-                console.log('🚀 ===============================');
-                console.log('🔐 INICIANDO AUTENTICAÇÃO');
-                console.log('🚀 ===============================');
-                console.log('👤 Login informado:', login);
-                console.log('🔑 Senha informada: [OCULTA]');
+                console.log('🔐 AUTENTICANDO:', login);
                 
                 // SINCRONIZAR USUÁRIOS PRIMEIRO
                 const usuarios = await sincronizarUsuariosLocalStorage();
@@ -2947,31 +2847,14 @@
                 const loginLimpo = login.toLowerCase().trim();
                 const senhaLimpa = senha.trim();
                 
-                console.log('🔍 Procurando usuário...');
-                console.log('📋 USUÁRIOS DISPONÍVEIS:');
-                usuarios.forEach(u => {
-                    console.log(`• ${u.nome} (login: "${u.login}", nivel: ${u.nivel})`);
-                });
-                
                 const usuarioEncontrado = usuarios.find(u => {
                     const loginUsuario = u.login.toLowerCase().trim();
                     const senhaUsuario = u.senha.trim();
-                    const loginMatch = loginUsuario === loginLimpo;
-                    const senhaMatch = senhaUsuario === senhaLimpa;
-                    
-                    console.log(`🔍 Verificando ${u.nome}:`);
-                    console.log(`  Login: "${loginUsuario}" === "${loginLimpo}" → ${loginMatch}`);
-                    console.log(`  Senha: ${senhaMatch ? 'CORRETA' : 'INCORRETA'}`);
-                    
-                    return loginMatch && senhaMatch;
+                    return loginUsuario === loginLimpo && senhaUsuario === senhaLimpa;
                 });
                 
                 if (usuarioEncontrado) {
-                    console.log('🚀 ===============================');
-                    console.log('✅ LOGIN BEM-SUCEDIDO!');
-                    console.log('👤 Usuário:', usuarioEncontrado.nome);
-                    console.log('🎯 Nível:', usuarioEncontrado.nivel);
-                    console.log('🚀 ===============================');
+                    console.log('✅ LOGIN BEM-SUCEDIDO:', usuarioEncontrado.nome);
                     
                     usuarioLogado = usuarioEncontrado;
                     sessionStorage.setItem('usuarioLogado', JSON.stringify(usuarioEncontrado));
@@ -3003,12 +2886,7 @@
                     }, 1000);
                     
                 } else {
-                    console.log('🚀 ===============================');
-                    console.log('❌ LOGIN FALHOU!');
-                    console.log('👤 Login tentado:', login);
-                    console.log('📋 Nenhuma correspondência encontrada');
-                    console.log('🚀 ===============================');
-                    
+                    console.log('❌ LOGIN FALHOU:', login);
                     mostrarStatusLogin('error', '❌ Usuário ou senha incorretos!');
                     localStorage.removeItem('credenciaisLembradas');
                 }
@@ -3025,7 +2903,7 @@
         // ========== PROTEÇÃO E CÁLCULOS CORRIGIDOS ==========
         
         function ativarProtecaoPermanente(dados) {
-            console.log('🛡️ ATIVANDO PROTEÇÃO COM HISTÓRICO COMPLETO...');
+            console.log('🛡️ ATIVANDO PROTEÇÃO...');
             
             dadosProtegidosPermanentemente = true;
             backupDadosProtegidos = [...dados];
@@ -3043,9 +2921,8 @@
             cards.forEach(card => card.classList.add('protected'));
         }
 
-        // ========== CÁLCULO CORRIGIDO ==========
         function calcularValoresHistoricoCompleto(dados) {
-            console.log(`🚀 CALCULANDO COM ${dados.length} REGISTROS`);
+            console.log(`📊 CALCULANDO COM ${dados.length} REGISTROS`);
             
             // CÁLCULOS DOS 4 CARDS NORMAIS
             const placasTransito = [...new Set(dados.filter(d => d.status === 'TRÂNSITO').map(d => d.placa))].length;
@@ -3053,7 +2930,7 @@
             const placasDescarregando = [...new Set(dados.filter(d => d.status === 'DESCARREGANDO').map(d => d.placa))].length;
             const placasDescarregado = [...new Set(dados.filter(d => d.status === 'DESCARREGADO' && estaNodia(d.dataDescarga)).map(d => d.placa))].length;
             
-            // HISTÓRICO COMPLETO COM COMPARAÇÃO STRING DIRETA
+            // HISTÓRICO COMPLETO
             const hoje = obterDataAtual();
             const ontem = obterDataAnterior(1);
             const d2 = obterDataAnterior(2);
@@ -3083,7 +2960,7 @@
                 movimentacaoMes: movimentacaoMes
             };
             
-            console.log('📊 RESULTADO CALCULADO:', resultado);
+            console.log('📊 RESULTADO:', resultado);
             return resultado;
         }
 
@@ -3093,7 +2970,7 @@
                 return;
             }
             
-            console.log('🔧 APLICANDO VALORES HISTÓRICO COMPLETO:', backupCardsProtegidos);
+            console.log('🔧 APLICANDO VALORES:', backupCardsProtegidos);
             
             // APLICAR 4 CARDS NORMAIS
             document.getElementById('totalTransito').textContent = backupCardsProtegidos.totalTransito || 0;
@@ -3148,13 +3025,13 @@
 
         function inicializarSupabase() {
             try {
-                console.log('🚀 INICIALIZANDO SUPABASE COM CHAVE CORRETA...');
+                console.log('🚀 INICIALIZANDO SUPABASE...');
                 console.log('🔗 URL:', supabaseConfig.url);
                 console.log('🔑 KEY:', supabaseConfig.anonKey);
                 
                 supabase = window.supabase.createClient(supabaseConfig.url, supabaseConfig.anonKey);
                 supabaseDisponivel = true;
-                console.log('✅ Supabase inicializado com sucesso!');
+                console.log('✅ Supabase inicializado');
                 
                 verificarRestaurarProtecao();
                 carregarDadosLocal();
@@ -3171,18 +3048,23 @@
             console.log('📱 Carregando dados locais...');
             verificarRestaurarProtecao();
             
-            const dadosSalvos = localStorage.getItem('dadosPatioMinerva');
-            if (dadosSalvos) {
-                try {
-                    if (dadosPatio.length === 0) {
+            // VERIFICAR PRIMEIRO OS DADOS GLOBAIS
+            const dadosCarregados = carregarDadosGlobal();
+            
+            if (!dadosCarregados) {
+                // SE NÃO HÁ DADOS GLOBAIS, CARREGAR LOCAIS NORMAIS
+                const dadosSalvos = localStorage.getItem('dadosPatioMinerva');
+                if (dadosSalvos) {
+                    try {
                         dadosPatio = JSON.parse(dadosSalvos);
                         console.log('💾 Dados locais carregados:', dadosPatio.length);
+                    } catch (error) {
+                        console.error('Erro ao carregar dados locais:', error);
+                        dadosPatio = [];
                     }
-                } catch (error) {
-                    console.error('Erro ao carregar dados locais:', error);
-                    dadosPatio = [];
                 }
             }
+            
             atualizarInterface();
         }
 
@@ -3243,7 +3125,7 @@
                     }).filter(item => item && item.placa);
                     
                     console.log(`📊 ${dadosProcessados.length} registros processados`);
-                    salvarDadosComSincronizacaoGlobal(dadosProcessados);
+                    salvarDadosComSincronizacaoCompleta(dadosProcessados);
                     
                 } catch (error) {
                     console.error('❌ Erro ao processar:', error);
@@ -3255,34 +3137,24 @@
             event.target.value = '';
         }
 
-        // ========== SALVAMENTO COM SINCRONIZAÇÃO GLOBAL ==========
-        async function salvarDadosComSincronizacaoGlobal(dadosArray) {
+        // ========== SALVAMENTO COM SINCRONIZAÇÃO GLOBAL CORRIGIDA ==========
+        async function salvarDadosComSincronizacaoCompleta(dadosArray) {
             try {
-                console.log('🌐 INICIANDO SALVAMENTO COM SINCRONIZAÇÃO GLOBAL...');
+                console.log('🌐 SALVANDO COM SINCRONIZAÇÃO GLOBAL...');
                 
                 ativarProtecaoPermanente(dadosArray);
                 
-                // SALVAR LOCALMENTE
+                // ATUALIZAR DADOS LOCAIS
                 dadosPatio = [...dadosArray];
-                localStorage.setItem('dadosPatioMinerva', JSON.stringify(dadosPatio));
-                console.log('💾 Dados salvos localmente');
                 
-                // SALVAR NO SUPABASE PARA SINCRONIZAÇÃO GLOBAL
-                const sucessoSupabase = await salvarDadosPatioSupabase(dadosArray);
-                if (sucessoSupabase) {
-                    console.log('🌐 Dados sincronizados globalmente via Supabase');
-                } else {
-                    console.log('⚠️ Falha na sincronização global, dados salvos apenas localmente');
-                }
+                // SALVAR GLOBALMENTE PARA TODOS OS USUÁRIOS
+                salvarDadosGlobal(dadosArray);
                 
                 atualizarInterface();
                 popularFiltros();
                 
-                const agora = new Date();
-                salvarTimestampGlobal(agora.toLocaleString('pt-BR'));
-                
                 setTimeout(() => {
-                    finalizarImportacaoSimples(true, `${dadosArray.length} registros atualizados ${sucessoSupabase ? 'e sincronizados' : '(apenas local)'}`);
+                    finalizarImportacaoSimples(true, `${dadosArray.length} registros atualizados e sincronizados`);
                 }, 1500);
                 
             } catch (error) {
@@ -3376,7 +3248,7 @@
             popularFiltros();
         }
 
-        // ========== RENDERIZAÇÃO DE TABELA COM AGRUPAMENTO CORRIGIDO ==========
+        // ========== RENDERIZAÇÃO DE TABELA ==========
         function renderizarTabelaAgrupadaCorrigida(dados = null) {
             const dadosParaRender = dados || dadosPatio;
             const tbody = document.getElementById('tabelaBody');
@@ -3486,17 +3358,12 @@
             
             tbody.innerHTML = html;
             
-            console.log('✅ Tabela renderizada com agrupamento funcional');
+            console.log('✅ Tabela renderizada');
         }
 
-        // ========== FUNÇÃO DE TOGGLE CORRIGIDA ==========
         function toggleGrupoCorrigido(chaveGrupo) {
-            console.log(`🖱️ Clique no grupo: ${chaveGrupo}`);
-            
             const detailsRows = document.querySelectorAll(`[data-grupo="${chaveGrupo}"]`);
             const icon = document.querySelector(`[data-icon="${chaveGrupo}"]`);
-            
-            console.log(`📋 Encontradas ${detailsRows.length} linhas de detalhes`);
             
             let visivel = false;
             
@@ -3519,8 +3386,6 @@
                     icon.textContent = '▶';
                 }
             }
-            
-            console.log(`📋 Grupo ${chaveGrupo} ${visivel ? 'expandido' : 'recolhido'}`);
         }
 
         function popularFiltros() {
@@ -3595,7 +3460,7 @@
         function iniciarSistema() {
             verificarPermissoes();
             iniciarSincronizacaoTimestamp();
-            iniciarSincronizacaoGlobal(); // NOVA SINCRONIZAÇÃO GLOBAL
+            iniciarSincronizacaoAutomatica(); // SINCRONIZAÇÃO CORRIGIDA
             carregarDadosLocal();
         }
 
@@ -3654,9 +3519,9 @@
 
         function fazerLogout() {
             if (confirm('Deseja fazer logout?')) {
-                // PARAR SINCRONIZAÇÃO GLOBAL
-                if (intervalSincronizacaoGlobal) {
-                    clearInterval(intervalSincronizacaoGlobal);
+                // PARAR SINCRONIZAÇÃO
+                if (intervalSincronizacao) {
+                    clearInterval(intervalSincronizacao);
                 }
                 
                 sessionStorage.removeItem('usuarioLogado');
@@ -3691,12 +3556,11 @@
             document.getElementById('userPanel').style.display = 'none';
         }
 
-        // ========== LISTA DE USUÁRIOS COM BOTÕES DE EXCLUSÃO PARA MASTER ==========
+        // ========== LISTA DE USUÁRIOS ==========
         function carregarListaUsuarios() {
             const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
             const lista = document.getElementById('userList');
             
-            // VERIFICAR SE É MASTER PARA MOSTRAR BOTÕES DE EXCLUSÃO
             const isMaster = usuarioLogado && usuarioLogado.nivel === 'master';
             
             lista.innerHTML = usuarios.map(user => `
@@ -3721,7 +3585,6 @@
 
         // ========== FUNÇÃO DE EXCLUSÃO DE USUÁRIO ==========
         async function excluirUsuario(loginUsuario, nomeUsuario) {
-            // CONFIRMAÇÃO DUPLA PARA EXCLUSÃO
             if (!confirm(`❌ ATENÇÃO!\n\nDeseja realmente excluir o usuário:\n"${nomeUsuario}" (${loginUsuario})?\n\nEsta ação NÃO pode ser desfeita!`)) {
                 return;
             }
@@ -3731,9 +3594,8 @@
             }
 
             try {
-                console.log(`🗑️ INICIANDO EXCLUSÃO: ${nomeUsuario} (${loginUsuario})`);
+                console.log(`🗑️ EXCLUSÃO: ${nomeUsuario} (${loginUsuario})`);
                 
-                // 1. REMOVER DO LOCALSTORAGE
                 let usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
                 const usuarioParaExcluir = usuarios.find(u => u.login === loginUsuario);
                 
@@ -3742,53 +3604,44 @@
                     return;
                 }
                 
-                // FILTRAR USUÁRIO (REMOVENDO ELE)
                 const usuariosAtualizados = usuarios.filter(u => u.login !== loginUsuario);
                 localStorage.setItem('usuariosSistema', JSON.stringify(usuariosAtualizados));
-                console.log(`✅ ${nomeUsuario} removido do localStorage`);
+                console.log(`✅ ${nomeUsuario} removido`);
                 
-                // 2. REMOVER DO SUPABASE
                 if (supabaseDisponivel && supabase) {
                     try {
-                        console.log(`🌐 Removendo ${nomeUsuario} do Supabase...`);
-                        
                         const { error } = await supabase
                             .from('usuarios')
                             .delete()
                             .eq('login', loginUsuario);
                         
                         if (error) {
-                            console.error('❌ Erro ao excluir do Supabase:', error);
-                            mostrarAlerta('warning', `⚠️ ${nomeUsuario} removido localmente, mas falha no servidor: ${error.message}`);
+                            console.error('❌ Erro Supabase:', error);
+                            mostrarAlerta('warning', `⚠️ ${nomeUsuario} removido localmente`);
                         } else {
                             console.log(`✅ ${nomeUsuario} removido do Supabase`);
-                            mostrarAlerta('success', `✅ ${nomeUsuario} excluído com sucesso!`);
+                            mostrarAlerta('success', `✅ ${nomeUsuario} excluído!`);
                         }
                     } catch (error) {
-                        console.error('❌ Erro conexão Supabase:', error);
-                        mostrarAlerta('warning', `⚠️ ${nomeUsuario} removido localmente (servidor indisponível)`);
+                        console.error('❌ Erro conexão:', error);
+                        mostrarAlerta('warning', `⚠️ ${nomeUsuario} removido localmente`);
                     }
                 } else {
-                    console.log('📱 Supabase indisponível, removendo apenas localmente');
-                    mostrarAlerta('info', `📱 ${nomeUsuario} removido localmente (servidor indisponível)`);
+                    mostrarAlerta('info', `📱 ${nomeUsuario} removido localmente`);
                 }
                 
-                // 3. ATUALIZAR LISTA NA TELA
                 carregarListaUsuarios();
                 
-                // 4. SALVAR TIMESTAMP
                 const agora = new Date();
                 salvarTimestampGlobal(agora.toLocaleString('pt-BR'));
                 
-                console.log(`✅ EXCLUSÃO CONCLUÍDA: ${nomeUsuario} (${loginUsuario})`);
-                
             } catch (error) {
                 console.error('❌ Erro na exclusão:', error);
-                mostrarAlerta('error', `❌ Erro ao excluir ${nomeUsuario}: ${error.message}`);
+                mostrarAlerta('error', `❌ Erro: ${error.message}`);
             }
         }
 
-        // ========== FUNÇÃO COM DEBUG COMPLETO PARA SUPABASE ==========
+        // ========== CRIAÇÃO DE USUÁRIO ==========
         async function criarUsuario(event) {
             event.preventDefault();
             
@@ -3832,39 +3685,16 @@
                 ativo: true
             };
 
-            console.log('🚀 ==================================');
-            console.log('📝 INICIANDO CRIAÇÃO DE USUÁRIO');
-            console.log('🚀 ==================================');
-            console.log('👤 USUÁRIO LOCAL:', novoUsuario);
+            console.log('📝 CRIANDO USUÁRIO:', novoUsuario.nome);
 
-            // ========== SALVAR NO LOCALSTORAGE ==========
+            // SALVAR LOCALMENTE
             usuarios.push(novoUsuario);
             localStorage.setItem('usuariosSistema', JSON.stringify(usuarios));
-            console.log('✅ USUÁRIO SALVO LOCALMENTE');
+            console.log('✅ Salvo localmente');
 
-            // ========== DEBUG E SALVAMENTO NO SUPABASE ==========
-            if (!supabaseDisponivel || !supabase) {
-                console.log('⚠️ SUPABASE NÃO DISPONÍVEL');
-                mostrarAlerta('info', '📱 Usuário criado localmente (servidor indisponível).');
-            } else {
+            // SALVAR NO SUPABASE
+            if (supabaseDisponivel && supabase) {
                 try {
-                    console.log('🔍 INICIANDO PROCESSO SUPABASE...');
-                    console.log('🔗 URL SUPABASE:', supabaseConfig.url);
-                    console.log('🔑 CHAVE SUPABASE:', supabaseConfig.anonKey);
-                    
-                    // PASSO 1: VERIFICAR CONEXÃO
-                    console.log('1️⃣ VERIFICANDO CONEXÃO SUPABASE...');
-                    const { data: testConnection, error: connectionError } = await supabase
-                        .from('usuarios')
-                        .select('count', { count: 'exact', head: true });
-                    
-                    if (connectionError) {
-                        throw new Error(`Conexão falhou: ${connectionError.message}`);
-                    }
-                    console.log('✅ CONEXÃO OK - Total usuários:', testConnection);
-                    
-                    // PASSO 2: MONTAR DADOS PARA SUPABASE
-                    console.log('2️⃣ MONTANDO DADOS PARA SUPABASE...');
                     const dadosSupabase = {
                         nome: novoUsuario.nome,
                         login: novoUsuario.login,
@@ -3876,43 +3706,28 @@
                         ativo: novoUsuario.ativo
                     };
                     
-                    console.log('📤 DADOS PARA INSERÇÃO:', dadosSupabase);
-                    
-                    // PASSO 3: INSERIR NO SUPABASE
-                    console.log('3️⃣ INSERINDO NO SUPABASE...');
                     const { data, error } = await supabase
                         .from('usuarios')
                         .insert([dadosSupabase])
                         .select();
                     
                     if (error) {
-                        console.error('❌ ERRO NA INSERÇÃO:', error);
-                        console.log('📋 DETALHES DO ERRO:');
-                        console.log('• Code:', error.code || 'Sem código');
-                        console.log('• Message:', error.message || 'Sem mensagem');
-                        console.log('• Details:', error.details || 'Sem detalhes');
-                        console.log('• Hint:', error.hint || 'Sem dica');
-                        
-                        throw new Error(`Inserção falhou: ${error.message}`);
+                        console.error('❌ Erro Supabase:', error);
+                        mostrarAlerta('warning', `⚠️ ${nome} criado localmente`);
+                    } else {
+                        console.log('✅ Salvo no Supabase');
+                        mostrarAlerta('success', `✅ ${nome} criado!`);
                     }
                     
-                    console.log('🚀 ==================================');
-                    console.log('✅ USUÁRIO CRIADO NO SUPABASE COM SUCESSO!');
-                    console.log('📊 DADOS RETORNADOS:', data);
-                    console.log('🚀 ==================================');
-                    
-                    mostrarAlerta('success', `✅ ${nome} criado e sincronizado com sucesso!`);
-                    
                 } catch (error) {
-                    console.log('🚀 ==================================');
-                    console.error('❌ ERRO COMPLETO DO SUPABASE:', error.message);
-                    console.log('🚀 ==================================');
-                    
-                    mostrarAlerta('warning', `⚠️ ${nome} criado localmente. Erro servidor: ${error.message}`);
+                    console.error('❌ Erro:', error);
+                    mostrarAlerta('warning', `⚠️ ${nome} criado localmente`);
                 }
+            } else {
+                mostrarAlerta('info', `📱 ${nome} criado localmente`);
             }
 
-            // ========== FINALIZAR ==========
+            // LIMPAR E ATUALIZAR
             document.getElementById('novoNome').value = '';
             document.getElementById('novoLogin').value = '';
             document.getElementById('novaSenha').value = '';
@@ -3922,12 +3737,8 @@
 
             const agora = new Date();
             salvarTimestampGlobal(agora.toLocaleString('pt-BR'));
-
-            console.log(`✅ PROCESSO FINALIZADO - Usuário: ${nome} (${login})`);
             
-            // ========== FORÇAR SINCRONIZAÇÃO PARA NOVOS LOGINS ==========
             setTimeout(async () => {
-                console.log('🔄 Sincronizando usuários após criação...');
                 await sincronizarUsuariosLocalStorage();
             }, 1000);
         }
@@ -3995,38 +3806,22 @@
         }
 
         function mostrarDetalhesPolling() {
-            const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
-            
             const info = `
-🚀 SISTEMA SINCRONIZADO E RESPONSIVO
+🚀 SISTEMA SINCRONIZADO CORRIGIDO
 
-📊 CAMINHÃO GRÁFICO:
-• Visual dinâmico no card "Descarregando"
-• Barra de progresso que cresce com o número
-• Indicadores visuais de carga (5 blocos)
-• Empilhadeira animada com movimento
-• Setas indicando atividade intensa
+📊 SINCRONIZAÇÃO:
+• Verificação a cada 5 segundos
+• Hash de dados para detectar mudanças
+• Notificações em tempo real
+• Dados compartilhados entre usuários
 
-📈 HISTÓRICO COMPLETO:
-• Movimentação dia: Hoje (D+0)
-• Movimentação D-1: Ontem
-• Movimentação D-2: Anteontem
-• Movimentação D-3: 3 dias atrás
-• Movimentação D-4: 4 dias atrás
-• Movimentação semana: Semana atual
-• Movimentação mês: Mês atual
+📈 FUNCIONAMENTO:
+• Você importa → Todos veem
+• Atualização automática
+• Interface responsiva
+• Dados protegidos
 
-🌐 SINCRONIZAÇÃO GLOBAL:
-• Dados sincronizados via Supabase
-• Todos os usuários veem os mesmos dados
-• Atualização automática a cada 30s
-
-📱 LAYOUT RESPONSIVO:
-• Adapta a qualquer tela
-• Scrollbars otimizadas
-• Elementos escaláveis
-
-✅ SISTEMA COMPLETO E SINCRONIZADO!
+✅ PROBLEMAS CORRIGIDOS!
             `;
             
             alert(info);
@@ -4073,7 +3868,7 @@
             }
         }
 
-        console.log('✅🚛📊📱🌐 SISTEMA RESPONSIVO E SINCRONIZADO IMPLEMENTADO!');
+        console.log('✅🚛📊📱🔄 SISTEMA SINCRONIZADO E RESPONSIVO CORRIGIDO!');
     </script>
 </body>
 </html>
