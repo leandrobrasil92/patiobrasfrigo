@@ -2056,7 +2056,7 @@
                     throw new Error('Sistema de e-mail não inicializado');
                 }
                 
-                inicializarUsuarios();
+                sincronizarUsuariosLocalStorage();
                 const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
                 const usuarioEncontrado = usuarios.find(u => u.email.toLowerCase().trim() === email);
                 
@@ -2380,7 +2380,7 @@
                     const { login, senha } = JSON.parse(credenciaisSalvas);
                     console.log('🔑 Credenciais lembradas:', login);
                     
-                    inicializarUsuarios();
+                    sincronizarUsuariosLocalStorage();
                     
                     const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
                     const usuarioEncontrado = usuarios.find(u => 
@@ -2406,7 +2406,7 @@
                     const userData = JSON.parse(sessaoAtiva);
                     console.log('👤 Sessão ativa:', userData.nome);
                     
-                    inicializarUsuarios();
+                    sincronizarUsuariosLocalStorage();
                     const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
                     const usuarioValido = usuarios.find(u => u.login === userData.login);
                     
@@ -2433,7 +2433,7 @@
         }
 
         function mostrarTelaLoginImediatamente() {
-            inicializarUsuarios();
+            sincronizarUsuariosLocalStorage();
             document.getElementById('loginOverlay').style.display = 'flex';
             document.getElementById('mainContainer').style.display = 'none';
             mostrarStatusLogin('info', 'Sistema pronto');
@@ -2490,23 +2490,79 @@
             }, 10000);
         }
 
-        function inicializarUsuarios() {
-            let usuariosSalvos = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
+        // ========== SINCRONIZAÇÃO DE USUÁRIOS CORRIGIDA ==========
+        async function sincronizarUsuariosLocalStorage() {
+            console.log('🔄 SINCRONIZANDO USUÁRIOS DO SUPABASE...');
             
-            if (usuariosSalvos.length === 0) {
-                localStorage.setItem('usuariosSistema', JSON.stringify(USUARIOS_PADRAO));
-                usuariosSalvos = USUARIOS_PADRAO;
-            }
-            
-            USUARIOS_PADRAO.forEach(userPadrao => {
-                const existe = usuariosSalvos.find(u => u.login === userPadrao.login);
-                if (!existe) {
-                    usuariosSalvos.push(userPadrao);
+            try {
+                // CARREGAR USUÁRIOS PADRÃO
+                let usuariosLocais = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
+                
+                if (usuariosLocais.length === 0) {
+                    usuariosLocais = [...USUARIOS_PADRAO];
                 }
-            });
-            
-            localStorage.setItem('usuariosSistema', JSON.stringify(usuariosSalvos));
-            return usuariosSalvos;
+                
+                // GARANTIR QUE OS PADRÃO ESTEJAM SEMPRE PRESENTES
+                USUARIOS_PADRAO.forEach(userPadrao => {
+                    const existe = usuariosLocais.find(u => u.login === userPadrao.login);
+                    if (!existe) {
+                        usuariosLocais.push(userPadrao);
+                    }
+                });
+                
+                // SE SUPABASE DISPONÍVEL, SINCRONIZAR
+                if (supabaseDisponivel && supabase) {
+                    try {
+                        console.log('📡 Buscando usuários do Supabase...');
+                        
+                        const { data: usuariosSupabase, error } = await supabase
+                            .from('usuarios')
+                            .select('*');
+                        
+                        if (!error && usuariosSupabase) {
+                            console.log(`📋 ${usuariosSupabase.length} usuários encontrados no Supabase`);
+                            
+                            // ADICIONAR USUÁRIOS DO SUPABASE QUE NÃO ESTÃO LOCALMENTE
+                            usuariosSupabase.forEach(userSupabase => {
+                                const existeLocal = usuariosLocais.find(u => u.login === userSupabase.login);
+                                if (!existeLocal) {
+                                    console.log(`➕ Adicionando usuário do Supabase: ${userSupabase.nome}`);
+                                    
+                                    const usuarioParaLocal = {
+                                        id: userSupabase.id || Date.now(),
+                                        nome: userSupabase.nome,
+                                        login: userSupabase.login,
+                                        senha: userSupabase.senha,
+                                        nivel: userSupabase.nivel,
+                                        email: userSupabase.email,
+                                        criadoEm: userSupabase.criado_em || new Date().toISOString(),
+                                        criadoPor: userSupabase.criado_por || 'Sistema',
+                                        ativo: userSupabase.ativo !== false
+                                    };
+                                    
+                                    usuariosLocais.push(usuarioParaLocal);
+                                }
+                            });
+                        }
+                    } catch (error) {
+                        console.log('⚠️ Erro na sincronização com Supabase:', error.message);
+                    }
+                }
+                
+                // SALVAR USUÁRIOS SINCRONIZADOS
+                localStorage.setItem('usuariosSistema', JSON.stringify(usuariosLocais));
+                console.log(`✅ ${usuariosLocais.length} usuários sincronizados no localStorage`);
+                
+                return usuariosLocais;
+                
+            } catch (error) {
+                console.error('❌ Erro na sincronização:', error);
+                return JSON.parse(localStorage.getItem('usuariosSistema') || JSON.stringify(USUARIOS_PADRAO));
+            }
+        }
+
+        function inicializarUsuarios() {
+            return sincronizarUsuariosLocalStorage();
         }
 
         function mostrarStatusLogin(tipo, mensagem) {
@@ -2524,25 +2580,51 @@
             }
         }
 
+        // ========== FUNÇÃO DE AUTENTICAÇÃO CORRIGIDA COM DEBUG ==========
         async function autenticarUsuario(login, senha, lembrarMe = false) {
             const btnLogin = document.getElementById('btnLogin');
             btnLogin.disabled = true;
             btnLogin.textContent = 'Verificando...';
             
             try {
-                const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
+                console.log('🚀 ===============================');
+                console.log('🔐 INICIANDO AUTENTICAÇÃO');
+                console.log('🚀 ===============================');
+                console.log('👤 Login informado:', login);
+                console.log('🔑 Senha informada: [OCULTA]');
+                
+                // SINCRONIZAR USUÁRIOS PRIMEIRO
+                const usuarios = await sincronizarUsuariosLocalStorage();
+                console.log(`📋 ${usuarios.length} usuários disponíveis para login`);
                 
                 const loginLimpo = login.toLowerCase().trim();
                 const senhaLimpa = senha.trim();
                 
+                console.log('🔍 Procurando usuário...');
+                console.log('📋 USUÁRIOS DISPONÍVEIS:');
+                usuarios.forEach(u => {
+                    console.log(`• ${u.nome} (login: "${u.login}", nivel: ${u.nivel})`);
+                });
+                
                 const usuarioEncontrado = usuarios.find(u => {
                     const loginUsuario = u.login.toLowerCase().trim();
                     const senhaUsuario = u.senha.trim();
-                    return loginUsuario === loginLimpo && senhaUsuario === senhaLimpa;
+                    const loginMatch = loginUsuario === loginLimpo;
+                    const senhaMatch = senhaUsuario === senhaLimpa;
+                    
+                    console.log(`🔍 Verificando ${u.nome}:`);
+                    console.log(`  Login: "${loginUsuario}" === "${loginLimpo}" → ${loginMatch}`);
+                    console.log(`  Senha: ${senhaMatch ? 'CORRETA' : 'INCORRETA'}`);
+                    
+                    return loginMatch && senhaMatch;
                 });
                 
                 if (usuarioEncontrado) {
-                    console.log('✅ LOGIN BEM-SUCEDIDO:', usuarioEncontrado.nome);
+                    console.log('🚀 ===============================');
+                    console.log('✅ LOGIN BEM-SUCEDIDO!');
+                    console.log('👤 Usuário:', usuarioEncontrado.nome);
+                    console.log('🎯 Nível:', usuarioEncontrado.nivel);
+                    console.log('🚀 ===============================');
                     
                     usuarioLogado = usuarioEncontrado;
                     sessionStorage.setItem('usuarioLogado', JSON.stringify(usuarioEncontrado));
@@ -2574,6 +2656,12 @@
                     }, 1000);
                     
                 } else {
+                    console.log('🚀 ===============================');
+                    console.log('❌ LOGIN FALHOU!');
+                    console.log('👤 Login tentado:', login);
+                    console.log('📋 Nenhuma correspondência encontrada');
+                    console.log('🚀 ===============================');
+                    
                     mostrarStatusLogin('error', '❌ Usuário ou senha incorretos!');
                     localStorage.removeItem('credenciaisLembradas');
                 }
@@ -3491,6 +3579,12 @@
             salvarTimestampGlobal(agora.toLocaleString('pt-BR'));
 
             console.log(`✅ PROCESSO FINALIZADO - Usuário: ${nome} (${login})`);
+            
+            // ========== FORÇAR SINCRONIZAÇÃO PARA NOVOS LOGINS ==========
+            setTimeout(async () => {
+                console.log('🔄 Sincronizando usuários após criação...');
+                await sincronizarUsuariosLocalStorage();
+            }, 1000);
         }
 
         function aplicarFiltros() {
@@ -3632,7 +3726,7 @@
             }
         }
 
-        console.log('✅🚛📊🗑️ SISTEMA COM EXCLUSÃO DE USUÁRIOS IMPLEMENTADO!');
+        console.log('✅🚛📊🔐 SISTEMA COM LOGIN CORRIGIDO PARA NOVOS USUÁRIOS!');
     </script>
 </body>
 </html>
