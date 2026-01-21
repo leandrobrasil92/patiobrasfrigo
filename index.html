@@ -2285,7 +2285,7 @@
                     throw new Error('Sistema de e-mail não inicializado');
                 }
                 
-                const usuarios = inicializarUsuarios();
+                const usuarios = await buscarTodosUsuarios();
                 const usuarioEncontrado = usuarios.find(u => u.email.toLowerCase().trim() === email);
                 
                 if (!usuarioEncontrado) {
@@ -2687,6 +2687,83 @@
             }
         }
 
+        // ========== BUSCAR USUÁRIOS (LOCAL + SUPABASE) ==========
+        
+        async function buscarTodosUsuarios() {
+            try {
+                console.log('🔍 BUSCANDO USUÁRIOS DE TODAS AS FONTES...');
+                
+                // SEMPRE INICIAR COM USUÁRIOS LOCAIS
+                let usuariosLocais = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
+                
+                // ADICIONAR USUÁRIOS PADRÃO SE NÃO EXISTIREM
+                USUARIOS_PADRAO.forEach(userPadrao => {
+                    const existe = usuariosLocais.find(u => u.login === userPadrao.login);
+                    if (!existe) {
+                        usuariosLocais.push(userPadrao);
+                    }
+                });
+                
+                console.log(`👥 ${usuariosLocais.length} usuários locais encontrados`);
+                
+                // SE SUPABASE DISPONÍVEL, BUSCAR TAMBÉM DO SUPABASE
+                if (supabaseDisponivel && supabase) {
+                    try {
+                        console.log('🌐 Buscando usuários do Supabase...');
+                        
+                        const { data: usuariosSupabase, error } = await supabase
+                            .from('usuarios')
+                            .select('*');
+                        
+                        if (!error && usuariosSupabase && usuariosSupabase.length > 0) {
+                            console.log(`🌐 ${usuariosSupabase.length} usuários encontrados no Supabase`);
+                            
+                            // MESCLAR USUÁRIOS DO SUPABASE
+                            usuariosSupabase.forEach(userSupabase => {
+                                // VERIFICAR SE JÁ EXISTE LOCALMENTE
+                                const jaExiste = usuariosLocais.find(u => u.login === userSupabase.login);
+                                
+                                if (!jaExiste) {
+                                    // ADICIONAR USUÁRIO DO SUPABASE
+                                    const usuarioFormatado = {
+                                        id: userSupabase.id,
+                                        nome: userSupabase.nome,
+                                        login: userSupabase.login,
+                                        senha: userSupabase.senha,
+                                        nivel: userSupabase.nivel,
+                                        email: userSupabase.email || `${userSupabase.login}@minervafoods.com`,
+                                        ativo: userSupabase.ativo !== false,
+                                        criadoEm: userSupabase.criado_em,
+                                        criadoPor: userSupabase.criado_por
+                                    };
+                                    
+                                    usuariosLocais.push(usuarioFormatado);
+                                    console.log(`➕ Usuário do Supabase adicionado: ${userSupabase.nome}`);
+                                }
+                            });
+                            
+                            // SALVAR USUÁRIOS MESCLADOS LOCALMENTE
+                            localStorage.setItem('usuariosSistema', JSON.stringify(usuariosLocais));
+                            
+                        } else {
+                            console.log('⚠️ Nenhum usuário encontrado no Supabase ou erro na consulta');
+                        }
+                        
+                    } catch (error) {
+                        console.log('⚠️ Erro ao consultar Supabase:', error.message);
+                    }
+                }
+                
+                console.log(`✅ TOTAL FINAL: ${usuariosLocais.length} usuários disponíveis`);
+                return usuariosLocais;
+                
+            } catch (error) {
+                console.error('❌ Erro ao buscar usuários:', error);
+                // FALLBACK - RETORNAR APENAS USUÁRIOS PADRÃO
+                return [...USUARIOS_PADRAO];
+            }
+        }
+
         // ========== VERIFICAÇÃO DE SESSÃO CORRIGIDA ==========
         
         (function verificarSessaoImediatamente() {
@@ -2861,7 +2938,7 @@
             }
         }
 
-        // ========== AUTENTICAÇÃO CORRIGIDA ==========
+        // ========== AUTENTICAÇÃO CORRIGIDA PARA BUSCAR SUPABASE ==========
         async function autenticarUsuario(login, senha, lembrarMe = false) {
             const btnLogin = document.getElementById('btnLogin');
             btnLogin.disabled = true;
@@ -2870,7 +2947,8 @@
             try {
                 console.log(`🔐 Tentando autenticar: ${login}`);
                 
-                const usuarios = inicializarUsuarios();
+                // BUSCAR USUÁRIOS DE TODAS AS FONTES (LOCAL + SUPABASE)
+                const usuarios = await buscarTodosUsuarios();
                 console.log(`👥 ${usuarios.length} usuários disponíveis`);
                 
                 const loginLimpo = login.toLowerCase().trim();
@@ -3149,7 +3227,7 @@
         // ========== DOM READY ==========
         
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 SISTEMA CORRIGIDO PARA GERENTES');
+            console.log('🚀 SISTEMA COM LOGIN CORRIGIDO PARA SUPABASE');
             
             const filtros = ['searchPlaca', 'filterStatus', 'filterOrigem', 'filterTipoMercado', 'filterTipoDescarga'];
             
@@ -3658,7 +3736,7 @@
             }
         }
 
-        console.log('🔧✅📊🌐📧 SISTEMA COM FUNÇÃO criarUsuario CORRIGIDA!');
+        console.log('🔧✅📊🌐📧 SISTEMA COM LOGIN CORRIGIDO - BUSCA SUPABASE IMPLEMENTADA!');
     </script>
 </body>
 </html>
