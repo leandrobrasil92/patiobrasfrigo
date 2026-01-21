@@ -2687,16 +2687,16 @@
             }
         }
 
-        // ========== BUSCAR USUÁRIOS (LOCAL + SUPABASE) ==========
+        // ========== FUNÇÃO CORRIGIDA - buscarTodosUsuarios COM TIMEOUT E MELHOR TRATAMENTO ==========
         
         async function buscarTodosUsuarios() {
             try {
-                console.log('🔍 BUSCANDO USUÁRIOS DE TODAS AS FONTES...');
+                console.log('🔍 BUSCANDO USUÁRIOS COM TIMEOUT DE 10 SEGUNDOS...');
                 
-                // SEMPRE INICIAR COM USUÁRIOS LOCAIS
+                // SEMPRE COMEÇAR COM USUÁRIOS LOCAIS
                 let usuariosLocais = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
                 
-                // ADICIONAR USUÁRIOS PADRÃO SE NÃO EXISTIREM
+                // GARANTIR USUÁRIOS PADRÃO
                 USUARIOS_PADRAO.forEach(userPadrao => {
                     const existe = usuariosLocais.find(u => u.login === userPadrao.login);
                     if (!existe) {
@@ -2704,27 +2704,37 @@
                     }
                 });
                 
-                console.log(`👥 ${usuariosLocais.length} usuários locais encontrados`);
+                console.log(`👥 ${usuariosLocais.length} usuários locais carregados`);
                 
-                // SE SUPABASE DISPONÍVEL, BUSCAR TAMBÉM DO SUPABASE
+                // TENTAR BUSCAR DO SUPABASE COM TIMEOUT
                 if (supabaseDisponivel && supabase) {
                     try {
-                        console.log('🌐 Buscando usuários do Supabase...');
+                        console.log('🌐 Consultando Supabase com timeout...');
                         
-                        const { data: usuariosSupabase, error } = await supabase
+                        const timeoutPromise = new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('Timeout de 10 segundos')), 10000)
+                        );
+                        
+                        const supabasePromise = supabase
                             .from('usuarios')
                             .select('*');
                         
-                        if (!error && usuariosSupabase && usuariosSupabase.length > 0) {
+                        const { data: usuariosSupabase, error } = await Promise.race([
+                            supabasePromise, 
+                            timeoutPromise
+                        ]);
+                        
+                        if (error) {
+                            console.log('⚠️ Erro na consulta Supabase:', error.message);
+                        } else if (usuariosSupabase && usuariosSupabase.length > 0) {
                             console.log(`🌐 ${usuariosSupabase.length} usuários encontrados no Supabase`);
                             
                             // MESCLAR USUÁRIOS DO SUPABASE
+                            let novosUsuarios = 0;
                             usuariosSupabase.forEach(userSupabase => {
-                                // VERIFICAR SE JÁ EXISTE LOCALMENTE
                                 const jaExiste = usuariosLocais.find(u => u.login === userSupabase.login);
                                 
                                 if (!jaExiste) {
-                                    // ADICIONAR USUÁRIO DO SUPABASE
                                     const usuarioFormatado = {
                                         id: userSupabase.id,
                                         nome: userSupabase.nome,
@@ -2738,28 +2748,33 @@
                                     };
                                     
                                     usuariosLocais.push(usuarioFormatado);
+                                    novosUsuarios++;
                                     console.log(`➕ Usuário do Supabase adicionado: ${userSupabase.nome}`);
                                 }
                             });
                             
-                            // SALVAR USUÁRIOS MESCLADOS LOCALMENTE
-                            localStorage.setItem('usuariosSistema', JSON.stringify(usuariosLocais));
-                            
+                            if (novosUsuarios > 0) {
+                                localStorage.setItem('usuariosSistema', JSON.stringify(usuariosLocais));
+                                console.log(`✅ ${novosUsuarios} novos usuários salvos localmente`);
+                            }
                         } else {
-                            console.log('⚠️ Nenhum usuário encontrado no Supabase ou erro na consulta');
+                            console.log('📝 Nenhum usuário encontrado no Supabase');
                         }
                         
                     } catch (error) {
-                        console.log('⚠️ Erro ao consultar Supabase:', error.message);
+                        console.log('⚠️ Erro/Timeout no Supabase:', error.message);
                     }
+                } else {
+                    console.log('⚠️ Supabase não disponível, usando apenas dados locais');
                 }
                 
-                console.log(`✅ TOTAL FINAL: ${usuariosLocais.length} usuários disponíveis`);
+                console.log(`✅ TOTAL: ${usuariosLocais.length} usuários disponíveis`);
                 return usuariosLocais;
                 
             } catch (error) {
-                console.error('❌ Erro ao buscar usuários:', error);
-                // FALLBACK - RETORNAR APENAS USUÁRIOS PADRÃO
+                console.error('❌ Erro geral ao buscar usuários:', error);
+                // FALLBACK - RETORNAR USUÁRIOS PADRÃO
+                localStorage.setItem('usuariosSistema', JSON.stringify(USUARIOS_PADRAO));
                 return [...USUARIOS_PADRAO];
             }
         }
@@ -2938,23 +2953,26 @@
             }
         }
 
-        // ========== AUTENTICAÇÃO CORRIGIDA PARA BUSCAR SUPABASE ==========
+        // ========== AUTENTICAÇÃO CORRIGIDA COM MELHOR FEEDBACK ==========
         async function autenticarUsuario(login, senha, lembrarMe = false) {
             const btnLogin = document.getElementById('btnLogin');
             btnLogin.disabled = true;
             btnLogin.textContent = 'Verificando...';
             
             try {
-                console.log(`🔐 Tentando autenticar: ${login}`);
+                console.log(`🔐 AUTENTICANDO: ${login}`);
+                mostrarStatusLogin('info', 'Consultando base de usuários...');
                 
-                // BUSCAR USUÁRIOS DE TODAS AS FONTES (LOCAL + SUPABASE)
+                // BUSCAR USUÁRIOS COM TIMEOUT IMPLEMENTADO
                 const usuarios = await buscarTodosUsuarios();
-                console.log(`👥 ${usuarios.length} usuários disponíveis`);
+                console.log(`👥 ${usuarios.length} usuários consultados`);
                 
                 const loginLimpo = login.toLowerCase().trim();
                 const senhaLimpa = senha.trim();
                 
-                console.log('🔍 Buscando usuário...');
+                console.log('🔍 Procurando usuário...');
+                mostrarStatusLogin('info', 'Validando credenciais...');
+                
                 const usuarioEncontrado = usuarios.find(u => {
                     const loginUsuario = u.login.toLowerCase().trim();
                     const senhaUsuario = u.senha.trim();
@@ -2962,7 +2980,7 @@
                 });
                 
                 if (usuarioEncontrado) {
-                    console.log(`✅ Usuário encontrado: ${usuarioEncontrado.nome}`);
+                    console.log(`✅ USUÁRIO ENCONTRADO: ${usuarioEncontrado.nome}`);
                     
                     usuarioLogado = usuarioEncontrado;
                     sessionStorage.setItem('usuarioLogado', JSON.stringify(usuarioEncontrado));
@@ -2974,7 +2992,7 @@
                         localStorage.removeItem('credenciaisLembradas');
                     }
                     
-                    mostrarStatusLogin('success', `✅ Bem-vindo, ${usuarioEncontrado.nome}!`);
+                    mostrarStatusLogin('success', `✅ Login realizado com sucesso!`);
                     
                     setTimeout(() => {
                         console.log('🚪 Entrando no sistema...');
@@ -2985,25 +3003,25 @@
                         
                         const agora = new Date();
                         const timestampLogin = agora.toLocaleString('pt-BR');
-                        salvarTimestampGlobal(timestampLogin);
-                        atualizarTimestampVisual(timestampLogin);
+                        salvarTimestampGlobal(`${timestampLogin} (${usuarioEncontrado.nome})`);
+                        atualizarTimestampVisual(`${timestampLogin} (${usuarioEncontrado.nome})`);
                         
                         if (usuarioEncontrado.senhaTemporaria) {
                             setTimeout(() => {
                                 mostrarAlerta('info', '⚠️ Você está usando uma senha temporária. Recomendamos alterar.');
                             }, 2000);
                         }
-                    }, 1000);
+                    }, 1500);
                     
                 } else {
-                    console.log('❌ Usuário/senha incorretos');
+                    console.log('❌ CREDENCIAIS INVÁLIDAS');
                     mostrarStatusLogin('error', '❌ Usuário ou senha incorretos!');
                     localStorage.removeItem('credenciaisLembradas');
                 }
                 
             } catch (error) {
-                console.error('❌ Erro na autenticação:', error);
-                mostrarStatusLogin('error', `Erro: ${error.message}`);
+                console.error('❌ ERRO DURANTE AUTENTICAÇÃO:', error);
+                mostrarStatusLogin('error', `Erro no sistema: ${error.message}`);
             } finally {
                 btnLogin.disabled = false;
                 btnLogin.textContent = 'Entrar';
@@ -3227,7 +3245,7 @@
         // ========== DOM READY ==========
         
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 SISTEMA COM LOGIN CORRIGIDO PARA SUPABASE');
+            console.log('🚀 SISTEMA COM LOGIN SUPABASE ROBUSTO - TIMEOUT 10s');
             
             const filtros = ['searchPlaca', 'filterStatus', 'filterOrigem', 'filterTipoMercado', 'filterTipoDescarga'];
             
@@ -3326,7 +3344,7 @@
                 return;
             }
 
-            console.log('🔐 Iniciando processo de login...');
+            console.log('🔐 Iniciando processo de login com busca robusta...');
             autenticarUsuario(login, senha, lembrarMe);
         }
 
@@ -3736,7 +3754,7 @@
             }
         }
 
-        console.log('🔧✅📊🌐📧 SISTEMA COM LOGIN CORRIGIDO - BUSCA SUPABASE IMPLEMENTADA!');
+        console.log('🔧✅📊🌐📧 SISTEMA CORRIGIDO - LOGIN COM TIMEOUT E FEEDBACK ROBUSTO!');
     </script>
 </body>
 </html>
