@@ -1395,12 +1395,12 @@
                         <span class="sync-value sync-ok" id="supabaseStatus">CONECTADO</span>
                     </div>
                     <div class="sync-item">
-                        <span class="sync-label">Tempo Real:</span>
+                        <span class="sync-label">Realtime:</span>
                         <span class="sync-value sync-ok" id="realtimeStatus">ATIVO</span>
                     </div>
                     <div class="sync-item">
-                        <span class="sync-label">Notificação:</span>
-                        <span class="sync-value sync-ok" id="notificationStatus">FUNCIONANDO</span>
+                        <span class="sync-label">WebSocket:</span>
+                        <span class="sync-value sync-ok" id="websocketStatus">CONECTADO</span>
                     </div>
                     <div class="sync-item">
                         <span class="sync-label">Email:</span>
@@ -1415,7 +1415,7 @@
                 <div style="text-align: center; font-size: 10px; color: #6b7280; margin-top: 8px;" id="syncLastUpdate">
                     <div>🔄 Sincronizações: <span id="contadorSync">0</span></div>
                     <div>📊 Registros: <span id="totalRegistros">0</span></div>
-                    <div>⚡ Modo: <span id="modoSync">Normal</span></div>
+                    <div>⚡ WebSocket: <span id="websocketCounter">0</span> eventos</div>
                 </div>
             </div>
 
@@ -1726,14 +1726,12 @@
         let backupDadosProtegidos = [];
         let backupCardsProtegidos = {};
 
-        // ========== ARQUITETURA DE NOTIFICAÇÃO EM TEMPO REAL ==========
+        // ========== SUPABASE REALTIME PARA SINCRONIZAÇÃO ENTRE DIFERENTES MÁQUINAS ==========
+        let realtimeChannel = null;
+        let websocketEventCounter = 0;
         let ultimaVersaoSupabase = 0;
-        let intervalSyncSupabase = null;
         let contadorSyncSupabase = 0;
         let importTimeoutId = null;
-        let realtimeModeActive = false;
-        let realtimeNotificationQueue = [];
-        let lastProcessedNotificationId = null;
 
         // ========== CONFIGURAÇÃO SUPABASE ==========
         const supabaseConfig = {
@@ -1781,10 +1779,10 @@
             }
         ];
 
-        // ========== SISTEMA DE NOTIFICAÇÃO EM TEMPO REAL ==========
+        // ========== IMPORTAÇÃO COM SUPABASE REALTIME ==========
         
         function importarExcel(event) {
-            console.log('🚀 INICIANDO IMPORTAÇÃO COM NOTIFICAÇÃO EM TEMPO REAL...');
+            console.log('🚀 INICIANDO IMPORTAÇÃO COM SUPABASE REALTIME...');
             
             if (!usuarioLogado || (usuarioLogado.nivel !== 'master' && usuarioLogado.nivel !== 'importador')) {
                 mostrarAlerta('error', '⚠️ Acesso negado!');
@@ -1800,15 +1798,11 @@
             }
             
             importTimeoutId = setTimeout(() => {
-                console.log('⏰ TIMEOUT DA IMPORTAÇÃO - FORÇANDO FECHAMENTO');
+                console.log('⏰ TIMEOUT DA IMPORTAÇÃO');
                 fecharTelaImportacao(false, 'Timeout na importação');
             }, 30000);
 
             isImporting = true;
-            
-            // ATIVAR MODO TEMPO REAL
-            ativarModoTempoReal();
-            
             mostrarTelaImportacao();
             processarArquivo(file);
             event.target.value = '';
@@ -1821,7 +1815,7 @@
         }
 
         function fecharTelaImportacao(sucesso = true, mensagem = '') {
-            console.log(`🔚 FECHANDO TELA DE IMPORTAÇÃO - Sucesso: ${sucesso}`);
+            console.log(`🔚 FECHANDO TELA - Sucesso: ${sucesso}`);
             
             if (importTimeoutId) {
                 clearTimeout(importTimeoutId);
@@ -1838,17 +1832,16 @@
                 banner.classList.add('show');
                 setTimeout(() => banner.classList.remove('show'), 4000);
                 
-                mostrarAlerta('success', 'Dados importados e sincronizados em tempo real!');
+                mostrarAlerta('success', 'Dados importados e sincronizados!');
                 
-                // ENVIAR NOTIFICAÇÃO EM TEMPO REAL PARA TODAS AS MÁQUINAS
-                enviarNotificacaoTempoReal();
+                // BROADCAST REALTIME PARA TODAS AS MÁQUINAS
+                setTimeout(() => broadcastRealtimeUpdate(), 1000);
                 
             } else {
                 mostrarAlerta('error', `❌ Erro na importação: ${mensagem}`);
-                desativarModoTempoReal();
             }
             
-            console.log('✅ Tela de importação fechada');
+            console.log('✅ Tela fechada');
         }
 
         function processarArquivo(file) {
@@ -1931,28 +1924,18 @@
 
         async function salvarDados(dadosArray) {
             try {
-                console.log('💾 SALVANDO DADOS COM SISTEMA DE NOTIFICAÇÃO EM TEMPO REAL...');
+                console.log('💾 SALVANDO COM SUPABASE REALTIME...');
                 
-                // ATUALIZAR DADOS GLOBAIS
                 dadosPatio = [...dadosArray];
-                
-                // RECALCULAR CARDS
                 calcularEAtualizarCards();
-                
-                // RENDERIZAR TABELA
                 renderizarTabela();
-                
-                // POPULAR FILTROS
                 popularFiltros();
-                
-                // SALVAR LOCALMENTE
                 localStorage.setItem('dadosPatioMinerva', JSON.stringify(dadosArray));
                 
-                // SALVAR NO SUPABASE COM SISTEMA DE NOTIFICAÇÃO
+                // SALVAR NO SUPABASE COM REALTIME
                 if (supabaseDisponivel && supabase) {
                     try {
-                        const novaVersao = await salvarComSistemaNotificacao(dadosArray);
-                        console.log('✅ Dados salvos com sistema de notificação:', novaVersao);
+                        const novaVersao = await salvarComRealtime(dadosArray);
                         ultimaVersaoSupabase = novaVersao;
                         localStorage.setItem('versaoAtualMinerva', ultimaVersaoSupabase.toString());
                     } catch (error) {
@@ -1960,17 +1943,13 @@
                     }
                 }
                 
-                // ATUALIZAR TIMESTAMP
                 const agora = new Date();
                 const timestampBR = agora.toLocaleString('pt-BR');
                 salvarTimestampGlobal(`${timestampBR} (${usuarioLogado.nome})`);
                 
-                // FECHAR TELA DE IMPORTAÇÃO
-                setTimeout(() => {
-                    fecharTelaImportacao(true);
-                }, 1500);
+                setTimeout(() => fecharTelaImportacao(true), 1500);
                 
-                console.log('✅ IMPORTAÇÃO COM NOTIFICAÇÃO EM TEMPO REAL CONCLUÍDA!');
+                console.log('✅ SALVAMENTO COM REALTIME CONCLUÍDO!');
                 
             } catch (error) {
                 console.error('❌ Erro ao salvar dados:', error);
@@ -1978,18 +1957,14 @@
             }
         }
 
-        async function salvarComSistemaNotificacao(dadosArray) {
+        async function salvarComRealtime(dadosArray) {
             try {
-                console.log('📡 SALVANDO COM SISTEMA DE NOTIFICAÇÃO PROFISSIONAL...');
-                
                 const timestamp = new Date().toISOString();
                 const timestampBR = new Date().toLocaleString('pt-BR');
                 const usuario = usuarioLogado ? usuarioLogado.nome : 'Sistema';
                 const versao = Date.now();
-                const notificationId = `notification_${versao}`;
                 
-                // DADOS PRINCIPAIS
-                const dadosParaSupabase = {
+                const payload = {
                     dados_patio: JSON.stringify(dadosArray),
                     versao: versao,
                     timestamp_update: timestamp,
@@ -1999,363 +1974,206 @@
                     sync_key: 'patio_minerva_sync'
                 };
                 
-                // SISTEMA DE NOTIFICAÇÃO
-                const notificacao = {
-                    notification_id: notificationId,
-                    notification_type: 'data_import',
-                    timestamp: timestamp,
-                    usuario: usuario,
-                    versao: versao,
-                    total_records: dadosArray.length,
-                    expires_at: new Date(Date.now() + 60000).toISOString(), // EXPIRA EM 60s
-                    status: 'active'
-                };
+                // LIMPAR DADOS ANTERIORES E INSERIR NOVOS
+                await supabase.from('usuarios').delete().eq('login', 'MINERVA_PATIO_SYNC');
                 
-                // ATUALIZAR DADOS PRINCIPAIS (UPSERT)
-                console.log('📝 Atualizando dados principais...');
-                const { data: dataResult, error: dataError } = await supabase
+                const { data, error } = await supabase
                     .from('usuarios')
-                    .upsert([{
-                        login: 'MINERVA_PATIO_SYNC',
+                    .insert([{
                         nome: 'MINERVA_PATIO_SYNC',
-                        senha: JSON.stringify(dadosParaSupabase),
+                        login: 'MINERVA_PATIO_SYNC',
+                        senha: JSON.stringify(payload),
                         nivel: 'sync',
                         email: 'sync@minervafoods.com',
                         criado_em: timestamp,
                         criado_por: usuario,
                         ativo: true
-                    }], { onConflict: 'login' })
-                    .select();
+                    }]);
 
-                if (dataError) throw dataError;
+                if (error) throw error;
 
-                // ATUALIZAR NOTIFICAÇÃO EM TEMPO REAL (UPSERT)
-                console.log('📡 Atualizando notificação em tempo real...');
-                const { data: notificationResult, error: notificationError } = await supabase
-                    .from('usuarios')
-                    .upsert([{
-                        login: 'MINERVA_NOTIFICATION',
-                        nome: 'MINERVA_NOTIFICATION',
-                        senha: JSON.stringify(notificacao),
-                        nivel: 'notification',
-                        email: 'notification@minervafoods.com',
-                        criado_em: timestamp,
-                        criado_por: usuario,
-                        ativo: true
-                    }], { onConflict: 'login' })
-                    .select();
-
-                if (notificationError) throw notificationError;
-
-                console.log('✅ DADOS E NOTIFICAÇÃO SALVOS NO SUPABASE!');
-                console.log(`📊 Versão: ${versao}, NotificationID: ${notificationId}, Registros: ${dadosArray.length}`);
-                
+                console.log('✅ DADOS SALVOS COM REALTIME!');
                 return versao;
                 
             } catch (error) {
-                console.error('❌ Erro no sistema de notificação:', error);
+                console.error('❌ Erro no Realtime:', error);
                 throw error;
             }
         }
 
-        // ========== PROCESSAMENTO DE NOTIFICAÇÕES EM TEMPO REAL ==========
+        // ========== BROADCAST REALTIME PARA OUTRAS MÁQUINAS ==========
         
-        async function verificarNotificacoesTempoReal() {
+        async function broadcastRealtimeUpdate() {
+            if (!realtimeChannel) return;
+            
             try {
-                if (!supabaseDisponivel || !supabase) return false;
+                console.log('📡 BROADCASTING VIA SUPABASE REALTIME...');
                 
-                // BUSCAR NOTIFICAÇÕES ATIVAS
-                const { data, error } = await supabase
-                    .from('usuarios')
-                    .select('senha, criado_em, criado_por')
-                    .eq('login', 'MINERVA_NOTIFICATION')
-                    .limit(1);
-
-                if (error || !data || data.length === 0) return false;
-
-                const registro = data[0];
-                const notificacao = JSON.parse(registro.senha);
+                const payload = {
+                    type: 'data_update',
+                    timestamp: Date.now(),
+                    usuario: usuarioLogado ? usuarioLogado.nome : 'Sistema',
+                    versao: ultimaVersaoSupabase,
+                    total_records: dadosPatio.length,
+                    message: 'Dados atualizados via importação'
+                };
                 
-                // VERIFICAR SE É UMA NOTIFICAÇÃO NOVA
-                if (notificacao.notification_id !== lastProcessedNotificationId) {
-                    
-                    // VERIFICAR SE NÃO EXPIROU
-                    const agora = new Date().toISOString();
-                    if (notificacao.expires_at > agora) {
-                        
-                        // VERIFICAR SE NÃO É DO PRÓPRIO USUÁRIO
-                        const usuarioAtual = usuarioLogado ? usuarioLogado.nome : '';
-                        if (notificacao.usuario !== usuarioAtual) {
-                            
-                            console.log('🔔 NOTIFICAÇÃO EM TEMPO REAL RECEBIDA!');
-                            console.log(`• ID: ${notificacao.notification_id}`);
-                            console.log(`• Usuário: ${notificacao.usuario}`);
-                            console.log(`• Versão: ${notificacao.versao}`);
-                            console.log(`• Registros: ${notificacao.total_records}`);
-                            
-                            lastProcessedNotificationId = notificacao.notification_id;
-                            localStorage.setItem('lastProcessedNotification', notificacao.notification_id);
-                            
-                            // PROCESSAR NOTIFICAÇÃO
-                            await processarNotificacaoTempoReal(notificacao);
-                            return true;
-                        }
-                    }
-                }
+                // ENVIAR VIA REALTIME CHANNEL
+                const status = await realtimeChannel.send({
+                    type: 'broadcast',
+                    event: 'data_sync',
+                    payload: payload
+                });
                 
-                return false;
+                console.log('📡 Broadcast enviado:', status, payload);
                 
             } catch (error) {
-                console.log('⚠️ Erro ao verificar notificações:', error.message);
-                return false;
+                console.error('❌ Erro no broadcast:', error);
             }
         }
 
-        async function processarNotificacaoTempoReal(notificacao) {
+        function setupSupabaseRealtime() {
             try {
-                console.log('⚡ PROCESSANDO NOTIFICAÇÃO EM TEMPO REAL...');
+                console.log('🔌 CONFIGURANDO SUPABASE REALTIME...');
+                
+                if (!supabaseDisponivel || !supabase) return;
+                
+                // CRIAR CANAL REALTIME
+                realtimeChannel = supabase.channel('minerva_patio_sync', {
+                    config: {
+                        broadcast: { self: false },
+                        presence: { key: usuarioLogado ? usuarioLogado.login : 'anonimo' }
+                    }
+                });
+                
+                // ESCUTAR BROADCASTS
+                realtimeChannel.on('broadcast', { event: 'data_sync' }, (payload) => {
+                    websocketEventCounter++;
+                    document.getElementById('websocketCounter').textContent = websocketEventCounter;
+                    
+                    console.log('📡 REALTIME RECEBIDO:', payload);
+                    
+                    const usuarioAtual = usuarioLogado ? usuarioLogado.nome : '';
+                    if (payload.payload.usuario !== usuarioAtual) {
+                        console.log('⚡ PROCESSANDO ATUALIZAÇÃO EM TEMPO REAL...');
+                        processarAtualizacaoRealtime(payload.payload);
+                    }
+                });
+                
+                // CONECTAR CANAL
+                realtimeChannel.subscribe((status) => {
+                    console.log('🔌 Status Realtime:', status);
+                    
+                    if (status === 'SUBSCRIBED') {
+                        document.getElementById('realtimeStatus').textContent = 'ATIVO';
+                        document.getElementById('realtimeStatus').className = 'sync-value sync-ok';
+                        document.getElementById('websocketStatus').textContent = 'CONECTADO';
+                        document.getElementById('websocketStatus').className = 'sync-value sync-ok';
+                        console.log('✅ SUPABASE REALTIME CONECTADO!');
+                    } else if (status === 'CHANNEL_ERROR') {
+                        document.getElementById('realtimeStatus').textContent = 'ERRO';
+                        document.getElementById('realtimeStatus').className = 'sync-value sync-error';
+                        document.getElementById('websocketStatus').textContent = 'ERRO';
+                        document.getElementById('websocketStatus').className = 'sync-value sync-error';
+                        console.log('❌ ERRO NO REALTIME');
+                    }
+                });
+                
+            } catch (error) {
+                console.error('❌ Erro no setup Realtime:', error);
+                document.getElementById('realtimeStatus').textContent = 'ERRO';
+                document.getElementById('realtimeStatus').className = 'sync-value sync-error';
+            }
+        }
+
+        async function processarAtualizacaoRealtime(payload) {
+            try {
+                console.log('⚡ PROCESSANDO ATUALIZAÇÃO VIA REALTIME...');
                 
                 // BUSCAR DADOS ATUALIZADOS
-                const dadosAtualizados = await buscarDadosAtualizados();
-                
-                if (dadosAtualizados) {
-                    // ATUALIZAR INTERFACE IMEDIATAMENTE
-                    dadosPatio = [...dadosAtualizados.dados];
-                    ultimaVersaoSupabase = dadosAtualizados.versao;
+                const { data, error } = await supabase
+                    .from('usuarios')
+                    .select('senha')
+                    .eq('login', 'MINERVA_PATIO_SYNC')
+                    .order('criado_em', { ascending: false })
+                    .limit(1);
+
+                if (!error && data && data.length > 0) {
+                    const dadosSupabase = JSON.parse(data[0].senha);
+                    const dadosDescomprimidos = JSON.parse(dadosSupabase.dados_patio);
+                    
+                    // ATUALIZAR DADOS GLOBAIS
+                    dadosPatio = [...dadosDescomprimidos];
+                    ultimaVersaoSupabase = dadosSupabase.versao;
                     
                     // SALVAR LOCALMENTE
                     localStorage.setItem('versaoAtualMinerva', ultimaVersaoSupabase.toString());
                     localStorage.setItem('dadosPatioMinerva', JSON.stringify(dadosPatio));
                     
-                    // ATUALIZAR UI INSTANTANEAMENTE
+                    // ATUALIZAR UI IMEDIATAMENTE
                     calcularEAtualizarCards();
                     renderizarTabela();
                     popularFiltros();
                     
-                    // EXIBIR NOTIFICAÇÃO VISUAL
+                    // NOTIFICAÇÃO VISUAL
                     const notification = document.getElementById('syncNotification');
-                    notification.textContent = `⚡ ${notificacao.usuario} atualizou os dados! ${notificacao.total_records} registros`;
+                    notification.textContent = `⚡ ${payload.usuario} atualizou os dados! ${payload.total_records} registros`;
                     notification.classList.add('show');
-                    setTimeout(() => notification.classList.remove('show'), 6000);
+                    setTimeout(() => notification.classList.remove('show'), 5000);
                     
                     // ATUALIZAR TIMESTAMP
-                    atualizarTimestampVisual(`${dadosAtualizados.timestampBR} (${notificacao.usuario})`);
+                    atualizarTimestampVisual(`${dadosSupabase.timestamp_br} (${payload.usuario})`);
                     
                     // SOM DE NOTIFICAÇÃO
                     try {
                         const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmAaAkqU2erFbyUGL3dXQTEAAAAA');
-                        audio.volume = 0.6;
+                        audio.volume = 0.7;
                         audio.play().catch(() => {});
                     } catch (e) {}
                     
-                    console.log('✅ NOTIFICAÇÃO EM TEMPO REAL PROCESSADA!');
+                    console.log('✅ ATUALIZAÇÃO REALTIME PROCESSADA!');
                     
                 } else {
                     console.log('⚠️ Não foi possível buscar dados atualizados');
                 }
                 
             } catch (error) {
-                console.error('❌ Erro ao processar notificação:', error);
-            }
-        }
-
-        async function buscarDadosAtualizados() {
-            try {
-                const { data, error } = await supabase
-                    .from('usuarios')
-                    .select('senha, criado_em, criado_por')
-                    .eq('login', 'MINERVA_PATIO_SYNC')
-                    .limit(1);
-
-                if (error || !data || data.length === 0) return null;
-
-                const registro = data[0];
-                const dadosSupabase = JSON.parse(registro.senha);
-                const dadosDescomprimidos = JSON.parse(dadosSupabase.dados_patio);
-                
-                return {
-                    dados: dadosDescomprimidos,
-                    versao: dadosSupabase.versao,
-                    usuario: dadosSupabase.usuario_update,
-                    timestampBR: dadosSupabase.timestamp_br,
-                    totalRegistros: dadosSupabase.total_records
-                };
-                
-            } catch (error) {
-                console.error('❌ Erro ao buscar dados atualizados:', error);
-                return null;
-            }
-        }
-
-        function enviarNotificacaoTempoReal() {
-            console.log('📣 ENVIANDO NOTIFICAÇÃO EM TEMPO REAL PARA TODAS AS MÁQUINAS...');
-            
-            // A notificação já foi inserida no Supabase durante o salvamento
-            // Aqui só precisamos garantir que o sistema esteja monitorando
-            
-            setTimeout(() => {
-                console.log('⚡ Sistema de notificação em tempo real ativado');
-                desativarModoTempoReal();
-            }, 45000); // Desativar modo tempo real após 45s
-        }
-
-        function ativarModoTempoReal() {
-            realtimeModeActive = true;
-            document.getElementById('modoSync').textContent = 'Tempo Real';
-            document.getElementById('realtimeStatus').textContent = 'ATIVO';
-            document.getElementById('realtimeStatus').className = 'sync-value sync-ok';
-            console.log('⚡ MODO TEMPO REAL ATIVADO');
-        }
-
-        function desativarModoTempoReal() {
-            realtimeModeActive = false;
-            document.getElementById('modoSync').textContent = 'Normal';
-            document.getElementById('realtimeStatus').textContent = 'STANDBY';
-            document.getElementById('realtimeStatus').className = 'sync-value sync-ok';
-            console.log('📱 Modo tempo real desativado');
-        }
-
-        // ========== SINCRONIZAÇÃO PRINCIPAL APRIMORADA ==========
-        
-        async function verificarSincronizacao() {
-            contadorSyncSupabase++;
-            
-            try {
-                // ATUALIZAR CONTADOR VISUAL
-                document.getElementById('contadorSync').textContent = contadorSyncSupabase;
-                document.getElementById('totalRegistros').textContent = dadosPatio.length;
-                
-                // VERIFICAR NOTIFICAÇÕES EM TEMPO REAL PRIMEIRO
-                const notificacaoProcessada = await verificarNotificacoesTempoReal();
-                
-                // VERIFICAÇÃO NORMAL DE DADOS (CASO A NOTIFICAÇÃO FALHE)
-                let dadosNovos = null;
-                
-                if (!notificacaoProcessada && supabaseDisponivel && supabase) {
-                    try {
-                        const { data, error } = await supabase
-                            .from('usuarios')
-                            .select('senha, criado_em, criado_por')
-                            .eq('login', 'MINERVA_PATIO_SYNC')
-                            .limit(1);
-
-                        if (!error && data && data.length > 0) {
-                            const registro = data[0];
-                            const dadosSupabase = JSON.parse(registro.senha);
-                            
-                            // Verificar se a versão é maior OU se o ID da notificação é diferente (caso a versão seja igual mas os dados mudaram)
-                            if (dadosSupabase.versao > ultimaVersaoSupabase) {
-                                const dadosDescomprimidos = JSON.parse(dadosSupabase.dados_patio);
-                                dadosNovos = {
-                                    dados: dadosDescomprimidos,
-                                    versao: dadosSupabase.versao,
-                                    usuario: dadosSupabase.usuario_update,
-                                    timestampBR: dadosSupabase.timestamp_br,
-                                    totalRegistros: dadosSupabase.total_records
-                                };
-                                console.log('🔄 Nova versão encontrada (verificação normal):', dadosSupabase.versao);
-                            }
-                        }
-                        
-                        // Marcar Supabase como OK
-                        document.getElementById('supabaseStatus').textContent = 'CONECTADO';
-                        document.getElementById('supabaseStatus').className = 'sync-value sync-ok';
-                        
-                    } catch (supabaseError) {
-                        console.log('⚠️ Erro verificação Supabase:', supabaseError.message);
-                        document.getElementById('supabaseStatus').textContent = 'ERRO';
-                        document.getElementById('supabaseStatus').className = 'sync-value sync-error';
-                    }
-                }
-
-                // APLICAR DADOS NOVOS SE ENCONTRADOS
-                if (dadosNovos) {
-                    console.log('🔄 Aplicando sincronização normal...');
-                    
-                    dadosPatio = [...dadosNovos.dados];
-                    ultimaVersaoSupabase = dadosNovos.versao;
-                    
-                    localStorage.setItem('versaoAtualMinerva', ultimaVersaoSupabase.toString());
-                    localStorage.setItem('dadosPatioMinerva', JSON.stringify(dadosPatio));
-                    
-                    calcularEAtualizarCards();
-                    renderizarTabela();
-                    popularFiltros();
-                    
-                    atualizarTimestampVisual(`${dadosNovos.timestampBR} (${dadosNovos.usuario})`);
-                    
-                    console.log('✅ Sincronização normal aplicada');
-                    return true;
-                }
-                
-                return false;
-                
-            } catch (error) {
-                console.error('❌ Erro na sincronização:', error);
-                return false;
+                console.error('❌ Erro ao processar atualização Realtime:', error);
             }
         }
 
         function iniciarSincronizacao() {
-            console.log('🔄 INICIANDO SISTEMA DE SINCRONIZAÇÃO EM TEMPO REAL PROFISSIONAL...');
+            console.log('🔄 INICIANDO SUPABASE REALTIME...');
             
-            // INICIALIZAR SUPABASE
             try {
                 supabase = window.supabase.createClient(supabaseConfig.url, supabaseConfig.anonKey);
                 supabaseDisponivel = true;
-                console.log('✅ Supabase conectado para tempo real');
+                console.log('✅ Supabase conectado');
+                
+                // CONFIGURAR REALTIME
+                setupSupabaseRealtime();
+                
+                document.getElementById('supabaseStatus').textContent = 'CONECTADO';
+                document.getElementById('supabaseStatus').className = 'sync-value sync-ok';
                 
             } catch (error) {
                 console.error('❌ Erro ao conectar Supabase:', error);
                 supabaseDisponivel = false;
+                
+                document.getElementById('supabaseStatus').textContent = 'ERRO';
+                document.getElementById('supabaseStatus').className = 'sync-value sync-error';
                 document.getElementById('realtimeStatus').textContent = 'ERRO';
                 document.getElementById('realtimeStatus').className = 'sync-value sync-error';
             }
             
-            // CARREGAR VERSÃO E NOTIFICAÇÃO INICIAL
+            // CARREGAR VERSÃO INICIAL
             const versaoSalva = localStorage.getItem('versaoAtualMinerva');
             if (versaoSalva) {
                 ultimaVersaoSupabase = parseInt(versaoSalva);
+                console.log('📊 Versão inicial:', ultimaVersaoSupabase);
             }
             
-            const ultimaNotificacao = localStorage.getItem('lastProcessedNotification');
-            if (ultimaNotificacao) {
-                lastProcessedNotificationId = ultimaNotificacao;
-            }
-            
-            // VERIFICAR IMEDIATAMENTE
-            verificarSincronizacao();
-            
-            // POLLING ADAPTATIVO PARA TEMPO REAL
-            if (intervalSyncSupabase) {
-                clearInterval(intervalSyncSupabase);
-            }
-            
-            function startRealtimePolling() {
-                // INTERVALO ADAPTATIVO: 500ms no modo tempo real, 2s normal
-                const intervalo = realtimeModeActive ? 500 : 2000;
-                
-                intervalSyncSupabase = setInterval(() => {
-                    if (!isImporting) {
-                        verificarSincronizacao();
-                    }
-                }, intervalo);
-                
-                const modoTexto = realtimeModeActive ? 'TEMPO REAL' : 'Normal';
-                console.log(`🔄 Polling ativo: ${intervalo}ms (${modoTexto})`);
-            }
-            
-            startRealtimePolling();
-            
-            // REAJUSTAR POLLING QUANDO MUDA DE MODO
-            setInterval(() => {
-                if (intervalSyncSupabase) {
-                    clearInterval(intervalSyncSupabase);
-                    startRealtimePolling();
-                }
-            }, 3000); // Verifica a cada 3s
-            
-            console.log('✅ Sistema de sincronização em tempo real iniciado');
+            console.log('✅ Sistema Realtime iniciado');
         }
 
         // ========== RECUPERAÇÃO DE SENHA ==========
@@ -2707,7 +2525,7 @@
                 setTimeout(() => card.classList.remove('updated'), 1000);
             });
             
-            console.log('✅ CARDS ATUALIZADOS COM SISTEMA EM TEMPO REAL!');
+            console.log('✅ CARDS ATUALIZADOS COM REALTIME!');
         }
 
         function atualizarGraficoDescarregando(totalDescarregando) {
@@ -2977,10 +2795,6 @@
         function carregarDadosLocal() {
             console.log('📱 Carregando dados...');
             
-            // VERIFICAR SINCRONIZAÇÃO PRIMEIRO
-            verificarSincronizacao();
-            
-            // CARREGAR DADOS LOCAIS
             const dadosSalvos = localStorage.getItem('dadosPatioMinerva');
             if (dadosSalvos) {
                 try {
@@ -2997,8 +2811,8 @@
                     dadosPatio = [];
                 }
             } else {
-                console.log('📝 Nenhum dado salvo encontrado');
-                calcularEAtualizarCards(); // ZERAR CARDS
+                console.log('📝 Nenhum dado encontrado');
+                calcularEAtualizarCards();
             }
         }
 
@@ -3178,7 +2992,7 @@
         // ========== DOM READY ==========
         
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 SISTEMA COM NOTIFICAÇÃO EM TEMPO REAL PROFISSIONAL');
+            console.log('🚀 SISTEMA COM SUPABASE REALTIME');
             
             const filtros = ['searchPlaca', 'filterStatus', 'filterOrigem', 'filterTipoMercado', 'filterTipoDescarga'];
             
@@ -3194,7 +3008,7 @@
         function iniciarSistema() {
             verificarPermissoes();
             iniciarSincronizacaoTimestamp();
-            iniciarSincronizacao(); // SISTEMA EM TEMPO REAL
+            iniciarSincronizacao(); // SUPABASE REALTIME
             carregarDadosLocal();
         }
 
@@ -3253,8 +3067,9 @@
 
         function fazerLogout() {
             if (confirm('Deseja fazer logout?')) {
-                if (intervalSyncSupabase) {
-                    clearInterval(intervalSyncSupabase);
+                // DESCONECTAR REALTIME
+                if (realtimeChannel) {
+                    realtimeChannel.unsubscribe();
                 }
                 
                 sessionStorage.removeItem('usuarioLogado');
@@ -3552,7 +3367,6 @@
                     backupDadosProtegidos = [];
                     backupCardsProtegidos = {};
                     ultimaVersaoSupabase = 0;
-                    realtimeModeActive = false;
                     
                     calcularEAtualizarCards();
                     renderizarTabela();
@@ -3587,17 +3401,28 @@
         }
 
         function testarSincronizacao() {
-            mostrarAlerta('info', '🔧 Testando sincronização em tempo real...');
+            mostrarAlerta('info', '🔧 Testando Supabase Realtime...');
             
-            ativarModoTempoReal();
-            
-            verificarSincronizacao().then(() => {
-                mostrarAlerta('success', '✅ Sincronização em tempo real testada!');
-                setTimeout(() => desativarModoTempoReal(), 10000);
-            }).catch(error => {
-                mostrarAlerta('error', '❌ Erro no teste de sincronização!');
-                desativarModoTempoReal();
-            });
+            if (realtimeChannel) {
+                const testPayload = {
+                    type: 'test_sync',
+                    timestamp: Date.now(),
+                    usuario: usuarioLogado ? usuarioLogado.nome : 'Sistema',
+                    message: 'Teste de sincronização'
+                };
+                
+                realtimeChannel.send({
+                    type: 'broadcast',
+                    event: 'data_sync',
+                    payload: testPayload
+                }).then(() => {
+                    mostrarAlerta('success', '✅ Teste Realtime enviado!');
+                }).catch(() => {
+                    mostrarAlerta('error', '❌ Erro no teste Realtime!');
+                });
+            } else {
+                mostrarAlerta('error', '❌ Realtime não conectado!');
+            }
         }
 
         function toggleSyncDetails() {
@@ -3641,7 +3466,7 @@
             }
         }
 
-        console.log('🔧✅📊🌐📧⚡ SISTEMA COM SINCRONIZAÇÃO EM TEMPO REAL PROFISSIONAL!');
+        console.log('🔧✅📊🌐📧⚡ SISTEMA COM SUPABASE REALTIME PARA DIFERENTES MÁQUINAS!');
     </script>
 </body>
 </html>
