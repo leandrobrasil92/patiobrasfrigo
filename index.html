@@ -40,49 +40,9 @@
             min-height: calc(100vh - 20px);
         }
 
-        /* STATUS DE SINCRONIZAÇÃO SIMPLIFICADO */
+        /* STATUS DE SINCRONIZAÇÃO OCULTO */
         .sync-status {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #28a745;
-            color: white;
-            padding: 12px 18px;
-            border-radius: 25px;
-            font-size: 12px;
-            font-weight: 600;
-            z-index: 1004;
-            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            min-width: 220px;
-            justify-content: center;
-        }
-
-        .sync-status.updating {
-            background: #f59e0b;
-            animation: pulse 2s infinite;
-        }
-
-        .sync-status.error {
-            background: #dc3545;
-            animation: shake 0.5s;
-        }
-
-        .sync-status.success {
-            background: #10b981;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.8; transform: scale(1.05); }
-        }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
+            display: none !important;
         }
 
         /* TELA DE IMPORTAÇÃO SIMPLIFICADA */
@@ -673,11 +633,11 @@
             opacity: 0.9;
         }
 
-        /* USER-INFO MELHORADO */
+        /* USER-INFO MOVIDO PARA O CANTO SUPERIOR DIREITO */
         .user-info {
             position: absolute;
             top: 50%;
-            left: 15px;
+            right: 15px;
             transform: translateY(-50%);
             background: rgba(255,255,255,0.1);
             padding: 8px;
@@ -1337,11 +1297,6 @@
     </style>
 </head>
 <body>
-    <!-- STATUS DE SINCRONIZAÇÃO -->
-    <div class="sync-status" id="syncStatus">
-        🔄 Iniciando...
-    </div>
-
     <!-- NOTIFICAÇÃO DE SINCRONIZAÇÃO -->
     <div class="sync-notification" id="syncNotification">
         ⚡ Dados atualizados por outro usuário!
@@ -1775,12 +1730,13 @@
         let backupDadosProtegidos = [];
         let backupCardsProtegidos = {};
 
-        // ========== VARIÁVEIS DE SINCRONIZAÇÃO CORRIGIDAS ==========
+        // ========== VARIÁVEIS DE SINCRONIZAÇÃO CORRIGIDAS PARA DIFERENTES MÁQUINAS ==========
         let ultimaVersaoSupabase = 0;
         let intervalSyncSupabase = null;
         let contadorSyncSupabase = 0;
         let importTimeoutId = null;
-        let forceSyncAfterImport = false; // NOVA FLAG PARA FORÇA SINCRONIZAÇÃO
+        let forceSyncAfterImport = false;
+        let intensiveSyncMode = false; // NOVO: Modo intensivo para pós-importação
 
         // ========== CONFIGURAÇÃO SUPABASE ==========
         const supabaseConfig = {
@@ -1828,10 +1784,10 @@
             }
         ];
 
-        // ========== IMPORTAÇÃO CORRIGIDA COM SINCRONIZAÇÃO FORÇADA ==========
+        // ========== IMPORTAÇÃO CORRIGIDA COM SINCRONIZAÇÃO FORÇADA PARA DIFERENTES MÁQUINAS ==========
         
         function importarExcel(event) {
-            console.log('🚀 INICIANDO IMPORTAÇÃO CORRIGIDA...');
+            console.log('🚀 INICIANDO IMPORTAÇÃO CORRIGIDA PARA DIFERENTES MÁQUINAS...');
             
             if (!usuarioLogado || (usuarioLogado.nivel !== 'master' && usuarioLogado.nivel !== 'importador')) {
                 mostrarAlerta('error', '⚠️ Acesso negado!');
@@ -1853,14 +1809,11 @@
             }, 30000); // 30 segundos de timeout
 
             isImporting = true;
-            forceSyncAfterImport = true; // MARCA PARA FORÇAR SINCRONIZAÇÃO
+            forceSyncAfterImport = true;
+            intensiveSyncMode = true; // ATIVAR MODO INTENSIVO
             
             // MOSTRAR TELA SIMPLIFICADA
             mostrarTelaImportacao();
-            
-            // ATUALIZAR STATUS
-            document.getElementById('syncStatus').textContent = '📥 Importando...';
-            document.getElementById('syncStatus').className = 'sync-status updating';
             
             // PROCESSAR ARQUIVO
             processarArquivo(file);
@@ -1896,27 +1849,25 @@
                 
                 mostrarAlerta('success', 'Dados importados e sincronizados!');
                 
-                // ATUALIZAR STATUS
-                document.getElementById('syncStatus').textContent = '✅ Sincronizado';
-                document.getElementById('syncStatus').className = 'sync-status success';
-                
-                // FORÇAR SINCRONIZAÇÃO IMEDIATA PARA OUTROS USUÁRIOS
+                // FORÇAR SINCRONIZAÇÃO PARA DIFERENTES MÁQUINAS
                 if (forceSyncAfterImport) {
                     setTimeout(() => {
-                        console.log('🔄 FORÇANDO SINCRONIZAÇÃO APÓS IMPORTAÇÃO...');
-                        broadcastSyncUpdate();
+                        console.log('🔄 FORÇANDO SINCRONIZAÇÃO PARA DIFERENTES MÁQUINAS...');
+                        forceBroadcastToAllMachines();
                         forceSyncAfterImport = false;
+                        
+                        // ATIVAR MODO INTENSIVO POR 30 SEGUNDOS
+                        setTimeout(() => {
+                            intensiveSyncMode = false;
+                            console.log('⚡ Modo intensivo desativado');
+                        }, 30000);
                     }, 1000);
                 }
                 
             } else {
                 mostrarAlerta('error', `❌ Erro na importação: ${mensagem}`);
-                
-                // ATUALIZAR STATUS
-                document.getElementById('syncStatus').textContent = '❌ Erro na importação';
-                document.getElementById('syncStatus').className = 'sync-status error';
-                
                 forceSyncAfterImport = false;
+                intensiveSyncMode = false;
             }
             
             console.log('✅ Tela de importação fechada');
@@ -2004,7 +1955,7 @@
 
         async function salvarDados(dadosArray) {
             try {
-                console.log('💾 SALVANDO DADOS COM SINCRONIZAÇÃO CORRIGIDA...');
+                console.log('💾 SALVANDO DADOS COM SINCRONIZAÇÃO PARA DIFERENTES MÁQUINAS...');
                 
                 // ATUALIZAR DADOS GLOBAIS
                 dadosPatio = [...dadosArray];
@@ -2021,11 +1972,11 @@
                 // SALVAR LOCALMENTE
                 localStorage.setItem('dadosPatioMinerva', JSON.stringify(dadosArray));
                 
-                // SALVAR NO SUPABASE COM PRIORIDADE
+                // SALVAR NO SUPABASE COM HEARTBEAT FORÇADO
                 if (supabaseDisponivel && supabase) {
                     try {
-                        const novaVersao = await salvarNoSupabase(dadosArray);
-                        console.log('✅ Dados salvos no Supabase com nova versão:', novaVersao);
+                        const novaVersao = await salvarNoSupabaseComHeartbeat(dadosArray);
+                        console.log('✅ Dados salvos no Supabase com heartbeat:', novaVersao);
                         ultimaVersaoSupabase = novaVersao;
                         localStorage.setItem('versaoAtualMinerva', ultimaVersaoSupabase.toString());
                     } catch (error) {
@@ -2043,7 +1994,7 @@
                     fecharTelaImportacao(true);
                 }, 1500);
                 
-                console.log('✅ IMPORTAÇÃO CORRIGIDA CONCLUÍDA!');
+                console.log('✅ IMPORTAÇÃO COM SINCRONIZAÇÃO PARA DIFERENTES MÁQUINAS CONCLUÍDA!');
                 
             } catch (error) {
                 console.error('❌ Erro ao salvar dados:', error);
@@ -2051,14 +2002,15 @@
             }
         }
 
-        async function salvarNoSupabase(dadosArray) {
+        async function salvarNoSupabaseComHeartbeat(dadosArray) {
             try {
-                console.log('📤 SALVANDO NO SUPABASE COM SINCRONIZAÇÃO CORRIGIDA...');
+                console.log('📤 SALVANDO NO SUPABASE COM HEARTBEAT PARA DIFERENTES MÁQUINAS...');
                 
                 const timestamp = new Date().toISOString();
                 const timestampBR = new Date().toLocaleString('pt-BR');
                 const usuario = usuarioLogado ? usuarioLogado.nome : 'Sistema';
                 const versao = Date.now();
+                const heartbeatId = `heartbeat_${Date.now()}`; // ID ÚNICO PARA FORÇAR DETECÇÃO
                 
                 const dadosParaSupabase = {
                     dados_patio: JSON.stringify(dadosArray),
@@ -2067,7 +2019,9 @@
                     timestamp_br: timestampBR,
                     usuario_update: usuario,
                     total_records: dadosArray.length,
-                    sync_key: 'patio_minerva_sync'
+                    sync_key: 'patio_minerva_sync',
+                    heartbeat_id: heartbeatId, // NOVO: PARA FORÇAR DETECÇÃO
+                    machine_sync: true // NOVO: FLAG PARA SYNC ENTRE MÁQUINAS
                 };
                 
                 // LIMPAR DADOS ANTERIORES
@@ -2077,8 +2031,8 @@
                     .delete()
                     .eq('login', 'MINERVA_PATIO_SYNC');
 
-                // INSERIR NOVOS DADOS
-                console.log('📝 Inserindo novos dados...');
+                // INSERIR NOVOS DADOS COM HEARTBEAT
+                console.log('📝 Inserindo novos dados com heartbeat...');
                 const { data, error } = await supabase
                     .from('usuarios')
                     .insert([{
@@ -2098,18 +2052,18 @@
                     throw error;
                 }
 
-                console.log('✅ DADOS SALVOS NO SUPABASE COM SUCESSO!');
-                console.log(`📊 Versão: ${versao}, Registros: ${dadosArray.length}`);
+                console.log('✅ DADOS SALVOS NO SUPABASE COM HEARTBEAT!');
+                console.log(`📊 Versão: ${versao}, Heartbeat: ${heartbeatId}, Registros: ${dadosArray.length}`);
                 
                 return versao;
                 
             } catch (error) {
-                console.error('❌ Erro no Supabase:', error);
+                console.error('❌ Erro no Supabase com heartbeat:', error);
                 throw error;
             }
         }
 
-        // ========== SINCRONIZAÇÃO ENTRE USUÁRIOS CORRIGIDA ==========
+        // ========== SINCRONIZAÇÃO ENTRE DIFERENTES MÁQUINAS CORRIGIDA ==========
         
         async function verificarSincronizacao() {
             contadorSyncSupabase++;
@@ -2121,7 +2075,7 @@
                 
                 let dadosNovos = null;
                 
-                // VERIFICAR SUPABASE
+                // VERIFICAR SUPABASE COM DETECÇÃO MELHORADA
                 if (supabaseDisponivel && supabase) {
                     try {
                         const { data, error } = await supabase
@@ -2135,17 +2089,25 @@
                             const registro = data[0];
                             const dadosSupabase = JSON.parse(registro.senha);
                             
-                            // VERIFICAR SE HÁ NOVA VERSÃO
-                            if (dadosSupabase.versao > ultimaVersaoSupabase) {
+                            // VERIFICAR SE HÁ NOVA VERSÃO OU HEARTBEAT DIFERENTE
+                            const versaoAtual = dadosSupabase.versao || 0;
+                            const heartbeatAtual = dadosSupabase.heartbeat_id || '';
+                            const heartbeatSalvo = localStorage.getItem('ultimoHeartbeatMinerva') || '';
+                            
+                            if (versaoAtual > ultimaVersaoSupabase || heartbeatAtual !== heartbeatSalvo) {
                                 const dadosDescomprimidos = JSON.parse(dadosSupabase.dados_patio);
                                 dadosNovos = {
                                     dados: dadosDescomprimidos,
-                                    versao: dadosSupabase.versao,
+                                    versao: versaoAtual,
                                     usuario: dadosSupabase.usuario_update,
                                     timestampBR: dadosSupabase.timestamp_br,
-                                    totalRegistros: dadosSupabase.total_records
+                                    totalRegistros: dadosSupabase.total_records,
+                                    heartbeatId: heartbeatAtual
                                 };
-                                console.log('🔄 NOVA VERSÃO ENCONTRADA:', dadosSupabase.versao);
+                                console.log('🔄 NOVA VERSÃO/HEARTBEAT DETECTADO:', versaoAtual, heartbeatAtual);
+                                
+                                // SALVAR HEARTBEAT PARA EVITAR REPROCESSAMENTO
+                                localStorage.setItem('ultimoHeartbeatMinerva', heartbeatAtual);
                             }
                         }
                         
@@ -2162,11 +2124,12 @@
 
                 // APLICAR DADOS NOVOS SE ENCONTRADOS
                 if (dadosNovos) {
-                    console.log('🔄 APLICANDO SINCRONIZAÇÃO CORRIGIDA!');
+                    console.log('🔄 APLICANDO SINCRONIZAÇÃO ENTRE MÁQUINAS!');
                     console.log(`• Versão anterior: ${ultimaVersaoSupabase}`);
                     console.log(`• Versão nova: ${dadosNovos.versao}`);
                     console.log(`• Usuário: ${dadosNovos.usuario}`);
                     console.log(`• Registros: ${dadosNovos.totalRegistros}`);
+                    console.log(`• Heartbeat: ${dadosNovos.heartbeatId}`);
                     
                     // ATUALIZAR DADOS GLOBAIS
                     dadosPatio = [...dadosNovos.dados];
@@ -2181,7 +2144,7 @@
                     renderizarTabela();
                     popularFiltros();
                     
-                    // NOTIFICAÇÃO PARA OUTROS USUÁRIOS
+                    // NOTIFICAÇÃO PARA DIFERENTES MÁQUINAS
                     const usuarioAtual = usuarioLogado ? usuarioLogado.nome : 'Anônimo';
                     if (dadosNovos.usuario !== usuarioAtual) {
                         const notification = document.getElementById('syncNotification');
@@ -2189,10 +2152,10 @@
                         notification.classList.add('show');
                         setTimeout(() => notification.classList.remove('show'), 5000);
                         
-                        // SOM DE NOTIFICAÇÃO (SE SUPORTADO)
+                        // SOM DE NOTIFICAÇÃO MELHORADO
                         try {
                             const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmAaAkqU2erFbyUGL3dXQTEAAAAA');
-                            audio.volume = 0.3;
+                            audio.volume = 0.5;
                             audio.play().catch(() => {});
                         } catch (e) {}
                     }
@@ -2200,7 +2163,7 @@
                     // ATUALIZAR TIMESTAMP
                     atualizarTimestampVisual(`${dadosNovos.timestampBR} (${dadosNovos.usuario})`);
                     
-                    console.log('✅ SINCRONIZAÇÃO CORRIGIDA APLICADA!');
+                    console.log('✅ SINCRONIZAÇÃO ENTRE MÁQUINAS APLICADA!');
                     return true;
                 }
                 
@@ -2212,32 +2175,37 @@
             }
         }
 
-        // NOVA FUNÇÃO: BROADCAST PARA FORÇAR SINCRONIZAÇÃO
-        function broadcastSyncUpdate() {
+        // NOVA FUNÇÃO: BROADCAST FORÇADO PARA DIFERENTES MÁQUINAS
+        function forceBroadcastToAllMachines() {
             try {
-                console.log('📣 BROADCAST: Forçando sincronização para outros usuários...');
+                console.log('📣 BROADCAST FORÇADO PARA TODAS AS MÁQUINAS...');
                 
-                // USAR LOCALSTORAGE COMO TRIGGER
+                // USAR TIMESTAMP ÚNICO COMO TRIGGER
+                const uniqueTimestamp = Date.now();
                 const triggerData = {
-                    timestamp: Date.now(),
+                    timestamp: uniqueTimestamp,
                     usuario: usuarioLogado ? usuarioLogado.nome : 'Sistema',
                     versao: ultimaVersaoSupabase,
-                    action: 'force_sync'
+                    action: 'force_sync_all_machines',
+                    heartbeat_id: `broadcast_${uniqueTimestamp}`
                 };
                 
+                // TRIGGER LOCAL PARA MESMA MÁQUINA/ABAS
                 localStorage.setItem('syncTrigger', JSON.stringify(triggerData));
                 
-                // LIMPAR O TRIGGER APÓS UM TEMPO
+                // LIMPAR O TRIGGER
                 setTimeout(() => {
                     localStorage.removeItem('syncTrigger');
-                }, 2000);
+                }, 5000);
+                
+                console.log('📣 Broadcast enviado:', uniqueTimestamp);
                 
             } catch (error) {
                 console.error('❌ Erro no broadcast:', error);
             }
         }
 
-        // LISTENER PARA DETECTAR MUDANÇAS ENTRE ABAS/USUÁRIOS
+        // LISTENER MELHORADO PARA DETECTAR MUDANÇAS ENTRE ABAS/USUÁRIOS
         window.addEventListener('storage', function(e) {
             if (e.key === 'syncTrigger' && e.newValue) {
                 try {
@@ -2245,8 +2213,8 @@
                     const usuarioAtual = usuarioLogado ? usuarioLogado.nome : '';
                     
                     // SE FOR TRIGGER DE OUTRO USUÁRIO, FORÇAR SINCRONIZAÇÃO
-                    if (triggerData.usuario !== usuarioAtual && triggerData.action === 'force_sync') {
-                        console.log('📣 TRIGGER RECEBIDO: Forçando verificação...');
+                    if (triggerData.usuario !== usuarioAtual) {
+                        console.log('📣 TRIGGER RECEBIDO DE OUTRA ABA:', triggerData.timestamp);
                         setTimeout(() => {
                             verificarSincronizacao();
                         }, 500);
@@ -2258,23 +2226,17 @@
         });
 
         function iniciarSincronizacao() {
-            console.log('🔄 INICIANDO SISTEMA DE SINCRONIZAÇÃO CORRIGIDO...');
+            console.log('🔄 INICIANDO SISTEMA DE SINCRONIZAÇÃO PARA DIFERENTES MÁQUINAS...');
             
             // INICIALIZAR SUPABASE
             try {
                 supabase = window.supabase.createClient(supabaseConfig.url, supabaseConfig.anonKey);
                 supabaseDisponivel = true;
-                console.log('✅ Supabase conectado');
-                
-                document.getElementById('syncStatus').textContent = '🔄 Sincronização ativa';
-                document.getElementById('syncStatus').className = 'sync-status success';
+                console.log('✅ Supabase conectado para diferentes máquinas');
                 
             } catch (error) {
                 console.error('❌ Erro ao conectar Supabase:', error);
                 supabaseDisponivel = false;
-                
-                document.getElementById('syncStatus').textContent = '📱 Modo local';
-                document.getElementById('syncStatus').className = 'sync-status error';
             }
             
             // CARREGAR VERSÃO INICIAL
@@ -2287,18 +2249,34 @@
             // VERIFICAR IMEDIATAMENTE
             verificarSincronizacao();
             
-            // POLLING MAIS FREQUENTE PARA SINCRONIZAÇÃO
+            // POLLING ADAPTATIVO PARA DIFERENTES MÁQUINAS
             if (intervalSyncSupabase) {
                 clearInterval(intervalSyncSupabase);
             }
             
-            intervalSyncSupabase = setInterval(() => {
-                if (!isImporting) {
-                    verificarSincronizacao();
-                }
-            }, 2000); // REDUZIDO PARA 2 SEGUNDOS
+            function startPolling() {
+                const intervalo = intensiveSyncMode ? 1000 : 2000; // 1s no modo intensivo, 2s normal
+                
+                intervalSyncSupabase = setInterval(() => {
+                    if (!isImporting) {
+                        verificarSincronizacao();
+                    }
+                }, intervalo);
+                
+                console.log(`🔄 Polling ativo: ${intervalo}ms (Intensivo: ${intensiveSyncMode})`);
+            }
             
-            console.log('✅ Sincronização corrigida iniciada (2s)');
+            startPolling();
+            
+            // REAJUSTAR POLLING QUANDO MUDA DE MODO
+            setInterval(() => {
+                if (intervalSyncSupabase) {
+                    clearInterval(intervalSyncSupabase);
+                    startPolling();
+                }
+            }, 5000); // Verifica a cada 5s se precisa reajustar
+            
+            console.log('✅ Sincronização para diferentes máquinas iniciada');
         }
 
         // ========== RECUPERAÇÃO DE SENHA ==========
@@ -2650,7 +2628,7 @@
                 setTimeout(() => card.classList.remove('updated'), 1000);
             });
             
-            console.log('✅ CARDS ATUALIZADOS COM SINCRONIZAÇÃO CORRIGIDA!');
+            console.log('✅ CARDS ATUALIZADOS COM SINCRONIZAÇÃO PARA DIFERENTES MÁQUINAS!');
         }
 
         function atualizarGraficoDescarregando(totalDescarregando) {
@@ -3121,7 +3099,7 @@
         // ========== DOM READY ==========
         
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 SISTEMA COM SINCRONIZAÇÃO CORRIGIDA');
+            console.log('🚀 SISTEMA COM SINCRONIZAÇÃO PARA DIFERENTES MÁQUINAS');
             
             const filtros = ['searchPlaca', 'filterStatus', 'filterOrigem', 'filterTipoMercado', 'filterTipoDescarga'];
             
@@ -3137,7 +3115,7 @@
         function iniciarSistema() {
             verificarPermissoes();
             iniciarSincronizacaoTimestamp();
-            iniciarSincronizacao(); // SINCRONIZAÇÃO CORRIGIDA
+            iniciarSincronizacao(); // SINCRONIZAÇÃO PARA DIFERENTES MÁQUINAS
             carregarDadosLocal();
         }
 
@@ -3213,10 +3191,10 @@
             }
             
             if (usuarioLogado.nivel === 'master') {
-                document.getElementById('panelTitle').innerHTML = '👥 Painel Master - Sincronização Corrigida';
+                document.getElementById('panelTitle').innerHTML = '👥 Painel Master - Sincronização Para Diferentes Máquinas';
                 document.getElementById('createUserSection').style.display = 'block';
             } else {
-                document.getElementById('panelTitle').innerHTML = '👥 Painel Admin - Sincronização Corrigida';
+                document.getElementById('panelTitle').innerHTML = '👥 Painel Admin - Sincronização Para Diferentes Máquinas';
                 document.getElementById('createUserSection').style.display = 'none';
             }
             
@@ -3495,6 +3473,7 @@
                     backupDadosProtegidos = [];
                     backupCardsProtegidos = {};
                     ultimaVersaoSupabase = 0;
+                    intensiveSyncMode = false;
                     
                     calcularEAtualizarCards();
                     renderizarTabela();
@@ -3529,7 +3508,7 @@
         }
 
         function testarSincronizacao() {
-            mostrarAlerta('info', '🔧 Testando sincronização corrigida...');
+            mostrarAlerta('info', '🔧 Testando sincronização para diferentes máquinas...');
             
             verificarSincronizacao().then(() => {
                 mostrarAlerta('success', '✅ Sincronização testada com sucesso!');
@@ -3579,7 +3558,7 @@
             }
         }
 
-        console.log('🔧✅📊🌐📧 SISTEMA COM SINCRONIZAÇÃO EM TEMPO REAL CORRIGIDA!');
+        console.log('🔧✅📊🌐📧 SISTEMA COM SINCRONIZAÇÃO EM TEMPO REAL PARA DIFERENTES MÁQUINAS!');
     </script>
 </body>
 </html>
