@@ -40,7 +40,7 @@
             min-height: calc(100vh - 20px);
         }
 
-        /* TELA DE IMPORTAÇÃO SIMPLIFICADA */
+        /* TELA DE IMPORTAÇÃO COM PONTINHOS ANIMADOS */
         .import-indicator {
             position: fixed;
             top: 0;
@@ -64,14 +64,33 @@
         .import-indicator h2 {
             font-size: 36px;
             margin-bottom: 30px;
-            animation: importPulse 1.5s infinite;
             color: #10b981;
             font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        @keyframes importPulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.1); opacity: 0.8; }
+        .dots {
+            display: inline-flex;
+            gap: 4px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #10b981;
+            animation: dotAnimation 1.5s infinite ease-in-out;
+        }
+
+        .dot:nth-child(1) { animation-delay: 0s; }
+        .dot:nth-child(2) { animation-delay: 0.3s; }
+        .dot:nth-child(3) { animation-delay: 0.6s; }
+
+        @keyframes dotAnimation {
+            0%, 60%, 100% { opacity: 0.3; transform: scale(0.8); }
+            30% { opacity: 1; transform: scale(1.2); }
         }
 
         /* BANNER DE SUCESSO */
@@ -1297,9 +1316,16 @@
         ⚡ Dados atualizados por outro usuário!
     </div>
 
-    <!-- TELA DE IMPORTAÇÃO SIMPLIFICADA -->
+    <!-- TELA DE IMPORTAÇÃO COM PONTINHOS ANIMADOS -->
     <div class="import-indicator" id="importIndicator">
-        <h2>📥 Importando arquivo...</h2>
+        <h2>
+            📥 Importando Arquivos
+            <div class="dots">
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+            </div>
+        </h2>
     </div>
 
     <div class="import-success-banner" id="importSuccessBanner">
@@ -1384,7 +1410,7 @@
                 <div class="sync-header">
                     <div class="sync-title">
                         <span id="syncIcon">✅</span>
-                        <span id="syncTitle">Sistema: Sincronização Corrigida</span>
+                        <span id="syncTitle">Sistema: Sincronização Via Internet</span>
                     </div>
                     <button class="sync-toggle" id="syncToggle" onclick="toggleSyncDetails()">▼</button>
                 </div>
@@ -1395,11 +1421,11 @@
                         <span class="sync-value sync-ok" id="supabaseStatus">CONECTADO</span>
                     </div>
                     <div class="sync-item">
-                        <span class="sync-label">Sincronização:</span>
-                        <span class="sync-value sync-ok" id="syncStatusDetail">FUNCIONANDO</span>
+                        <span class="sync-label">Internet Sync:</span>
+                        <span class="sync-value sync-ok" id="internetSyncStatus">ATIVO</span>
                     </div>
                     <div class="sync-item">
-                        <span class="sync-label">Última Verificação:</span>
+                        <span class="sync-label">Último Check:</span>
                         <span class="sync-value sync-ok" id="lastCheckStatus">-</span>
                     </div>
                     <div class="sync-item">
@@ -1409,11 +1435,11 @@
                 </div>
                 
                 <button class="sync-test-btn" id="syncTestBtn" onclick="testarSincronizacao()">
-                    🔧 TESTAR SINCRONIZAÇÃO
+                    🔧 TESTAR SINCRONIZAÇÃO VIA INTERNET
                 </button>
                 
                 <div style="text-align: center; font-size: 10px; color: #6b7280; margin-top: 8px;" id="syncLastUpdate">
-                    <div>🔄 Verificações: <span id="contadorSync">0</span></div>
+                    <div>🔄 Checks: <span id="contadorSync">0</span></div>
                     <div>📊 Registros: <span id="totalRegistros">0</span></div>
                 </div>
             </div>
@@ -1725,12 +1751,13 @@
         let backupDadosProtegidos = [];
         let backupCardsProtegidos = {};
 
-        // ========== SISTEMA DE SINCRONIZAÇÃO VIA INTERNET CORRIGIDO ==========
-        let ultimoTimestampSupabase = '';
+        // ========== SISTEMA DE SINCRONIZAÇÃO VIA INTERNET ROBUSTO ==========
+        let ultimoHashSupabase = '';
         let intervalSyncSupabase = null;
         let contadorSyncSupabase = 0;
         let importTimeoutId = null;
-        let verificandoSync = false;
+        let sincronizandoViaInternet = false;
+        let forcarProximaVerificacao = false;
 
         // ========== CONFIGURAÇÃO SUPABASE ==========
         const supabaseConfig = {
@@ -1778,10 +1805,10 @@
             }
         ];
 
-        // ========== IMPORTAÇÃO COM SINCRONIZAÇÃO VIA INTERNET ==========
+        // ========== IMPORTAÇÃO COM SINCRONIZAÇÃO VIA INTERNET ROBUSTA ==========
         
         function importarExcel(event) {
-            console.log('🚀 INICIANDO IMPORTAÇÃO COM SINCRONIZAÇÃO VIA INTERNET...');
+            console.log('🚀 INICIANDO IMPORTAÇÃO COM SINCRONIZAÇÃO VIA INTERNET ROBUSTA...');
             
             if (!usuarioLogado || (usuarioLogado.nivel !== 'master' && usuarioLogado.nivel !== 'importador')) {
                 mostrarAlerta('error', '⚠️ Acesso negado!');
@@ -1810,7 +1837,7 @@
         function mostrarTelaImportacao() {
             const indicator = document.getElementById('importIndicator');
             indicator.classList.add('show');
-            console.log('📥 Tela de importação exibida');
+            console.log('📥 Tela de importação com pontinhos animados exibida');
         }
 
         function fecharTelaImportacao(sucesso = true, mensagem = '') {
@@ -1831,7 +1858,12 @@
                 banner.classList.add('show');
                 setTimeout(() => banner.classList.remove('show'), 4000);
                 
-                mostrarAlerta('success', 'Dados importados e sincronizados!');
+                mostrarAlerta('success', 'Dados importados e sincronizados via internet!');
+                
+                // FORÇAR SINCRONIZAÇÃO VIA INTERNET
+                setTimeout(() => {
+                    forcarSincronizacaoInternet();
+                }, 1000);
                 
             } else {
                 mostrarAlerta('error', `❌ Erro na importação: ${mensagem}`);
@@ -1920,7 +1952,7 @@
 
         async function salvarDados(dadosArray) {
             try {
-                console.log('💾 SALVANDO DADOS COM SINCRONIZAÇÃO VIA INTERNET...');
+                console.log('💾 SALVANDO DADOS COM SINCRONIZAÇÃO ROBUSTA VIA INTERNET...');
                 
                 dadosPatio = [...dadosArray];
                 calcularEAtualizarCards();
@@ -1928,11 +1960,11 @@
                 popularFiltros();
                 localStorage.setItem('dadosPatioMinerva', JSON.stringify(dadosArray));
                 
-                // SALVAR NO SUPABASE DE FORMA FORÇADA
+                // SALVAR NO SUPABASE COM HASH ÚNICO PARA DETECÇÃO
                 if (supabaseDisponivel && supabase) {
                     try {
-                        await salvarNoSupabaseForcado(dadosArray);
-                        console.log('✅ Dados salvos no Supabase via internet');
+                        await salvarComHashUnico(dadosArray);
+                        console.log('✅ Dados salvos com hash único no Supabase');
                     } catch (error) {
                         console.log('⚠️ Erro no Supabase:', error.message);
                     }
@@ -1944,7 +1976,7 @@
                 
                 setTimeout(() => fecharTelaImportacao(true), 1500);
                 
-                console.log('✅ SALVAMENTO VIA INTERNET CONCLUÍDO!');
+                console.log('✅ SALVAMENTO ROBUSTO VIA INTERNET CONCLUÍDO!');
                 
             } catch (error) {
                 console.error('❌ Erro ao salvar dados:', error);
@@ -1952,46 +1984,52 @@
             }
         }
 
-        async function salvarNoSupabaseForcado(dadosArray) {
+        async function salvarComHashUnico(dadosArray) {
             try {
-                console.log('📤 SALVANDO NO SUPABASE COM FORÇA TOTAL...');
+                console.log('📤 SALVANDO COM HASH ÚNICO PARA SINCRONIZAÇÃO VIA INTERNET...');
                 
                 const agora = new Date();
                 const timestamp = agora.toISOString();
                 const timestampBR = agora.toLocaleString('pt-BR');
                 const usuario = usuarioLogado ? usuarioLogado.nome : 'Sistema';
-                const timestampUnico = Date.now();
+                
+                // CRIAR HASH ÚNICO BASEADO NO CONTEÚDO + TIMESTAMP
+                const conteudoString = JSON.stringify(dadosArray) + timestamp + usuario;
+                const hashUnico = btoa(conteudoString).slice(-20) + Date.now();
                 
                 const dadosCompletos = {
                     dados_patio: JSON.stringify(dadosArray),
                     timestamp_update: timestamp,
                     timestamp_br: timestampBR,
-                    timestamp_unico: timestampUnico,
+                    hash_unico: hashUnico,
                     usuario_update: usuario,
                     total_records: dadosArray.length,
-                    sync_key: 'patio_minerva_sync'
+                    sync_key: 'PATIO_INTERNET_SYNC'
                 };
                 
-                // PRIMEIRO: DELETAR TODOS OS REGISTROS ANTIGOS
-                console.log('🧹 Limpando dados antigos...');
+                // ESTRATÉGIA: CRIAR REGISTRO COM ID FIXO PARA SINCRONIZAÇÃO VIA INTERNET
+                const registroSyncId = 'MINERVA_INTERNET_SYNC_MASTER';
+                
+                console.log('🧹 Removendo dados antigos...');
+                // DELETAR REGISTROS ANTIGOS
                 await supabase
                     .from('usuarios')
                     .delete()
-                    .eq('nome', 'PATIO_DATA_SYNC');
+                    .eq('login', registroSyncId);
                 
-                // AGUARDAR UM POUCO
-                await new Promise(resolve => setTimeout(resolve, 500));
+                // AGUARDAR PROPAGAÇÃO
+                await new Promise(resolve => setTimeout(resolve, 1000));
                 
-                // SEGUNDO: INSERIR DADOS NOVOS
-                console.log('📝 Inserindo dados novos...');
+                console.log('📝 Inserindo dados com hash único...');
+                // INSERIR NOVO REGISTRO
                 const { data, error } = await supabase
                     .from('usuarios')
                     .insert([{
-                        nome: 'PATIO_DATA_SYNC',
-                        login: `PATIO_SYNC_${timestampUnico}`,
+                        nome: 'MINERVA_PATIO_INTERNET_SYNC',
+                        login: registroSyncId,
                         senha: JSON.stringify(dadosCompletos),
-                        nivel: 'sync_data',
-                        email: 'sync@minervafoods.com',
+                        nivel: 'internet_sync',
+                        email: 'internetsync@minervafoods.com',
                         criado_em: timestamp,
                         criado_por: usuario,
                         ativo: true
@@ -1999,31 +2037,46 @@
                     .select();
 
                 if (error) {
-                    console.error('❌ Erro ao inserir:', error);
+                    console.error('❌ Erro ao inserir dados:', error);
                     throw error;
                 }
 
-                console.log('✅ DADOS SALVOS COM FORÇA!');
-                console.log(`📊 Timestamp único: ${timestampUnico}, Registros: ${dadosArray.length}`);
+                console.log('✅ DADOS SALVOS COM HASH ÚNICO!');
+                console.log(`📊 Hash: ${hashUnico}, Registros: ${dadosArray.length}`);
                 
-                // SALVAR TIMESTAMP LOCALMENTE
-                ultimoTimestampSupabase = timestampUnico.toString();
-                localStorage.setItem('ultimoTimestampSync', ultimoTimestampSupabase);
+                // SALVAR HASH LOCALMENTE
+                ultimoHashSupabase = hashUnico;
+                localStorage.setItem('ultimoHashSupabase', ultimoHashSupabase);
                 
-                return timestampUnico;
+                return hashUnico;
                 
             } catch (error) {
-                console.error('❌ Erro no salvamento forçado:', error);
+                console.error('❌ Erro no salvamento com hash:', error);
                 throw error;
             }
         }
 
-        // ========== VERIFICAÇÃO DE SINCRONIZAÇÃO VIA INTERNET ==========
+        // ========== FUNÇÃO PARA FORÇAR SINCRONIZAÇÃO ==========
         
-        async function verificarSincronizacaoInternet() {
-            if (verificandoSync || isImporting) return;
+        async function forcarSincronizacaoInternet() {
+            console.log('⚡ FORÇANDO SINCRONIZAÇÃO VIA INTERNET...');
             
-            verificandoSync = true;
+            forcarProximaVerificacao = true;
+            
+            // EXECUTAR MÚLTIPLAS VERIFICAÇÕES PARA GARANTIR
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => {
+                    verificarSincronizacaoRobustaInternet();
+                }, i * 1000);
+            }
+        }
+
+        // ========== VERIFICAÇÃO ROBUSTA VIA INTERNET ==========
+        
+        async function verificarSincronizacaoRobustaInternet() {
+            if (sincronizandoViaInternet && !forcarProximaVerificacao) return;
+            
+            sincronizandoViaInternet = true;
             contadorSyncSupabase++;
             
             try {
@@ -2031,23 +2084,25 @@
                 document.getElementById('totalRegistros').textContent = dadosPatio.length;
                 
                 if (!supabaseDisponivel || !supabase) {
-                    document.getElementById('lastCheckStatus').textContent = 'SEM CONEXÃO';
-                    document.getElementById('lastCheckStatus').className = 'sync-value sync-error';
+                    document.getElementById('internetSyncStatus').textContent = 'OFFLINE';
+                    document.getElementById('internetSyncStatus').className = 'sync-value sync-error';
                     return;
                 }
                 
-                // BUSCAR DADOS MAIS RECENTES
-                console.log(`🔍 Verificando sincronização ${contadorSyncSupabase}...`);
+                console.log(`🌐 Verificando dados via internet ${contadorSyncSupabase}...`);
                 
+                // BUSCAR DADOS DO REGISTRO MASTER
                 const { data, error } = await supabase
                     .from('usuarios')
-                    .select('login, senha, criado_em, criado_por')
-                    .eq('nome', 'PATIO_DATA_SYNC')
+                    .select('senha, criado_em, criado_por')
+                    .eq('login', 'MINERVA_INTERNET_SYNC_MASTER')
                     .order('criado_em', { ascending: false })
                     .limit(1);
 
                 if (error) {
-                    console.log('⚠️ Erro ao verificar:', error.message);
+                    console.log('⚠️ Erro busca Supabase:', error.message);
+                    document.getElementById('internetSyncStatus').textContent = 'ERRO';
+                    document.getElementById('internetSyncStatus').className = 'sync-value sync-error';
                     document.getElementById('lastCheckStatus').textContent = 'ERRO';
                     document.getElementById('lastCheckStatus').className = 'sync-value sync-error';
                     return;
@@ -2055,73 +2110,80 @@
 
                 if (!data || data.length === 0) {
                     console.log('📝 Nenhum dado encontrado no Supabase');
+                    document.getElementById('internetSyncStatus').textContent = 'VAZIO';
+                    document.getElementById('internetSyncStatus').className = 'sync-value sync-error';
                     document.getElementById('lastCheckStatus').textContent = 'VAZIO';
                     document.getElementById('lastCheckStatus').className = 'sync-value sync-error';
                     return;
                 }
 
-                const registro = data[0];
-                const dadosSupabase = JSON.parse(registro.senha);
-                const timestampSupabase = dadosSupabase.timestamp_unico.toString();
+                const dadosSupabase = JSON.parse(data[0].senha);
+                const hashSupabase = dadosSupabase.hash_unico;
                 
-                console.log(`🔍 Timestamp Supabase: ${timestampSupabase}`);
-                console.log(`📱 Timestamp Local: ${ultimoTimestampSupabase}`);
+                console.log(`🔍 Hash Supabase: ${hashSupabase}`);
+                console.log(`📱 Hash Local: ${ultimoHashSupabase}`);
                 
-                // VERIFICAR SE HÁ ATUALIZAÇÃO
-                if (timestampSupabase !== ultimoTimestampSupabase) {
-                    console.log('⚡ NOVA ATUALIZAÇÃO DETECTADA VIA INTERNET!');
+                // VERIFICAR SE HASH É DIFERENTE = DADOS NOVOS
+                if (hashSupabase !== ultimoHashSupabase || forcarProximaVerificacao) {
+                    console.log('⚡ HASH DIFERENTE = DADOS NOVOS VIA INTERNET!');
                     
                     const usuarioAtual = usuarioLogado ? usuarioLogado.nome : '';
                     
-                    // SE FOR DE OUTRO USUÁRIO, APLICAR ATUALIZAÇÃO
-                    if (dadosSupabase.usuario_update !== usuarioAtual) {
-                        console.log(`📊 Aplicando dados de: ${dadosSupabase.usuario_update}`);
-                        await aplicarDadosDoSupabase(dadosSupabase);
+                    // APLICAR DADOS SE FOR DE OUTRO USUÁRIO OU FORÇADO
+                    if (dadosSupabase.usuario_update !== usuarioAtual || forcarProximaVerificacao) {
+                        console.log(`📊 Aplicando dados via internet de: ${dadosSupabase.usuario_update}`);
                         
-                        // NOTIFICAR USUÁRIO
-                        const notification = document.getElementById('syncNotification');
-                        notification.textContent = `⚡ ${dadosSupabase.usuario_update} atualizou os dados via internet! ${dadosSupabase.total_records} registros`;
-                        notification.classList.add('show');
-                        setTimeout(() => notification.classList.remove('show'), 6000);
+                        await aplicarDadosViaInternet(dadosSupabase);
                         
-                        // SOM DE NOTIFICAÇÃO
-                        try {
-                            const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmAaAkqU2erFbyUGL3dXQTEAAAAA');
-                            audio.volume = 0.8;
-                            audio.play().catch(() => {});
-                        } catch (e) {}
+                        // NOTIFICAR USUÁRIO SE FOR DE OUTRO
+                        if (dadosSupabase.usuario_update !== usuarioAtual) {
+                            const notification = document.getElementById('syncNotification');
+                            notification.textContent = `⚡ ${dadosSupabase.usuario_update} atualizou via internet! ${dadosSupabase.total_records} registros`;
+                            notification.classList.add('show');
+                            setTimeout(() => notification.classList.remove('show'), 6000);
+                            
+                            // SOM DE NOTIFICAÇÃO
+                            try {
+                                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmAaAkqU2erFbyUGL3dXQTEAAAAA');
+                                audio.volume = 0.8;
+                                audio.play().catch(() => {});
+                            } catch (e) {}
+                        }
                     }
                     
-                    // ATUALIZAR TIMESTAMP LOCAL
-                    ultimoTimestampSupabase = timestampSupabase;
-                    localStorage.setItem('ultimoTimestampSync', ultimoTimestampSupabase);
+                    // ATUALIZAR HASH LOCAL
+                    ultimoHashSupabase = hashSupabase;
+                    localStorage.setItem('ultimoHashSupabase', ultimoHashSupabase);
+                    forcarProximaVerificacao = false;
                 }
                 
-                document.getElementById('lastCheckStatus').textContent = new Date().toLocaleTimeString('pt-BR');
+                // MARCAR STATUS COMO OK
+                const agora = new Date().toLocaleTimeString('pt-BR');
+                document.getElementById('lastCheckStatus').textContent = agora;
                 document.getElementById('lastCheckStatus').className = 'sync-value sync-ok';
-                
-                // Marcar conexões como OK
                 document.getElementById('supabaseStatus').textContent = 'CONECTADO';
                 document.getElementById('supabaseStatus').className = 'sync-value sync-ok';
-                document.getElementById('syncStatusDetail').textContent = 'FUNCIONANDO';
-                document.getElementById('syncStatusDetail').className = 'sync-value sync-ok';
+                document.getElementById('internetSyncStatus').textContent = 'ATIVO';
+                document.getElementById('internetSyncStatus').className = 'sync-value sync-ok';
                 
             } catch (error) {
-                console.error('❌ Erro na verificação:', error);
+                console.error('❌ Erro na verificação robusta:', error);
                 document.getElementById('lastCheckStatus').textContent = 'ERRO';
                 document.getElementById('lastCheckStatus').className = 'sync-value sync-error';
-                document.getElementById('supabaseStatus').textContent = 'ERRO';
-                document.getElementById('supabaseStatus').className = 'sync-value sync-error';
+                document.getElementById('internetSyncStatus').textContent = 'FALHA';
+                document.getElementById('internetSyncStatus').className = 'sync-value sync-error';
             } finally {
-                verificandoSync = false;
+                sincronizandoViaInternet = false;
             }
         }
 
-        async function aplicarDadosDoSupabase(dadosSupabase) {
+        async function aplicarDadosViaInternet(dadosSupabase) {
             try {
-                console.log('⚡ APLICANDO DADOS DO SUPABASE...');
+                console.log('⚡ APLICANDO DADOS VIA INTERNET...');
                 
                 const dadosDescomprimidos = JSON.parse(dadosSupabase.dados_patio);
+                
+                console.log(`📊 Dados recebidos via internet: ${dadosDescomprimidos.length} registros`);
                 
                 // ATUALIZAR DADOS GLOBAIS
                 dadosPatio = [...dadosDescomprimidos];
@@ -2137,16 +2199,16 @@
                 // ATUALIZAR TIMESTAMP VISUAL
                 atualizarTimestampVisual(`${dadosSupabase.timestamp_br} (${dadosSupabase.usuario_update})`);
                 
-                console.log('✅ DADOS APLICADOS COM SUCESSO!');
-                console.log(`📊 Total registros aplicados: ${dadosPatio.length}`);
+                console.log('✅ DADOS APLICADOS VIA INTERNET COM SUCESSO!');
+                console.log(`📊 Total registros agora: ${dadosPatio.length}`);
                 
             } catch (error) {
-                console.error('❌ Erro ao aplicar dados:', error);
+                console.error('❌ Erro ao aplicar dados via internet:', error);
             }
         }
 
         function iniciarSincronizacao() {
-            console.log('🔄 INICIANDO SISTEMA DE SINCRONIZAÇÃO VIA INTERNET...');
+            console.log('🔄 INICIANDO SISTEMA ROBUSTO DE SINCRONIZAÇÃO VIA INTERNET...');
             
             try {
                 supabase = window.supabase.createClient(supabaseConfig.url, supabaseConfig.anonKey);
@@ -2159,26 +2221,28 @@
                 return;
             }
             
-            // CARREGAR TIMESTAMP INICIAL
-            const timestampSalvo = localStorage.getItem('ultimoTimestampSync');
-            if (timestampSalvo) {
-                ultimoTimestampSupabase = timestampSalvo;
-                console.log('📊 Timestamp inicial carregado:', ultimoTimestampSupabase);
+            // CARREGAR HASH INICIAL
+            const hashSalvo = localStorage.getItem('ultimoHashSupabase');
+            if (hashSalvo) {
+                ultimoHashSupabase = hashSalvo;
+                console.log('📊 Hash inicial carregado:', ultimoHashSupabase);
             }
             
-            // POLLING AGRESSIVO PARA SINCRONIZAÇÃO VIA INTERNET
+            // POLLING MUITO AGRESSIVO PARA SINCRONIZAÇÃO VIA INTERNET
             if (intervalSyncSupabase) {
                 clearInterval(intervalSyncSupabase);
             }
             
             intervalSyncSupabase = setInterval(() => {
-                verificarSincronizacaoInternet();
-            }, 1000); // VERIFICAR A CADA 1 SEGUNDO
+                verificarSincronizacaoRobustaInternet();
+            }, 800); // VERIFICAR A CADA 0.8 SEGUNDOS
             
-            // PRIMEIRA VERIFICAÇÃO
-            setTimeout(() => verificarSincronizacaoInternet(), 2000);
+            // PRIMEIRA VERIFICAÇÃO IMEDIATA
+            setTimeout(() => {
+                verificarSincronizacaoRobustaInternet();
+            }, 1000);
             
-            console.log('✅ Sistema de sincronização via internet iniciado (1s)');
+            console.log('✅ Sistema robusto de sincronização via internet iniciado (0.8s)');
         }
 
         // ========== RECUPERAÇÃO DE SENHA ==========
@@ -2530,7 +2594,7 @@
                 setTimeout(() => card.classList.remove('updated'), 1000);
             });
             
-            console.log('✅ CARDS ATUALIZADOS VIA INTERNET!');
+            console.log('✅ CARDS ATUALIZADOS VIA SINCRONIZAÇÃO INTERNET!');
         }
 
         function atualizarGraficoDescarregando(totalDescarregando) {
@@ -2798,13 +2862,13 @@
         }
 
         function carregarDadosLocal() {
-            console.log('📱 Carregando dados e verificando internet...');
+            console.log('📱 Carregando dados e iniciando sincronização via internet...');
             
             const dadosSalvos = localStorage.getItem('dadosPatioMinerva');
             if (dadosSalvos) {
                 try {
                     dadosPatio = JSON.parse(dadosSalvos);
-                    console.log('💾 Dados carregados:', dadosPatio.length);
+                    console.log('💾 Dados locais carregados:', dadosPatio.length);
                     
                     if (dadosPatio.length > 0) {
                         calcularEAtualizarCards();
@@ -2816,12 +2880,15 @@
                     dadosPatio = [];
                 }
             } else {
-                console.log('📝 Nenhum dado encontrado');
+                console.log('📝 Nenhum dado local encontrado');
                 calcularEAtualizarCards();
             }
             
-            // VERIFICAR SINCRONIZAÇÃO APÓS CARREGAR
-            setTimeout(() => verificarSincronizacaoInternet(), 1000);
+            // FORÇAR VERIFICAÇÃO INICIAL VIA INTERNET
+            setTimeout(() => {
+                forcarProximaVerificacao = true;
+                verificarSincronizacaoRobustaInternet();
+            }, 2000);
         }
 
         // ========== RENDERIZAÇÃO DE TABELA ==========
@@ -3000,7 +3067,7 @@
         // ========== DOM READY ==========
         
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 SISTEMA COM SINCRONIZAÇÃO VIA INTERNET');
+            console.log('🚀 SISTEMA COM SINCRONIZAÇÃO ROBUSTA VIA INTERNET');
             
             const filtros = ['searchPlaca', 'filterStatus', 'filterOrigem', 'filterTipoMercado', 'filterTipoDescarga'];
             
@@ -3016,7 +3083,7 @@
         function iniciarSistema() {
             verificarPermissoes();
             iniciarSincronizacaoTimestamp();
-            iniciarSincronizacao(); // SISTEMA VIA INTERNET
+            iniciarSincronizacao(); // SISTEMA ROBUSTO VIA INTERNET
             carregarDadosLocal();
         }
 
@@ -3373,7 +3440,7 @@
                     dadosProtegidosPermanentemente = false;
                     backupDadosProtegidos = [];
                     backupCardsProtegidos = {};
-                    ultimoTimestampSupabase = '';
+                    ultimoHashSupabase = '';
                     
                     calcularEAtualizarCards();
                     renderizarTabela();
@@ -3408,13 +3475,14 @@
         }
 
         function testarSincronizacao() {
-            mostrarAlerta('info', '🔧 Testando sincronização via internet...');
+            mostrarAlerta('info', '🔧 Testando sincronização robusta via internet...');
             
-            verificarSincronizacaoInternet();
+            forcarProximaVerificacao = true;
+            verificarSincronizacaoRobustaInternet();
             
             setTimeout(() => {
-                mostrarAlerta('success', '✅ Teste concluído!');
-            }, 2000);
+                mostrarAlerta('success', '✅ Teste via internet concluído!');
+            }, 3000);
         }
 
         function toggleSyncDetails() {
@@ -3458,7 +3526,7 @@
             }
         }
 
-        console.log('🔧✅📊🌐📧 SISTEMA COM SINCRONIZAÇÃO VIA INTERNET CORRIGIDA!');
+        console.log('🔧✅📊🌐📧 SISTEMA COM SINCRONIZAÇÃO ROBUSTA VIA INTERNET!');
     </script>
 </body>
 </html>
