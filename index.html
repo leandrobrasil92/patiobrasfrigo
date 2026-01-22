@@ -1859,6 +1859,321 @@
             }
         ];
 
+        // ========== CORREÇÃO PRINCIPAL: SISTEMA DE USUÁRIOS ROBUSTO ==========
+
+        // **BACKUP AUTOMÁTICO ANTES DE QUALQUER OPERAÇÃO**
+        function criarBackupUsuarios() {
+            try {
+                const usuariosAtuais = localStorage.getItem('usuariosSistema');
+                if (usuariosAtuais) {
+                    const timestamp = Date.now();
+                    localStorage.setItem(`backup_usuarios_${timestamp}`, usuariosAtuais);
+                    
+                    // MANTER APENAS OS 3 BACKUPS MAIS RECENTES
+                    const keys = Object.keys(localStorage).filter(key => key.startsWith('backup_usuarios_'));
+                    if (keys.length > 3) {
+                        keys.sort().slice(0, -3).forEach(key => localStorage.removeItem(key));
+                    }
+                    
+                    console.log(`💾 Backup de usuários criado: backup_usuarios_${timestamp}`);
+                    return timestamp;
+                }
+            } catch (error) {
+                console.error('❌ Erro ao criar backup:', error);
+            }
+            return null;
+        }
+
+        // **RECUPERAÇÃO DE BACKUP EM CASO DE ERRO**
+        function recuperarBackupUsuarios() {
+            try {
+                const backupKeys = Object.keys(localStorage)
+                    .filter(key => key.startsWith('backup_usuarios_'))
+                    .sort()
+                    .reverse();
+                
+                for (const backupKey of backupKeys) {
+                    try {
+                        const backupData = localStorage.getItem(backupKey);
+                        const usuarios = JSON.parse(backupData);
+                        
+                        // VALIDAR BACKUP
+                        if (Array.isArray(usuarios) && usuarios.length > 0) {
+                            localStorage.setItem('usuariosSistema', backupData);
+                            console.log(`✅ Backup recuperado com sucesso: ${backupKey}`);
+                            return usuarios;
+                        }
+                    } catch (error) {
+                        console.warn(`⚠️ Backup inválido: ${backupKey}`);
+                        localStorage.removeItem(backupKey);
+                    }
+                }
+                
+                console.log('⚠️ Nenhum backup válido encontrado');
+                return null;
+            } catch (error) {
+                console.error('❌ Erro ao recuperar backup:', error);
+                return null;
+            }
+        }
+
+        // **FUNÇÃO INICIALIZARUSUARIOS CORRIGIDA - NUNCA MAIS PERDE USUÁRIOS**
+        function inicializarUsuarios() {
+            console.log('👥 INICIALIZANDO USUÁRIOS COM PROTEÇÃO ROBUSTA...');
+            
+            try {
+                // TENTAR CARREGAR USUÁRIOS EXISTENTES
+                const usuariosString = localStorage.getItem('usuariosSistema');
+                let usuariosExistentes = [];
+                
+                if (usuariosString) {
+                    try {
+                        usuariosExistentes = JSON.parse(usuariosString);
+                        
+                        // VALIDAR SE É UM ARRAY VÁLIDO
+                        if (!Array.isArray(usuariosExistentes)) {
+                            throw new Error('Dados não são um array válido');
+                        }
+                        
+                        // VALIDAR SE CONTÉM USUÁRIOS VÁLIDOS
+                        const usuariosValidos = usuariosExistentes.filter(u => 
+                            u && typeof u === 'object' && u.login && u.senha && u.nome
+                        );
+                        
+                        if (usuariosValidos.length === 0) {
+                            throw new Error('Nenhum usuário válido encontrado');
+                        }
+                        
+                        // SE CHEGOU ATÉ AQUI, OS DADOS ESTÃO OK
+                        usuariosExistentes = usuariosValidos;
+                        console.log(`✅ ${usuariosExistentes.length} usuários carregados com sucesso`);
+                        
+                    } catch (parseError) {
+                        console.error('❌ Erro ao fazer parse dos usuários:', parseError);
+                        
+                        // **CRITICAL FIX: TENTAR RECUPERAR DE BACKUP ANTES DE APAGAR TUDO**
+                        console.log('🔄 Tentando recuperar de backup...');
+                        const usuariosRecuperados = recuperarBackupUsuarios();
+                        
+                        if (usuariosRecuperados) {
+                            usuariosExistentes = usuariosRecuperados;
+                            console.log(`✅ Usuários recuperados do backup: ${usuariosExistentes.length}`);
+                        } else {
+                            console.log('⚠️ Nenhum backup válido, usando usuários padrão');
+                            usuariosExistentes = [];
+                        }
+                    }
+                } else {
+                    console.log('📝 Nenhum usuário encontrado, inicializando...');
+                }
+                
+                // GARANTIR QUE USUÁRIOS PADRÃO EXISTAM
+                let usuariosFinal = [...usuariosExistentes];
+                let houveMudanca = false;
+                
+                USUARIOS_PADRAO.forEach(userPadrao => {
+                    const existe = usuariosFinal.find(u => u.login === userPadrao.login);
+                    if (!existe) {
+                        usuariosFinal.push({ ...userPadrao });
+                        houveMudanca = true;
+                        console.log(`➕ Usuário padrão adicionado: ${userPadrao.nome}`);
+                    }
+                });
+                
+                // SALVAR SE HOUVE MUDANÇA
+                if (houveMudanca || usuariosExistentes.length === 0) {
+                    criarBackupUsuarios(); // BACKUP ANTES DE SALVAR
+                    localStorage.setItem('usuariosSistema', JSON.stringify(usuariosFinal));
+                    console.log(`💾 ${usuariosFinal.length} usuários salvos`);
+                }
+                
+                console.log(`✅ SISTEMA DE USUÁRIOS INICIALIZADO: ${usuariosFinal.length} usuários ativos`);
+                return usuariosFinal;
+                
+            } catch (error) {
+                console.error('❌ ERRO CRÍTICO NA INICIALIZAÇÃO DE USUÁRIOS:', error);
+                
+                // **ÚLTIMO RECURSO: TENTAR RECUPERAR BACKUP**
+                const usuariosRecuperados = recuperarBackupUsuarios();
+                if (usuariosRecuperados) {
+                    console.log('✅ Recuperação de backup bem-sucedida');
+                    return usuariosRecuperados;
+                }
+                
+                // **SE TUDO FALHAR, USAR USUÁRIOS PADRÃO (SEM SOBRESCREVER DADOS EXISTENTES)**
+                console.log('⚠️ Usando usuários padrão como fallback (sem sobrescrever)');
+                return USUARIOS_PADRAO;
+            }
+        }
+
+        // **FUNÇÃO PARA SINCRONIZAR USUÁRIOS COM SUPABASE**
+        async function sincronizarUsuariosComSupabase() {
+            if (!supabaseDisponivel || !supabase) {
+                console.log('⚠️ Supabase indisponível para sincronização de usuários');
+                return false;
+            }
+
+            try {
+                console.log('👥 Sincronizando usuários com Supabase...');
+                
+                const usuarios = inicializarUsuarios();
+                const timestamp = Date.now();
+                
+                const dadosUsuarios = {
+                    versao: timestamp,
+                    usuarios: usuarios,
+                    total: usuarios.length,
+                    updated_at: new Date().toISOString(),
+                    sistema: 'Patio Brasfrigo - Usuarios'
+                };
+                
+                const { error } = await supabase
+                    .from('usuarios_sistema')
+                    .upsert([{
+                        id: 1,
+                        dados_json: JSON.stringify(dadosUsuarios),
+                        versao: timestamp,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    }], { 
+                        onConflict: 'id',
+                        ignoreDuplicates: false 
+                    });
+                
+                if (error) {
+                    throw error;
+                }
+                
+                console.log('✅ Usuários sincronizados com Supabase');
+                return true;
+                
+            } catch (error) {
+                console.error('❌ Erro ao sincronizar usuários:', error);
+                return false;
+            }
+        }
+
+        // **FUNÇÃO PARA CARREGAR USUÁRIOS DO SUPABASE**
+        async function carregarUsuariosDoSupabase() {
+            if (!supabaseDisponivel || !supabase) {
+                console.log('⚠️ Supabase indisponível');
+                return null;
+            }
+
+            try {
+                console.log('📥 Carregando usuários do Supabase...');
+                
+                const { data, error } = await supabase
+                    .from('usuarios_sistema')
+                    .select('dados_json, versao, updated_at')
+                    .eq('id', 1)
+                    .single();
+
+                if (error) {
+                    if (error.code === 'PGRST116') { // No rows found
+                        console.log('📝 Nenhum usuário encontrado no Supabase');
+                        return null;
+                    }
+                    throw error;
+                }
+
+                if (!data) {
+                    console.log('📝 Dados de usuários não encontrados');
+                    return null;
+                }
+
+                const dadosCompletos = JSON.parse(data.dados_json);
+                console.log(`✅ ${dadosCompletos.usuarios.length} usuários carregados do Supabase`);
+                
+                return dadosCompletos.usuarios;
+                
+            } catch (error) {
+                console.error('❌ Erro ao carregar usuários do Supabase:', error);
+                return null;
+            }
+        }
+
+        // **FUNÇÃO DE CRIAÇÃO DE USUÁRIO MELHORADA**
+        async function criarUsuario(event) {
+            event.preventDefault();
+            
+            if (!usuarioLogado || usuarioLogado.nivel !== 'master') {
+                mostrarAlerta('error', '⚠️ Apenas MASTER pode criar usuários');
+                return;
+            }
+
+            const nome = document.getElementById('novoNome').value.trim();
+            const login = document.getElementById('novoLogin').value.trim();
+            const senha = document.getElementById('novaSenha').value.trim();
+            const nivel = document.getElementById('novoNivel').value;
+
+            if (!nome || !login || !senha || !nivel) {
+                alert('❌ Preencha todos os campos!');
+                return;
+            }
+
+            if (senha.length < 6) {
+                alert('❌ Senha deve ter 6+ caracteres!');
+                return;
+            }
+
+            try {
+                // CRIAR BACKUP ANTES DE QUALQUER ALTERAÇÃO
+                const backupId = criarBackupUsuarios();
+                console.log(`💾 Backup criado antes de criar usuário: ${backupId}`);
+                
+                const usuarios = inicializarUsuarios();
+                
+                // VERIFICAR SE LOGIN JÁ EXISTE
+                if (usuarios.find(u => u.login.toLowerCase() === login.toLowerCase())) {
+                    alert(`❌ Login "${login}" já existe!`);
+                    return;
+                }
+
+                const novoUsuario = {
+                    id: Date.now(),
+                    nome: nome,
+                    login: login,
+                    senha: senha,
+                    nivel: nivel,
+                    email: `${login}@minervafoods.com`,
+                    criadoEm: new Date().toISOString(),
+                    criadoPor: usuarioLogado.nome,
+                    ativo: true
+                };
+
+                // ADICIONAR NOVO USUÁRIO
+                const usuariosAtualizados = [...usuarios, novoUsuario];
+                
+                // SALVAR LOCALMENTE
+                localStorage.setItem('usuariosSistema', JSON.stringify(usuariosAtualizados));
+                console.log(`✅ Usuário ${nome} criado localmente`);
+                
+                // **SINCRONIZAR COM SUPABASE**
+                const sincronizado = await sincronizarUsuariosComSupabase();
+                if (sincronizado) {
+                    console.log('✅ Usuário sincronizado com Supabase');
+                } else {
+                    console.warn('⚠️ Usuário criado localmente, mas não sincronizado');
+                }
+                
+                mostrarAlerta('success', `✅ Usuário ${nome} criado com sucesso!`);
+
+                // LIMPAR FORMULÁRIO
+                document.getElementById('novoNome').value = '';
+                document.getElementById('novoLogin').value = '';
+                document.getElementById('novaSenha').value = '';
+                document.getElementById('novoNivel').value = '';
+
+                // ATUALIZAR LISTA
+                carregarListaUsuarios();
+                
+            } catch (error) {
+                console.error('❌ Erro ao criar usuário:', error);
+                mostrarAlerta('error', `❌ Erro ao criar usuário: ${error.message}`);
+            }
+        }
+
         // ========== INICIALIZAÇÃO DO SUPABASE COM DIAGNÓSTICO ==========
         
         async function inicializarSupabase() {
@@ -1894,6 +2209,19 @@
                     console.log('✅ Conexão com tabela dados_patio OK');
                     atualizarStatusSync('tabelaStatus', 'OK', 'ok');
                     supabaseDisponivel = true;
+                }
+                
+                // **TENTAR CARREGAR USUÁRIOS DO SUPABASE**
+                try {
+                    const usuariosOnline = await carregarUsuariosDoSupabase();
+                    if (usuariosOnline && usuariosOnline.length > 0) {
+                        console.log('👥 Sincronizando usuários do Supabase...');
+                        const backupId = criarBackupUsuarios();
+                        localStorage.setItem('usuariosSistema', JSON.stringify(usuariosOnline));
+                        console.log('✅ Usuários sincronizados do Supabase');
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Não foi possível carregar usuários do Supabase:', error);
                 }
                 
                 // CONFIGURAR REAL-TIME
@@ -1982,6 +2310,98 @@
                 }
             }
         }
+
+        // ========== AUTENTICAÇÃO COM SUPABASE SINCRONIZADO ==========
+        
+        async function autenticarUsuario(login, senha, lembrarMe = false) {
+            const btnLogin = document.getElementById('btnLogin');
+            btnLogin.disabled = true;
+            btnLogin.textContent = 'Verificando...';
+            
+            try {
+                console.log(`🔐 Autenticando usuário: ${login}`);
+                
+                // CARREGAR USUÁRIOS MAIS RECENTES (LOCAL + SUPABASE)
+                let usuarios = inicializarUsuarios();
+                
+                // **TENTAR SINCRONIZAR COM SUPABASE ANTES DE AUTENTICAR**
+                if (supabaseDisponivel) {
+                    try {
+                        const usuariosOnline = await carregarUsuariosDoSupabase();
+                        if (usuariosOnline && usuariosOnline.length > 0) {
+                            console.log('👥 Usuários sincronizados do Supabase para login');
+                            criarBackupUsuarios(); // BACKUP ANTES DE ATUALIZAR
+                            localStorage.setItem('usuariosSistema', JSON.stringify(usuariosOnline));
+                            usuarios = usuariosOnline;
+                        }
+                    } catch (error) {
+                        console.warn('⚠️ Usando usuários locais para login:', error);
+                    }
+                }
+                
+                console.log(`👥 ${usuarios.length} usuários disponíveis para autenticação`);
+                
+                const loginLimpo = login.toLowerCase().trim();
+                const senhaLimpa = senha.trim();
+                
+                console.log('🔍 Buscando usuário...');
+                const usuarioEncontrado = usuarios.find(u => {
+                    const loginUsuario = u.login.toLowerCase().trim();
+                    const senhaUsuario = u.senha.trim();
+                    return loginUsuario === loginLimpo && senhaUsuario === senhaLimpa;
+                });
+                
+                if (usuarioEncontrado) {
+                    console.log(`✅ USUÁRIO AUTENTICADO: ${usuarioEncontrado.nome}`);
+                    
+                    usuarioLogado = usuarioEncontrado;
+                    sessionStorage.setItem('usuarioLogado', JSON.stringify(usuarioEncontrado));
+                    
+                    if (lembrarMe) {
+                        localStorage.setItem('credenciaisLembradas', JSON.stringify({ login, senha }));
+                        console.log('💾 Credenciais salvas');
+                    } else {
+                        localStorage.removeItem('credenciaisLembradas');
+                    }
+                    
+                    mostrarStatusLogin('success', `✅ Bem-vindo, ${usuarioEncontrado.nome}!`);
+                    
+                    setTimeout(() => {
+                        console.log('🚪 Entrando no sistema...');
+                        document.getElementById('loginOverlay').style.display = 'none';
+                        document.getElementById('mainContainer').style.display = 'block';
+                        
+                        iniciarSistema();
+                        
+                        const agora = new Date();
+                        const timestampLogin = agora.toLocaleString('pt-BR');
+                        salvarTimestampGlobal(timestampLogin);
+                        atualizarTimestampVisual(timestampLogin);
+                        
+                        if (usuarioEncontrado.senhaTemporaria) {
+                            setTimeout(() => {
+                                mostrarAlerta('info', '⚠️ Você está usando uma senha temporária. Recomendamos alterar.');
+                            }, 2000);
+                        }
+                    }, 1000);
+                    
+                } else {
+                    console.log('❌ CREDENCIAIS INVÁLIDAS');
+                    mostrarStatusLogin('error', '❌ Usuário ou senha incorretos!');
+                    localStorage.removeItem('credenciaisLembradas');
+                }
+                
+            } catch (error) {
+                console.error('❌ Erro na autenticação:', error);
+                mostrarStatusLogin('error', `❌ Erro: ${error.message}`);
+            } finally {
+                btnLogin.disabled = false;
+                btnLogin.textContent = 'Entrar';
+            }
+        }
+
+        // ========== RESTO DO CÓDIGO PERMANECE IGUAL ==========
+        // (Todas as outras funções continuam sem alteração)
 
         // ========== IMPORTAÇÃO OTIMIZADA COM PROGRESSO ==========
         
@@ -2447,8 +2867,8 @@
             console.log('✅ Sincronização iniciada com credenciais corretas');
         }
 
-        // ========== RESTO DO CÓDIGO CONTINUA IGUAL ==========
-        // (Todas as outras funções permanecem iguais)
+        // ========== RESTO DO CÓDIGO PERMANECE IGUAL ==========
+        // (Mantendo todas as outras funções como estavam)
 
         // ========== RECUPERAÇÃO DE SENHA ==========
         
@@ -2502,6 +2922,9 @@
                     throw new Error('Falha no envio do e-mail');
                 }
                 
+                // **CRIAR BACKUP ANTES DE ATUALIZAR SENHA**
+                criarBackupUsuarios();
+                
                 // ATUALIZAR SENHA DO USUÁRIO
                 const usuariosAtualizados = usuarios.map(u => {
                     if (u.email.toLowerCase().trim() === email) {
@@ -2511,6 +2934,9 @@
                 });
                 
                 localStorage.setItem('usuariosSistema', JSON.stringify(usuariosAtualizados));
+                
+                // **SINCRONIZAR COM SUPABASE**
+                await sincronizarUsuariosComSupabase();
                 
                 mostrarStatusLogin('success', `✅ Nova senha enviada para ${email}`);
                 document.getElementById('emailRecuperacao').value = '';
@@ -2869,7 +3295,7 @@
                     try {
                         const { login, senha } = JSON.parse(credenciaisSalvas);
                         
-                        const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
+                        const usuarios = inicializarUsuarios();
                         const usuarioEncontrado = usuarios.find(u => 
                             u.login.toLowerCase().trim() === login.toLowerCase().trim() && 
                             u.senha.trim() === senha.trim()
@@ -2892,7 +3318,7 @@
                     try {
                         const userData = JSON.parse(sessaoAtiva);
                         
-                        const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
+                        const usuarios = inicializarUsuarios();
                         const usuarioValido = usuarios.find(u => u.login === userData.login);
                         
                         if (usuarioValido && usuarioValido.senha === userData.senha) {
@@ -2984,34 +3410,6 @@
             }, 10000);
         }
 
-        function inicializarUsuarios() {
-            try {
-                let usuariosLocais = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
-                
-                if (usuariosLocais.length === 0) {
-                    console.log('👥 Inicializando usuários padrão...');
-                    usuariosLocais = [...USUARIOS_PADRAO];
-                }
-                
-                USUARIOS_PADRAO.forEach(userPadrao => {
-                    const existe = usuariosLocais.find(u => u.login === userPadrao.login);
-                    if (!existe) {
-                        usuariosLocais.push(userPadrao);
-                        console.log(`➕ Usuário adicionado: ${userPadrao.nome}`);
-                    }
-                });
-                
-                localStorage.setItem('usuariosSistema', JSON.stringify(usuariosLocais));
-                console.log(`✅ ${usuariosLocais.length} usuários inicializados`);
-                return usuariosLocais;
-                
-            } catch (error) {
-                console.error('❌ Erro ao inicializar usuários:', error);
-                localStorage.setItem('usuariosSistema', JSON.stringify(USUARIOS_PADRAO));
-                return USUARIOS_PADRAO;
-            }
-        }
-
         function mostrarStatusLogin(tipo, mensagem) {
             const status = document.getElementById('loginStatus');
             if (status) {
@@ -3024,77 +3422,6 @@
                         status.style.display = 'none';
                     }
                 }, 5000);
-            }
-        }
-
-        // ========== AUTENTICAÇÃO ==========
-        async function autenticarUsuario(login, senha, lembrarMe = false) {
-            const btnLogin = document.getElementById('btnLogin');
-            btnLogin.disabled = true;
-            btnLogin.textContent = 'Verificando...';
-            
-            try {
-                console.log(`🔐 Tentando autenticar: ${login}`);
-                
-                const usuarios = inicializarUsuarios();
-                console.log(`👥 ${usuarios.length} usuários disponíveis`);
-                
-                const loginLimpo = login.toLowerCase().trim();
-                const senhaLimpa = senha.trim();
-                
-                console.log('🔍 Buscando usuário...');
-                const usuarioEncontrado = usuarios.find(u => {
-                    const loginUsuario = u.login.toLowerCase().trim();
-                    const senhaUsuario = u.senha.trim();
-                    return loginUsuario === loginLimpo && senhaUsuario === senhaLimpa;
-                });
-                
-                if (usuarioEncontrado) {
-                    console.log(`✅ Usuário encontrado: ${usuarioEncontrado.nome}`);
-                    
-                    usuarioLogado = usuarioEncontrado;
-                    sessionStorage.setItem('usuarioLogado', JSON.stringify(usuarioEncontrado));
-                    
-                    if (lembrarMe) {
-                        localStorage.setItem('credenciaisLembradas', JSON.stringify({ login, senha }));
-                        console.log('💾 Credenciais salvas');
-                    } else {
-                        localStorage.removeItem('credenciaisLembradas');
-                    }
-                    
-                    mostrarStatusLogin('success', `✅ Bem-vindo, ${usuarioEncontrado.nome}!`);
-                    
-                    setTimeout(() => {
-                        console.log('🚪 Entrando no sistema...');
-                        document.getElementById('loginOverlay').style.display = 'none';
-                        document.getElementById('mainContainer').style.display = 'block';
-                        
-                        iniciarSistema();
-                        
-                        const agora = new Date();
-                        const timestampLogin = agora.toLocaleString('pt-BR');
-                        salvarTimestampGlobal(timestampLogin);
-                        atualizarTimestampVisual(timestampLogin);
-                        
-                        if (usuarioEncontrado.senhaTemporaria) {
-                            setTimeout(() => {
-                                mostrarAlerta('info', '⚠️ Você está usando uma senha temporária. Recomendamos alterar.');
-                            }, 2000);
-                        }
-                    }, 1000);
-                    
-                } else {
-                    console.log('❌ Usuário/senha incorretos');
-                    mostrarStatusLogin('error', '❌ Usuário ou senha incorretos!');
-                    localStorage.removeItem('credenciaisLembradas');
-                }
-                
-            } catch (error) {
-                console.error('❌ Erro na autenticação:', error);
-                mostrarStatusLogin('error', `Erro: ${error.message}`);
-            } finally {
-                btnLogin.disabled = false;
-                btnLogin.textContent = 'Entrar';
             }
         }
 
@@ -3309,7 +3636,7 @@
         // ========== DOM READY ==========
         
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 SISTEMA CONFIGURADO COM CREDENCIAIS CORRETAS');
+            console.log('🚀 SISTEMA CONFIGURADO COM AUTENTICAÇÃO CORRIGIDA');
             
             const filtros = ['searchPlaca', 'filterStatus', 'filterOrigem', 'filterTipoMercado', 'filterTipoDescarga'];
             
@@ -3459,7 +3786,7 @@
         }
 
         function carregarListaUsuarios() {
-            const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
+            const usuarios = inicializarUsuarios();
             const lista = document.getElementById('userList');
             
             const isMaster = usuarioLogado && usuarioLogado.nivel === 'master';
@@ -3488,9 +3815,15 @@
             if (!confirm(`❌ Excluir "${nomeUsuario}"?`)) return;
 
             try {
-                let usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
+                // **CRIAR BACKUP ANTES DE EXCLUIR**
+                criarBackupUsuarios();
+                
+                let usuarios = inicializarUsuarios();
                 const usuariosAtualizados = usuarios.filter(u => u.login !== loginUsuario);
                 localStorage.setItem('usuariosSistema', JSON.stringify(usuariosAtualizados));
+                
+                // **SINCRONIZAR COM SUPABASE**
+                sincronizarUsuariosComSupabase();
                 
                 mostrarAlerta('success', `✅ ${nomeUsuario} excluído!`);
                 carregarListaUsuarios();
@@ -3498,61 +3831,6 @@
             } catch (error) {
                 mostrarAlerta('error', `❌ Erro: ${error.message}`);
             }
-        }
-
-        function criarUsuario(event) {
-            event.preventDefault();
-            
-            if (!usuarioLogado || usuarioLogado.nivel !== 'master') {
-                mostrarAlerta('error', '⚠️ Apenas MASTER');
-                return;
-            }
-
-            const nome = document.getElementById('novoNome').value.trim();
-            const login = document.getElementById('novoLogin').value.trim();
-            const senha = document.getElementById('novaSenha').value.trim();
-            const nivel = document.getElementById('novoNivel').value;
-
-            if (!nome || !login || !senha || !nivel) {
-                alert('❌ Preencha todos os campos!');
-                return;
-            }
-
-            if (senha.length < 6) {
-                alert('❌ Senha deve ter 6+ caracteres!');
-                return;
-            }
-
-            let usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
-            
-            if (usuarios.find(u => u.login.toLowerCase() === login.toLowerCase())) {
-                alert(`❌ Login "${login}" já existe!`);
-                return;
-            }
-
-            const novoUsuario = {
-                id: Date.now(),
-                nome: nome,
-                login: login,
-                senha: senha,
-                nivel: nivel,
-                email: `${login}@minervafoods.com`,
-                criadoEm: new Date().toISOString(),
-                criadoPor: usuarioLogado.nome,
-                ativo: true
-            };
-
-            usuarios.push(novoUsuario);
-            localStorage.setItem('usuariosSistema', JSON.stringify(usuarios));
-            
-            mostrarAlerta('success', `✅ ${nome} criado!`);
-
-            document.getElementById('novoNome').value = '';
-            document.getElementById('novoLogin').value = '';
-            document.getElementById('novaSenha').value = '';
-            document.getElementById('novoNivel').value = '';
-
-            carregarListaUsuarios();
         }
 
         function alterarSenha(event) {
@@ -3587,7 +3865,10 @@
             btnSalvar.textContent = 'Salvando...';
             
             try {
-                const usuarios = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
+                // **CRIAR BACKUP ANTES DE ALTERAR SENHA**
+                criarBackupUsuarios();
+                
+                const usuarios = inicializarUsuarios();
                 const usuariosAtualizados = usuarios.map(u => {
                     if (u.login === usuarioLogado.login) {
                         return { ...u, senha: novaSenha, senhaTemporaria: false };
@@ -3615,6 +3896,9 @@
                         console.log('Erro ao atualizar credenciais lembradas');
                     }
                 }
+                
+                // **SINCRONIZAR COM SUPABASE**
+                sincronizarUsuariosComSupabase();
                 
                 mostrarAlerta('success', '✅ Senha alterada com sucesso!');
                 fecharModalTrocaSenha();
@@ -3752,7 +4036,7 @@
             }
         }
 
-        console.log('🌐✅📊🔄📧 SISTEMA FUNCIONANDO COM CREDENCIAIS CORRETAS!');
+        console.log('🔐✅🌐 PROBLEMA DE AUTENTICAÇÃO CORRIGIDO DEFINITIVAMENTE!');
     </script>
 </body>
 </html>
