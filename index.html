@@ -2254,11 +2254,444 @@
             console.log('✅ Sincronização iniciada com dados_patio');
         }
 
-        // ========== FUNÇÃO ÚNICA CORRIGIDA - SEM TIMEOUT ==========
+        // ========== RECUPERAÇÃO DE SENHA ==========
+        
+        function gerarSenhaTemporaria() {
+            const caracteres = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+            let senha = '';
+            for (let i = 0; i < 8; i++) {
+                senha += caracteres.charAt(Math.floor(Math.random() * caracteres.length));
+            }
+            return senha;
+        }
+        
+        async function recuperarSenha(event) {
+            event.preventDefault();
+            
+            const email = document.getElementById('emailRecuperacao').value.trim().toLowerCase();
+            const btnRecuperar = document.getElementById('btnRecuperar');
+            
+            if (!email) {
+                mostrarStatusLogin('error', 'Digite um e-mail válido!');
+                return;
+            }
+            
+            btnRecuperar.disabled = true;
+            btnRecuperar.textContent = 'Enviando...';
+            mostrarStatusLogin('info', 'Verificando e-mail...');
+            
+            try {
+                if (!emailJSReady) {
+                    throw new Error('Sistema de e-mail não inicializado');
+                }
+                
+                const usuarios = await buscarTodosUsuarios();
+                const usuarioEncontrado = usuarios.find(u => u.email.toLowerCase().trim() === email);
+                
+                if (!usuarioEncontrado) {
+                    mostrarStatusLogin('error', 'E-mail não encontrado no sistema!');
+                    btnRecuperar.disabled = false;
+                    btnRecuperar.textContent = 'Recuperar Senha';
+                    return;
+                }
+                
+                console.log('👤 Usuário encontrado para recuperação:', usuarioEncontrado.nome);
+                
+                const novaSenha = gerarSenhaTemporaria();
+                console.log('🔑 Nova senha gerada:', novaSenha);
+                
+                const emailEnviado = await enviarEmailRecuperacao(usuarioEncontrado, novaSenha);
+                
+                if (!emailEnviado) {
+                    throw new Error('Falha no envio do e-mail');
+                }
+                
+                // ATUALIZAR SENHA DO USUÁRIO
+                const usuariosAtualizados = usuarios.map(u => {
+                    if (u.email.toLowerCase().trim() === email) {
+                        return { ...u, senha: novaSenha, senhaTemporaria: true };
+                    }
+                    return u;
+                });
+                
+                localStorage.setItem('usuariosSistema', JSON.stringify(usuariosAtualizados));
+                
+                // TENTAR SALVAR NO SUPABASE TAMBÉM
+                if (supabaseDisponivel && supabase) {
+                    try {
+                        await supabase
+                            .from('usuarios')
+                            .update({ senha: novaSenha })
+                            .eq('login', usuarioEncontrado.login);
+                        console.log('✅ Senha atualizada no Supabase também');
+                    } catch (error) {
+                        console.log('⚠️ Não conseguiu atualizar senha no Supabase');
+                    }
+                }
+                
+                mostrarStatusLogin('success', `✅ Nova senha enviada para ${email}`);
+                document.getElementById('emailRecuperacao').value = '';
+                
+                const agora = new Date();
+                salvarTimestampGlobal(agora.toLocaleString('pt-BR'));
+                
+            } catch (error) {
+                console.error('❌ Erro na recuperação:', error);
+                mostrarStatusLogin('error', 'Erro ao enviar e-mail. Tente novamente.');
+            } finally {
+                btnRecuperar.disabled = false;
+                btnRecuperar.textContent = 'Recuperar Senha';
+            }
+        }
+
+        async function enviarEmailRecuperacao(usuario, novaSenha) {
+            try {
+                console.log('📧 ENVIANDO E-MAIL DE RECUPERAÇÃO...');
+                
+                const templateParams = {
+                    to_name: usuario.nome,
+                    to_email: usuario.email,
+                    user_login: usuario.login,
+                    new_password: novaSenha,
+                    from_name: 'Sistema Pátio Brasfrigo',
+                    name: usuario.nome,
+                    email: usuario.email,
+                    login: usuario.login,
+                    password: novaSenha,
+                    senha: novaSenha,
+                    usuario: usuario.login,
+                    nome: usuario.nome,
+                    user_name: usuario.nome,
+                    user_email: usuario.email,
+                    user_password: novaSenha,
+                    username: usuario.login,
+                    userlogin: usuario.login,
+                    newpassword: novaSenha,
+                    message: `Olá ${usuario.nome}, sua nova senha temporária é: ${novaSenha}. Login: ${usuario.login}`
+                };
+                
+                const result = await emailjs.send(
+                    emailJSConfig.serviceID,
+                    emailJSConfig.templateID,
+                    templateParams
+                );
+                
+                console.log('✅ E-MAIL DE RECUPERAÇÃO ENVIADO!', result);
+                return true;
+                
+            } catch (error) {
+                console.error('❌ ERRO NO ENVIO DO E-MAIL:', error);
+                throw error;
+            }
+        }
+
+        // ========== FUNÇÕES DE DATA ==========
+        
+        function obterDataAtual() {
+            const hoje = new Date();
+            const dia = hoje.getDate().toString().padStart(2, '0');
+            const mes = (hoje.getMonth() + 1).toString().padStart(2, '0');
+            const ano = hoje.getFullYear();
+            return `${dia}/${mes}/${ano}`;
+        }
+
+        function obterDataAnterior(diasAtras) {
+            const hoje = new Date();
+            const dataAnterior = new Date(hoje);
+            dataAnterior.setDate(hoje.getDate() - diasAtras);
+            
+            const dia = dataAnterior.getDate().toString().padStart(2, '0');
+            const mes = (dataAnterior.getMonth() + 1).toString().padStart(2, '0');
+            const ano = dataAnterior.getFullYear();
+            
+            return `${dia}/${mes}/${ano}`;
+        }
+
+        function obterMesAtual() {
+            const hoje = new Date();
+            const mes = (hoje.getMonth() + 1).toString().padStart(2, '0');
+            const ano = hoje.getFullYear();
+            return `${mes}/${ano}`;
+        }
+
+        function obterSemanaAtual() {
+            const hoje = new Date();
+            
+            const inicioSemana = new Date(hoje);
+            inicioSemana.setDate(hoje.getDate() - hoje.getDay());
+            
+            const fimSemana = new Date(inicioSemana);
+            fimSemana.setDate(inicioSemana.getDate() + 6);
+            
+            const formatarData = (data) => {
+                const dia = data.getDate().toString().padStart(2, '0');
+                const mes = (data.getMonth() + 1).toString().padStart(2, '0');
+                const ano = data.getFullYear();
+                return `${dia}/${mes}/${ano}`;
+            };
+            
+            return {
+                inicio: formatarData(inicioSemana),
+                fim: formatarData(fimSemana)
+            };
+        }
+
+        function parseDataBrasileira(dataStr) {
+            if (!dataStr || typeof dataStr !== 'string') return null;
+            
+            try {
+                const partes = dataStr.trim().split('/');
+                if (partes.length !== 3) return null;
+                
+                const dia = parseInt(partes[0], 10);
+                const mes = parseInt(partes[1], 10);
+                const ano = parseInt(partes[2], 10);
+                
+                if (isNaN(dia) || isNaN(mes) || isNaN(ano)) return null;
+                if (dia < 1 || dia > 31 || mes < 1 || mes > 12 || ano < 2000) return null;
+                
+                return new Date(ano, mes - 1, dia);
+                
+            } catch (error) {
+                console.error('Erro ao fazer parse da data:', dataStr, error);
+                return null;
+            }
+        }
+
+        function estaNoMesAtual(dataDescarga) {
+            if (!dataDescarga) return false;
+            
+            const dataObj = parseDataBrasileira(dataDescarga);
+            if (!dataObj) return false;
+            
+            const hoje = new Date();
+            
+            return dataObj.getMonth() === hoje.getMonth() && 
+                   dataObj.getFullYear() === hoje.getFullYear();
+        }
+
+        function estaNaSemanaAtual(dataDescarga) {
+            if (!dataDescarga) return false;
+            
+            const dataObj = parseDataBrasileira(dataDescarga);
+            if (!dataObj) return false;
+            
+            const hoje = new Date();
+            
+            const inicioSemana = new Date(hoje);
+            inicioSemana.setDate(hoje.getDate() - hoje.getDay());
+            inicioSemana.setHours(0, 0, 0, 0);
+            
+            const fimSemana = new Date(inicioSemana);
+            fimSemana.setDate(inicioSemana.getDate() + 6);
+            fimSemana.setHours(23, 59, 59, 999);
+            
+            return dataObj >= inicioSemana && dataObj <= fimSemana;
+        }
+
+        function estaNodia(dataDescarga) {
+            if (!dataDescarga) return false;
+            return dataDescarga === obterDataAtual();
+        }
+
+        function estaNoDiaEspecifico(dataDescarga, diasAtras) {
+            if (!dataDescarga) return false;
+            return dataDescarga === obterDataAnterior(diasAtras);
+        }
+
+        // ========== FUNÇÃO PARA VERIFICAR SE DATA É ATUAL ==========
+        function ehDiaAtual(dataStr) {
+            if (!dataStr) return false;
+            
+            // Aceitar formato brasileiro (DD/MM/YYYY) ou outros formatos
+            const hoje = obterDataAtual(); // formato DD/MM/YYYY
+            
+            // Se já está no formato DD/MM/YYYY
+            if (dataStr === hoje) return true;
+            
+            // Tentar outros formatos
+            try {
+                const dataObj = parseDataBrasileira(dataStr);
+                if (!dataObj) return false;
+                
+                const hojeDia = new Date().getDate();
+                const hojeMes = new Date().getMonth();
+                const hojeAno = new Date().getFullYear();
+                
+                return dataObj.getDate() === hojeDia && 
+                       dataObj.getMonth() === hojeMes && 
+                       dataObj.getFullYear() === hojeAno;
+            } catch (error) {
+                return false;
+            }
+        }
+
+        // ========== CÁLCULO DOS CARDS ==========
+        
+        function calcularEAtualizarCards() {
+            console.log(`📊 CALCULANDO CARDS - ${dadosPatio.length} REGISTROS...`);
+            
+            if (dadosPatio.length === 0) {
+                console.log('⚠️ Nenhum dado disponível');
+                // ZERAR TODOS OS CARDS
+                document.getElementById('totalTransito').textContent = 0;
+                document.getElementById('totalAguardando').textContent = 0;
+                document.getElementById('totalDescarregando').textContent = 0;
+                document.getElementById('totalDescarregado').textContent = 0;
+                document.getElementById('movimentacaoD0').textContent = 0;
+                document.getElementById('movimentacaoD1').textContent = 0;
+                document.getElementById('movimentacaoD2').textContent = 0;
+                document.getElementById('movimentacaoD3').textContent = 0;
+                document.getElementById('movimentacaoD4').textContent = 0;
+                document.getElementById('movimentacaoSemana').textContent = 0;
+                document.getElementById('movimentacaoMes').textContent = 0;
+                atualizarGraficoDescarregando(0);
+                return;
+            }
+            
+            const hoje = obterDataAtual();
+            console.log(`📅 DATA DE HOJE: ${hoje}`);
+            
+            // FILTRAR POR STATUS
+            const dadosTransito = dadosPatio.filter(d => d.status === 'TRÂNSITO');
+            const dadosAguardando = dadosPatio.filter(d => d.status === 'AGUARDANDO');
+            const dadosDesovando = dadosPatio.filter(d => d.status === 'DESOVANDO'); // PARA CARD DESCARREGANDO
+            const dadosDescarregado = dadosPatio.filter(d => d.status === 'DESCARREGADO');
+            
+            console.log('📊 DADOS POR STATUS:');
+            console.log(`• TRÂNSITO: ${dadosTransito.length} registros`);
+            console.log(`• AGUARDANDO: ${dadosAguardando.length} registros`);
+            console.log(`• DESOVANDO: ${dadosDesovando.length} registros`);
+            console.log(`• DESCARREGADO: ${dadosDescarregado.length} registros`);
+            
+            // CONTAR PLACAS ÚNICAS
+            const placasTransito = [...new Set(dadosTransito.map(d => d.placa))].length;
+            const placasAguardando = [...new Set(dadosAguardando.map(d => d.placa))].length;
+            const placasDesovando = [...new Set(dadosDesovando.map(d => d.placa))].length; // DESOVANDO → CARD DESCARREGANDO
+            
+            // DESCARREGADO APENAS DO DIA ATUAL
+            const dadosDescarregadoHoje = dadosDescarregado.filter(d => estaNodia(d.dataDescarga));
+            const placasDescarregadoHoje = [...new Set(dadosDescarregadoHoje.map(d => d.placa))].length;
+            
+            console.log('📊 PLACAS ÚNICAS:');
+            console.log(`• TRÂNSITO: ${placasTransito} placas`);
+            console.log(`• AGUARDANDO: ${placasAguardando} placas`);
+            console.log(`• DESOVANDO (→Descarregando): ${placasDesovando} placas`);
+            console.log(`• DESCARREGADO HOJE: ${placasDescarregadoHoje} placas`);
+            
+            // HISTÓRICO POR DIAS
+            const movimentacaoD0 = [...new Set(dadosDescarregado.filter(d => d.dataDescarga === hoje).map(d => d.placa))].length;
+            const movimentacaoD1 = [...new Set(dadosDescarregado.filter(d => d.dataDescarga === obterDataAnterior(1)).map(d => d.placa))].length;
+            const movimentacaoD2 = [...new Set(dadosDescarregado.filter(d => d.dataDescarga === obterDataAnterior(2)).map(d => d.placa))].length;
+            const movimentacaoD3 = [...new Set(dadosDescarregado.filter(d => d.dataDescarga === obterDataAnterior(3)).map(d => d.placa))].length;
+            const movimentacaoD4 = [...new Set(dadosDescarregado.filter(d => d.dataDescarga === obterDataAnterior(4)).map(d => d.placa))].length;
+            
+            const movimentacaoSemana = [...new Set(dadosDescarregado.filter(d => d.dataDescarga && estaNaSemanaAtual(d.dataDescarga)).map(d => d.placa))].length;
+            const movimentacaoMes = [...new Set(dadosDescarregado.filter(d => d.dataDescarga && estaNoMesAtual(d.dataDescarga)).map(d => d.placa))].length;
+            
+            // ATUALIZAR CARDS NA TELA
+            document.getElementById('totalTransito').textContent = placasTransito;
+            document.getElementById('totalAguardando').textContent = placasAguardando;
+            document.getElementById('totalDescarregando').textContent = placasDesovando; // DESOVANDO → DESCARREGANDO
+            document.getElementById('totalDescarregado').textContent = placasDescarregadoHoje; // APENAS HOJE
+            
+            // ATUALIZAR HISTÓRICO
+            document.getElementById('movimentacaoD0').textContent = movimentacaoD0;
+            document.getElementById('movimentacaoD1').textContent = movimentacaoD1;
+            document.getElementById('movimentacaoD2').textContent = movimentacaoD2;
+            document.getElementById('movimentacaoD3').textContent = movimentacaoD3;
+            document.getElementById('movimentacaoD4').textContent = movimentacaoD4;
+            document.getElementById('movimentacaoSemana').textContent = movimentacaoSemana;
+            document.getElementById('movimentacaoMes').textContent = movimentacaoMes;
+            
+            // ATUALIZAR GRÁFICO
+            atualizarGraficoDescarregando(placasDesovando);
+            
+            // ATUALIZAR DEBUG VISUAL (APENAS MASTER VÊ)
+            const debugElements = {
+                debugTransito: placasTransito,
+                debugAguardando: placasAguardando,
+                debugDescarregando: placasDesovando,
+                debugDescarregado: placasDescarregadoHoje,
+                debugDataHoje: hoje
+            };
+            
+            Object.entries(debugElements).forEach(([id, valor]) => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.textContent = valor;
+                }
+            });
+            
+            // ANIMAÇÃO DE ATUALIZAÇÃO
+            const cards = document.querySelectorAll('.stat-card');
+            cards.forEach(card => {
+                card.classList.add('updated');
+                setTimeout(() => card.classList.remove('updated'), 1000);
+            });
+            
+            console.log('✅ CARDS ATUALIZADOS!');
+        }
+
+        function atualizarGraficoDescarregando(totalDescarregando) {
+            const progressBar = document.getElementById('progressBar');
+            const graficoNumero = document.getElementById('graficoNumero');
+            const empilhadeira = document.getElementById('empilhadeira');
+            const setasMovimento = document.getElementById('setasMovimento');
+            const cargas = ['carga1', 'carga2', 'carga3', 'carga4', 'carga5'];
+            
+            if (!progressBar || !graficoNumero) return;
+            
+            graficoNumero.textContent = totalDescarregando;
+            
+            const maxLargura = 16;
+            const larguraAtual = Math.min(totalDescarregando * 2, maxLargura);
+            progressBar.setAttribute('width', larguraAtual);
+            
+            cargas.forEach((cargaId, index) => {
+                const carga = document.getElementById(cargaId);
+                if (carga) {
+                    carga.setAttribute('opacity', totalDescarregando > index ? '0.9' : '0');
+                }
+            });
+            
+            if (empilhadeira) {
+                if (totalDescarregando > 0) {
+                    empilhadeira.setAttribute('opacity', '1');
+                    empilhadeira.style.animation = 'cardPulse 2s infinite';
+                } else {
+                    empilhadeira.setAttribute('opacity', '0.5');
+                    empilhadeira.style.animation = 'none';
+                }
+            }
+            
+            if (setasMovimento) {
+                if (totalDescarregando >= 3) {
+                    setasMovimento.setAttribute('opacity', '0.8');
+                } else if (totalDescarregando > 0) {
+                    setasMovimento.setAttribute('opacity', '0.4');
+                } else {
+                    setasMovimento.setAttribute('opacity', '0');
+                }
+            }
+            
+            if (totalDescarregando >= 5) {
+                progressBar.setAttribute('fill', '#28a745');
+                graficoNumero.setAttribute('fill', '#28a745');
+            } else if (totalDescarregando >= 2) {
+                progressBar.setAttribute('fill', '#20c997');
+                graficoNumero.setAttribute('fill', '#20c997');
+            } else {
+                progressBar.setAttribute('fill', '#17a2b8');
+                graficoNumero.setAttribute('fill', '#17a2b8');
+            }
+        }
+
+        // ========== FUNÇÃO CORRIGIDA - APENAS TIMEOUT REMOVIDO (SUA DECISÃO) ==========
         
         async function buscarTodosUsuarios() {
             try {
-                console.log('🔍 BUSCANDO USUÁRIOS SEM TIMEOUT...');
+                console.log('🔍 BUSCANDO USUÁRIOS SEM TIMEOUT (CONFORME DECISÃO DO LEANDRO)...');
                 
                 // SEMPRE COMEÇAR COM USUÁRIOS PADRÃO COMO FALLBACK
                 let usuariosLocais = JSON.parse(localStorage.getItem('usuariosSistema') || '[]');
@@ -2276,12 +2709,13 @@
                 // TENTAR BUSCAR DO SUPABASE SEM TIMEOUT AGRESSIVO
                 if (supabaseDisponivel && supabase) {
                     try {
-                        console.log('🌐 Consultando Supabase...');
+                        console.log('🌐 Consultando Supabase (sem timeout)...');
                         
-                        // REMOVIDO O TIMEOUT DE 10 SEGUNDOS - DEIXAR SUPABASE RESPONDER NATURALMENTE
+                        // ======= PRINCIPAL CORREÇÃO: REMOVIDO O TIMEOUT =======
                         const { data: usuariosSupabase, error } = await supabase
                             .from('usuarios')
                             .select('*');
+                        // ===================================================
                         
                         if (error) {
                             console.log('⚠️ Erro na consulta Supabase:', error.message);
@@ -2522,7 +2956,7 @@
                 console.log(`🔐 AUTENTICANDO: ${login}`);
                 mostrarStatusLogin('info', 'Consultando base de usuários...');
                 
-                // BUSCAR USUÁRIOS SEM TIMEOUT AGRESSIVO - PRINCIPAL CORREÇÃO
+                // BUSCAR USUÁRIOS SEM TIMEOUT AGRESSIVO (PRINCIPAL CORREÇÃO)
                 const usuarios = await buscarTodosUsuarios();
                 console.log(`👥 ${usuarios.length} usuários consultados`);
                 
@@ -2804,7 +3238,7 @@
         // ========== DOM READY ==========
         
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 SISTEMA ORIGINAL COM APENAS LOGIN CORRIGIDO');
+            console.log('🚀 SISTEMA COM LOGIN CORRIGIDO - SEM TIMEOUT PARA DIAGNOSTICAR LOGIN');
             
             const filtros = ['searchPlaca', 'filterStatus', 'filterOrigem', 'filterTipoMercado', 'filterTipoDescarga'];
             
@@ -2903,7 +3337,7 @@
                 return;
             }
 
-            console.log('🔐 Iniciando processo de login sem timeout...');
+            console.log('🔐 Iniciando processo de login sem timeout (decisão do Leandro aplicada)...');
             autenticarUsuario(login, senha, lembrarMe);
         }
 
@@ -3285,308 +3719,6 @@
             }
         }
 
-        // ========== FUNÇÃO PARA VERIFICAR SE DATA É ATUAL ==========
-        function ehDiaAtual(dataStr) {
-            if (!dataStr) return false;
-            
-            // Aceitar formato brasileiro (DD/MM/YYYY) ou outros formatos
-            const hoje = obterDataAtual(); // formato DD/MM/YYYY
-            
-            // Se já está no formato DD/MM/YYYY
-            if (dataStr === hoje) return true;
-            
-            // Tentar outros formatos
-            try {
-                const dataObj = parseDataBrasileira(dataStr);
-                if (!dataObj) return false;
-                
-                const hojeDia = new Date().getDate();
-                const hojeMes = new Date().getMonth();
-                const hojeAno = new Date().getFullYear();
-                
-                return dataObj.getDate() === hojeDia && 
-                       dataObj.getMonth() === hojeMes && 
-                       dataObj.getFullYear() === hojeAno;
-            } catch (error) {
-                return false;
-            }
-        }
-
-        // ========== CÁLCULO DOS CARDS ==========
-        
-        function calcularEAtualizarCards() {
-            console.log(`📊 CALCULANDO CARDS - ${dadosPatio.length} REGISTROS...`);
-            
-            if (dadosPatio.length === 0) {
-                console.log('⚠️ Nenhum dado disponível');
-                // ZERAR TODOS OS CARDS
-                document.getElementById('totalTransito').textContent = 0;
-                document.getElementById('totalAguardando').textContent = 0;
-                document.getElementById('totalDescarregando').textContent = 0;
-                document.getElementById('totalDescarregado').textContent = 0;
-                document.getElementById('movimentacaoD0').textContent = 0;
-                document.getElementById('movimentacaoD1').textContent = 0;
-                document.getElementById('movimentacaoD2').textContent = 0;
-                document.getElementById('movimentacaoD3').textContent = 0;
-                document.getElementById('movimentacaoD4').textContent = 0;
-                document.getElementById('movimentacaoSemana').textContent = 0;
-                document.getElementById('movimentacaoMes').textContent = 0;
-                atualizarGraficoDescarregando(0);
-                return;
-            }
-            
-            const hoje = obterDataAtual();
-            console.log(`📅 DATA DE HOJE: ${hoje}`);
-            
-            // FILTRAR POR STATUS
-            const dadosTransito = dadosPatio.filter(d => d.status === 'TRÂNSITO');
-            const dadosAguardando = dadosPatio.filter(d => d.status === 'AGUARDANDO');
-            const dadosDesovando = dadosPatio.filter(d => d.status === 'DESOVANDO'); // PARA CARD DESCARREGANDO
-            const dadosDescarregado = dadosPatio.filter(d => d.status === 'DESCARREGADO');
-            
-            console.log('📊 DADOS POR STATUS:');
-            console.log(`• TRÂNSITO: ${dadosTransito.length} registros`);
-            console.log(`• AGUARDANDO: ${dadosAguardando.length} registros`);
-            console.log(`• DESOVANDO: ${dadosDesovando.length} registros`);
-            console.log(`• DESCARREGADO: ${dadosDescarregado.length} registros`);
-            
-            // CONTAR PLACAS ÚNICAS
-            const placasTransito = [...new Set(dadosTransito.map(d => d.placa))].length;
-            const placasAguardando = [...new Set(dadosAguardando.map(d => d.placa))].length;
-            const placasDesovando = [...new Set(dadosDesovando.map(d => d.placa))].length; // DESOVANDO → CARD DESCARREGANDO
-            
-            // DESCARREGADO APENAS DO DIA ATUAL
-            const dadosDescarregadoHoje = dadosDescarregado.filter(d => estaNodia(d.dataDescarga));
-            const placasDescarregadoHoje = [...new Set(dadosDescarregadoHoje.map(d => d.placa))].length;
-            
-            console.log('📊 PLACAS ÚNICAS:');
-            console.log(`• TRÂNSITO: ${placasTransito} placas`);
-            console.log(`• AGUARDANDO: ${placasAguardando} placas`);
-            console.log(`• DESOVANDO (→Descarregando): ${placasDesovando} placas`);
-            console.log(`• DESCARREGADO HOJE: ${placasDescarregadoHoje} placas`);
-            
-            // HISTÓRICO POR DIAS
-            const movimentacaoD0 = [...new Set(dadosDescarregado.filter(d => d.dataDescarga === hoje).map(d => d.placa))].length;
-            const movimentacaoD1 = [...new Set(dadosDescarregado.filter(d => d.dataDescarga === obterDataAnterior(1)).map(d => d.placa))].length;
-            const movimentacaoD2 = [...new Set(dadosDescarregado.filter(d => d.dataDescarga === obterDataAnterior(2)).map(d => d.placa))].length;
-            const movimentacaoD3 = [...new Set(dadosDescarregado.filter(d => d.dataDescarga === obterDataAnterior(3)).map(d => d.placa))].length;
-            const movimentacaoD4 = [...new Set(dadosDescarregado.filter(d => d.dataDescarga === obterDataAnterior(4)).map(d => d.placa))].length;
-            
-            const movimentacaoSemana = [...new Set(dadosDescarregado.filter(d => d.dataDescarga && estaNaSemanaAtual(d.dataDescarga)).map(d => d.placa))].length;
-            const movimentacaoMes = [...new Set(dadosDescarregado.filter(d => d.dataDescarga && estaNoMesAtual(d.dataDescarga)).map(d => d.placa))].length;
-            
-            // ATUALIZAR CARDS NA TELA
-            document.getElementById('totalTransito').textContent = placasTransito;
-            document.getElementById('totalAguardando').textContent = placasAguardando;
-            document.getElementById('totalDescarregando').textContent = placasDesovando; // DESOVANDO → DESCARREGANDO
-            document.getElementById('totalDescarregado').textContent = placasDescarregadoHoje; // APENAS HOJE
-            
-            // ATUALIZAR HISTÓRICO
-            document.getElementById('movimentacaoD0').textContent = movimentacaoD0;
-            document.getElementById('movimentacaoD1').textContent = movimentacaoD1;
-            document.getElementById('movimentacaoD2').textContent = movimentacaoD2;
-            document.getElementById('movimentacaoD3').textContent = movimentacaoD3;
-            document.getElementById('movimentacaoD4').textContent = movimentacaoD4;
-            document.getElementById('movimentacaoSemana').textContent = movimentacaoSemana;
-            document.getElementById('movimentacaoMes').textContent = movimentacaoMes;
-            
-            // ATUALIZAR GRÁFICO
-            atualizarGraficoDescarregando(placasDesovando);
-            
-            // ATUALIZAR DEBUG VISUAL (APENAS MASTER VÊ)
-            const debugElements = {
-                debugTransito: placasTransito,
-                debugAguardando: placasAguardando,
-                debugDescarregando: placasDesovando,
-                debugDescarregado: placasDescarregadoHoje,
-                debugDataHoje: hoje
-            };
-            
-            Object.entries(debugElements).forEach(([id, valor]) => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.textContent = valor;
-                }
-            });
-            
-            // ANIMAÇÃO DE ATUALIZAÇÃO
-            const cards = document.querySelectorAll('.stat-card');
-            cards.forEach(card => {
-                card.classList.add('updated');
-                setTimeout(() => card.classList.remove('updated'), 1000);
-            });
-            
-            console.log('✅ CARDS ATUALIZADOS!');
-        }
-
-        function atualizarGraficoDescarregando(totalDescarregando) {
-            const progressBar = document.getElementById('progressBar');
-            const graficoNumero = document.getElementById('graficoNumero');
-            const empilhadeira = document.getElementById('empilhadeira');
-            const setasMovimento = document.getElementById('setasMovimento');
-            const cargas = ['carga1', 'carga2', 'carga3', 'carga4', 'carga5'];
-            
-            if (!progressBar || !graficoNumero) return;
-            
-            graficoNumero.textContent = totalDescarregando;
-            
-            const maxLargura = 16;
-            const larguraAtual = Math.min(totalDescarregando * 2, maxLargura);
-            progressBar.setAttribute('width', larguraAtual);
-            
-            cargas.forEach((cargaId, index) => {
-                const carga = document.getElementById(cargaId);
-                if (carga) {
-                    carga.setAttribute('opacity', totalDescarregando > index ? '0.9' : '0');
-                }
-            });
-            
-            if (empilhadeira) {
-                if (totalDescarregando > 0) {
-                    empilhadeira.setAttribute('opacity', '1');
-                    empilhadeira.style.animation = 'cardPulse 2s infinite';
-                } else {
-                    empilhadeira.setAttribute('opacity', '0.5');
-                    empilhadeira.style.animation = 'none';
-                }
-            }
-            
-            if (setasMovimento) {
-                if (totalDescarregando >= 3) {
-                    setasMovimento.setAttribute('opacity', '0.8');
-                } else if (totalDescarregando > 0) {
-                    setasMovimento.setAttribute('opacity', '0.4');
-                } else {
-                    setasMovimento.setAttribute('opacity', '0');
-                }
-            }
-            
-            if (totalDescarregando >= 5) {
-                progressBar.setAttribute('fill', '#28a745');
-                graficoNumero.setAttribute('fill', '#28a745');
-            } else if (totalDescarregando >= 2) {
-                progressBar.setAttribute('fill', '#20c997');
-                graficoNumero.setAttribute('fill', '#20c997');
-            } else {
-                progressBar.setAttribute('fill', '#17a2b8');
-                graficoNumero.setAttribute('fill', '#17a2b8');
-            }
-        }
-
-        // ========== FUNÇÕES DE DATA ==========
-        
-        function obterDataAtual() {
-            const hoje = new Date();
-            const dia = hoje.getDate().toString().padStart(2, '0');
-            const mes = (hoje.getMonth() + 1).toString().padStart(2, '0');
-            const ano = hoje.getFullYear();
-            return `${dia}/${mes}/${ano}`;
-        }
-
-        function obterDataAnterior(diasAtras) {
-            const hoje = new Date();
-            const dataAnterior = new Date(hoje);
-            dataAnterior.setDate(hoje.getDate() - diasAtras);
-            
-            const dia = dataAnterior.getDate().toString().padStart(2, '0');
-            const mes = (dataAnterior.getMonth() + 1).toString().padStart(2, '0');
-            const ano = dataAnterior.getFullYear();
-            
-            return `${dia}/${mes}/${ano}`;
-        }
-
-        function obterMesAtual() {
-            const hoje = new Date();
-            const mes = (hoje.getMonth() + 1).toString().padStart(2, '0');
-            const ano = hoje.getFullYear();
-            return `${mes}/${ano}`;
-        }
-
-        function obterSemanaAtual() {
-            const hoje = new Date();
-            
-            const inicioSemana = new Date(hoje);
-            inicioSemana.setDate(hoje.getDate() - hoje.getDay());
-            
-            const fimSemana = new Date(inicioSemana);
-            fimSemana.setDate(inicioSemana.getDate() + 6);
-            
-            const formatarData = (data) => {
-                const dia = data.getDate().toString().padStart(2, '0');
-                const mes = (data.getMonth() + 1).toString().padStart(2, '0');
-                const ano = data.getFullYear();
-                return `${dia}/${mes}/${ano}`;
-            };
-            
-            return {
-                inicio: formatarData(inicioSemana),
-                fim: formatarData(fimSemana)
-            };
-        }
-
-        function parseDataBrasileira(dataStr) {
-            if (!dataStr || typeof dataStr !== 'string') return null;
-            
-            try {
-                const partes = dataStr.trim().split('/');
-                if (partes.length !== 3) return null;
-                
-                const dia = parseInt(partes[0], 10);
-                const mes = parseInt(partes[1], 10);
-                const ano = parseInt(partes[2], 10);
-                
-                if (isNaN(dia) || isNaN(mes) || isNaN(ano)) return null;
-                if (dia < 1 || dia > 31 || mes < 1 || mes > 12 || ano < 2000) return null;
-                
-                return new Date(ano, mes - 1, dia);
-                
-            } catch (error) {
-                console.error('Erro ao fazer parse da data:', dataStr, error);
-                return null;
-            }
-        }
-
-        function estaNoMesAtual(dataDescarga) {
-            if (!dataDescarga) return false;
-            
-            const dataObj = parseDataBrasileira(dataDescarga);
-            if (!dataObj) return false;
-            
-            const hoje = new Date();
-            
-            return dataObj.getMonth() === hoje.getMonth() && 
-                   dataObj.getFullYear() === hoje.getFullYear();
-        }
-
-        function estaNaSemanaAtual(dataDescarga) {
-            if (!dataDescarga) return false;
-            
-            const dataObj = parseDataBrasileira(dataDescarga);
-            if (!dataObj) return false;
-            
-            const hoje = new Date();
-            
-            const inicioSemana = new Date(hoje);
-            inicioSemana.setDate(hoje.getDate() - hoje.getDay());
-            inicioSemana.setHours(0, 0, 0, 0);
-            
-            const fimSemana = new Date(inicioSemana);
-            fimSemana.setDate(inicioSemana.getDate() + 6);
-            fimSemana.setHours(23, 59, 59, 999);
-            
-            return dataObj >= inicioSemana && dataObj <= fimSemana;
-        }
-
-        function estaNodia(dataDescarga) {
-            if (!dataDescarga) return false;
-            return dataDescarga === obterDataAtual();
-        }
-
-        function estaNoDiaEspecifico(dataDescarga, diasAtras) {
-            if (!dataDescarga) return false;
-            return dataDescarga === obterDataAnterior(diasAtras);
-        }
-
         // ========== FUNÇÕES AUXILIARES ==========
 
         function converterValor(valor) {
@@ -3615,138 +3747,7 @@
             }
         }
 
-        // ========== RECUPERAÇÃO DE SENHA ==========
-        
-        function gerarSenhaTemporaria() {
-            const caracteres = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
-            let senha = '';
-            for (let i = 0; i < 8; i++) {
-                senha += caracteres.charAt(Math.floor(Math.random() * caracteres.length));
-            }
-            return senha;
-        }
-        
-        async function recuperarSenha(event) {
-            event.preventDefault();
-            
-            const email = document.getElementById('emailRecuperacao').value.trim().toLowerCase();
-            const btnRecuperar = document.getElementById('btnRecuperar');
-            
-            if (!email) {
-                mostrarStatusLogin('error', 'Digite um e-mail válido!');
-                return;
-            }
-            
-            btnRecuperar.disabled = true;
-            btnRecuperar.textContent = 'Enviando...';
-            mostrarStatusLogin('info', 'Verificando e-mail...');
-            
-            try {
-                if (!emailJSReady) {
-                    throw new Error('Sistema de e-mail não inicializado');
-                }
-                
-                const usuarios = await buscarTodosUsuarios();
-                const usuarioEncontrado = usuarios.find(u => u.email.toLowerCase().trim() === email);
-                
-                if (!usuarioEncontrado) {
-                    mostrarStatusLogin('error', 'E-mail não encontrado no sistema!');
-                    btnRecuperar.disabled = false;
-                    btnRecuperar.textContent = 'Recuperar Senha';
-                    return;
-                }
-                
-                console.log('👤 Usuário encontrado para recuperação:', usuarioEncontrado.nome);
-                
-                const novaSenha = gerarSenhaTemporaria();
-                console.log('🔑 Nova senha gerada:', novaSenha);
-                
-                const emailEnviado = await enviarEmailRecuperacao(usuarioEncontrado, novaSenha);
-                
-                if (!emailEnviado) {
-                    throw new Error('Falha no envio do e-mail');
-                }
-                
-                // ATUALIZAR SENHA DO USUÁRIO
-                const usuariosAtualizados = usuarios.map(u => {
-                    if (u.email.toLowerCase().trim() === email) {
-                        return { ...u, senha: novaSenha, senhaTemporaria: true };
-                    }
-                    return u;
-                });
-                
-                localStorage.setItem('usuariosSistema', JSON.stringify(usuariosAtualizados));
-                
-                // TENTAR SALVAR NO SUPABASE TAMBÉM
-                if (supabaseDisponivel && supabase) {
-                    try {
-                        await supabase
-                            .from('usuarios')
-                            .update({ senha: novaSenha })
-                            .eq('login', usuarioEncontrado.login);
-                        console.log('✅ Senha atualizada no Supabase também');
-                    } catch (error) {
-                        console.log('⚠️ Não conseguiu atualizar senha no Supabase');
-                    }
-                }
-                
-                mostrarStatusLogin('success', `✅ Nova senha enviada para ${email}`);
-                document.getElementById('emailRecuperacao').value = '';
-                
-                const agora = new Date();
-                salvarTimestampGlobal(agora.toLocaleString('pt-BR'));
-                
-            } catch (error) {
-                console.error('❌ Erro na recuperação:', error);
-                mostrarStatusLogin('error', 'Erro ao enviar e-mail. Tente novamente.');
-            } finally {
-                btnRecuperar.disabled = false;
-                btnRecuperar.textContent = 'Recuperar Senha';
-            }
-        }
-
-        async function enviarEmailRecuperacao(usuario, novaSenha) {
-            try {
-                console.log('📧 ENVIANDO E-MAIL DE RECUPERAÇÃO...');
-                
-                const templateParams = {
-                    to_name: usuario.nome,
-                    to_email: usuario.email,
-                    user_login: usuario.login,
-                    new_password: novaSenha,
-                    from_name: 'Sistema Pátio Brasfrigo',
-                    name: usuario.nome,
-                    email: usuario.email,
-                    login: usuario.login,
-                    password: novaSenha,
-                    senha: novaSenha,
-                    usuario: usuario.login,
-                    nome: usuario.nome,
-                    user_name: usuario.nome,
-                    user_email: usuario.email,
-                    user_password: novaSenha,
-                    username: usuario.login,
-                    userlogin: usuario.login,
-                    newpassword: novaSenha,
-                    message: `Olá ${usuario.nome}, sua nova senha temporária é: ${novaSenha}. Login: ${usuario.login}`
-                };
-                
-                const result = await emailjs.send(
-                    emailJSConfig.serviceID,
-                    emailJSConfig.templateID,
-                    templateParams
-                );
-                
-                console.log('✅ E-MAIL DE RECUPERAÇÃO ENVIADO!', result);
-                return true;
-                
-            } catch (error) {
-                console.error('❌ ERRO NO ENVIO DO E-MAIL:', error);
-                throw error;
-            }
-        }
-
-        console.log('🔧✅📊🌐📧 SISTEMA ORIGINAL RESTAURADO - APENAS LOGIN CORRIGIDO!');
+        console.log('🏆✅📊 CÓDIGO ORIGINAL RESTAURADO - TIMEOUT REMOVIDO CONFORME DECISÃO DO LEANDRO!');
     </script>
 </body>
 </html>
