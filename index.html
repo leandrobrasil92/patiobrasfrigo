@@ -2724,39 +2724,43 @@
                     
                     ativarPasso(2);
                     
+                    // ========== CORREÇÃO: MAPEAMENTO ATUALIZADO PARA NOVA ESTRUTURA ==========
                     const dadosProcessados = rows.map((row, index) => {
                         return {
                             placa: converterValor(row[0]) || "",
                             container: converterValor(row[1]) || "",
-                            dataChegada: formatarData(row[2]) || "",
-                            dataDescarga: formatarData(row[3]) || "",
-                            diaria: converterNumero(row[4]),
-                            valorDiaria: converterValor(row[6]) || "R$ 0,00",
-                            valorTotal: converterValor(row[7]) || "R$ 0,00",
-                            transportadora: converterValor(row[8]) || "",
-                            unidade: converterValor(row[9]) || "",
-                            origem: converterValor(row[10]) || "",
-                            tipoDescarga: converterValor(row[11]) || "",
-                            tipoMercado: converterValor(row[12]) || "",
-                            status: converterValor(row[13]) || "",
-                            nfOrigem: converterValor(row[14]) || "",
-                            nfeBrasfrigo: converterValor(row[15]) || "",
-                            op: converterValor(row[16]) || "",
-                            deposito: converterValor(row[17]) || "",
-                            statusOp: converterValor(row[18]) || "",
-                            pedido: converterValor(row[19]) || "",
-                            falta: converterValor(row[20]) || "",
-                            sobra: converterValor(row[21]) || "",
-                            inversaoRg: converterValor(row[22]) || "",
-                            doca: converterValor(row[23]) || "",
-                            pbr: converterValor(row[24]) || "",
-                            oneWay: converterValor(row[25]) || "",
-                            fumigado: converterValor(row[26]) || "",
-                            totalPallet: converterValor(row[27]) || "",
-                            recFrio: converterValor(row[28]) || "",
-                            obs: converterValor(row[29]) || ""
+                            kmDistancia: converterValor(row[2]) || "", // NOVA COLUNA
+                            dataChegada: formatarData(row[3]) || "", // ERA 2, AGORA É 3
+                            dataDescarga: formatarData(row[4]) || "", // ERA 3, AGORA É 4
+                            diaria: converterNumero(row[5]), // ERA 4, AGORA É 5
+                            valorDiaria: converterValor(row[7]) || "R$ 0,00", // ERA 6, AGORA É 7
+                            valorTotal: converterValor(row[8]) || "R$ 0,00", // ERA 7, AGORA É 8
+                            transportadora: converterValor(row[9]) || "", // ERA 8, AGORA É 9
+                            unidade: converterValor(row[10]) || "", // ERA 9, AGORA É 10
+                            origem: converterValor(row[11]) || "", // ERA 10, AGORA É 11
+                            tipoDescarga: converterValor(row[12]) || "", // ERA 11, AGORA É 12
+                            tipoMercado: converterValor(row[13]) || "", // ERA 12, AGORA É 13
+                            status: converterValor(row[14]) || "", // ERA 13, AGORA É 14
+                            nfOrigem: converterValor(row[15]) || "", // ERA 14, AGORA É 15
+                            nfeBrasfrigo: converterValor(row[16]) || "", // ERA 15, AGORA É 16
+                            op: converterValor(row[17]) || "", // ERA 16, AGORA É 17
+                            deposito: converterValor(row[18]) || "", // ERA 17, AGORA É 18
+                            statusOp: converterValor(row[19]) || "", // ERA 18, AGORA É 19
+                            pedido: converterValor(row[20]) || "", // ERA 19, AGORA É 20
+                            falta: converterValor(row[21]) || "", // ERA 20, AGORA É 21
+                            sobra: converterValor(row[22]) || "", // ERA 21, AGORA É 22
+                            inversaoRg: converterValor(row[23]) || "", // ERA 22, AGORA É 23
+                            doca: converterValor(row[24]) || "", // ERA 23, AGORA É 24
+                            pbr: converterValor(row[25]) || "", // ERA 24, AGORA É 25
+                            oneWay: converterValor(row[26]) || "", // ERA 25, AGORA É 26
+                            fumigado: converterValor(row[27]) || "", // ERA 26, AGORA É 27
+                            totalPallet: converterValor(row[28]) || "", // ERA 27, AGORA É 28
+                            recFrio: converterValor(row[29]) || "", // ERA 28, AGORA É 29
+                            obs: converterValor(row[30]) || "" // ERA 29, AGORA É 30
                         };
                     }).filter(item => item && item.placa && item.status);
+                    
+                    console.log(`✅ ${dadosProcessados.length} registros processados com novo mapeamento`);
                     
                     if (dadosProcessados.length === 0) {
                         throw new Error('Nenhum registro válido encontrado');
@@ -3945,8 +3949,7 @@
             }
         }
 
-        console.log('🎉✅🎨⏰ SISTEMA COM AJUSTES FINAIS APLICADOS!');
+        console.log('🎉✅🎨⏰ SISTEMA COM MAPEAMENTO DE COLUNAS CORRIGIDO!');
     </script>
 </body>
 </html>
-
